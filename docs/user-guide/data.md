@@ -342,7 +342,7 @@ whole map, each of its layers drawn alone (`… (map)`) and its layers' features
 [National Flood Hazard Layer](https://www.fema.gov/flood-maps/national-flood-hazard-layer) map
 service (`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer`), searched by
 words: **Add** draws the whole map or one layer such as Flood Hazard Zones alone, and
-**Features** downloads a layer's features in the view (up to the server's limit). Its flood layers are drawn only closer than about 1:36,000 (zoom 14),
+**Features** downloads a layer's features in the view (up to the server's limit). Its flood layers are drawn only from zoom 15 (closer than about 1:36,000),
 and FEMA's server can be slow to answer.
 
 **The National Map…** lists 31 map services of the USGS

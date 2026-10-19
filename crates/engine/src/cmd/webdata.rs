@@ -435,9 +435,11 @@ fn fields_add(s: &mut Session, p: &Value) -> CmdResult {
         &json!({"url": fields_url(year), "kind": "pmtiles", "name": name, "overlay": true, "maxZoom": 16,
             "attribution": "Fields of the World (CC BY 4.0)", "styleLayers": fields_style(density, fields, min_score)}),
     )?;
-    // The view's Web Mercator zoom.
+    // The view's Web Mercator zoom (known on the Web Mercator map and the globe, whose camera
+    // counts Web Mercator metres; another projection's units differ).
+    let mercator = matches!(s.map().projection, rustgis_map::globe::Projection::WebMercator | rustgis_map::globe::Projection::Globe);
     let zoom = (156_543.033_928 / s.map().camera.res.max(1e-9)).log2();
-    if fields && zoom < f64::from(FIELDS_ZOOM) - 0.5 {
+    if fields && mercator && zoom < f64::from(FIELDS_ZOOM) - 0.5 {
         r["note"] = json!(format!("fields are drawn from zoom {FIELDS_ZOOM}: zoom in to see them"));
     }
     Ok(r)

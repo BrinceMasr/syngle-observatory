@@ -187,8 +187,12 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     if replace {
         m.tiles.retain(|o| o.overlay);
     }
-    // The same address, role and look again replaces the old one; overlays survive basemap changes.
-    m.tiles.retain(|o| !(o.url == t.url && o.kind == t.kind && o.overlay == t.overlay && o.style_layers == t.style_layers));
+    // The same address and role again replaces the old one; overlays survive basemap changes.
+    // Two looks of one archive (Fields of the World's fields and density) are told apart by
+    // their names: the same look, or the same name, replaces.
+    m.tiles.retain(|o| {
+        !(o.url == t.url && o.kind == t.kind && o.overlay == t.overlay && (o.style_layers == t.style_layers || o.name == t.name))
+    });
     if m.tiles.len() >= MAX_TILE_LAYERS {
         return Err(format!("a map holds at most {MAX_TILE_LAYERS} tile layers"));
     }

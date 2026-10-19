@@ -57,6 +57,8 @@ pub struct State {
     /// Fields of the World's year and lowest score.
     year: Option<i64>,
     min_score: f64,
+    /// The National Map's catalog (`nationalMap.services`), read once.
+    national_map: Option<Arc<Value>>,
     /// What was last done, or went wrong.
     note: Option<(bool, String)>,
 }
@@ -111,10 +113,14 @@ fn poll(app: &mut RustGisApp) {
         match listing(app, &url, kind) {
             Look::Loading => app.ui.web_services.adding.push((url, kind, layer, name)),
             Look::Failed(e) => app.ui.web_services.note = Some((false, e)),
-            Look::Ready(text, _) => {
-                let mut p = json!({"url": url, "type": kind, "layer": layer, "name": name, "text": text.as_str()});
+            Look::Ready(text, v) => {
+                // The date goes only to a layer that changes with time, and names it.
                 let date = app.ui.web_services.date.trim().to_string();
-                if kind == "wmts" && !date.is_empty() {
+                let timed = layers_of(&v).iter().any(|l| text_of(l, "name") == layer && l.get("time").is_some());
+                let dated = kind == "wmts" && timed && !date.is_empty();
+                let name = if dated { format!("{name} {date}") } else { name };
+                let mut p = json!({"url": url, "type": kind, "layer": layer, "name": name, "text": text.as_str()});
+                if dated {
                     p["time"] = json!(date);
                 }
                 let r = app.run("service.add", p);
@@ -220,6 +226,10 @@ fn status(app: &mut RustGisApp, ui: &mut egui::Ui, look: Option<&Look>) {
 
 fn layers_of(v: &Value) -> &[Value] {
     v.get("layers").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
+}
+
+fn text_of<'a>(v: &'a Value, k: &str) -> &'a str {
+    text(v, k)
 }
 
 fn text<'a>(v: &'a Value, k: &str) -> &'a str {
@@ -403,8 +413,39 @@ pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
 /// with an Add of their own. What to add, when a button was clicked.
 fn service_tree(app: &mut RustGisApp, ui: &mut egui::Ui, s: &Value) -> Option<(String, &'static str, String, String)> {
     let (url, kind) = service_of(s)?;
+    // A folder inside a folder: a branch of its own, its services under it.
+    if text(s, "name").ends_with('/') {
+        let label = text(s, "title").trim_end_matches('/').to_string();
+        let mut add = None;
+        egui::CollapsingHeader::new(RichText::new(&label).strong()).id_salt(("ea", url.as_str())).show(ui, |ui| {
+            match listing(app, &url, "arcgis") {
+                Look::Ready(_, v) => {
+                    for s in layers_of(&v) {
+                        if let Some(a) = service_tree(app, ui, s) {
+                            add = Some(a);
+                        }
+                    }
+                }
+                Look::Loading => {
+                    ui.spinner();
+                }
+                Look::Failed(e) => {
+                    ui.label(RichText::new(e).small().weak());
+                }
+            }
+        });
+        return add;
+    }
     let name = text(s, "name").trim_end_matches(&format!("/{kind}")).to_string();
     let short = name.rsplit('/').next().unwrap_or(&name).replace('_', " ");
+    // Feature and vector tile services: named, for Add From Service, but not drawn as maps here.
+    if !matches!(kind.as_str(), "MapServer" | "ImageServer") {
+        ui.horizontal(|ui| {
+            ui.label(&short).on_hover_text(&url);
+            ui.label(RichText::new(&kind).small().weak());
+        });
+        return None;
+    }
     let mut add = None;
     let whole = if kind == "ImageServer" { "image" } else { "map" };
     let id = ui.make_persistent_id(("ea-svc", url.as_str()));
@@ -412,7 +453,7 @@ fn service_tree(app: &mut RustGisApp, ui: &mut egui::Ui, s: &Value) -> Option<(S
         .show_header(ui, |ui| {
             ui.label(&short).on_hover_text(&url);
             ui.label(RichText::new(&kind).small().weak());
-            if matches!(kind.as_str(), "MapServer" | "ImageServer") && ui.small_button(tl!("Add")).clicked() {
+            if ui.small_button(tl!("Add")).clicked() {
                 add = Some((url.clone(), "arcgis", whole.to_string(), short.clone()));
             }
         })
@@ -448,7 +489,7 @@ fn service_tree(app: &mut RustGisApp, ui: &mut egui::Ui, s: &Value) -> Option<(S
 /// features); the whole map first.
 pub fn fema_nfhl(app: &mut RustGisApp, ui: &mut egui::Ui) {
     poll(app);
-    ui.label(RichText::new(tl!("FEMA's National Flood Hazard Layer: effective flood zones, floodways, base flood elevations, levees and map panels. Its flood layers are drawn only when zoomed in closer than about 1:36,000 (zoom 14), its availability map only farther out.")).weak());
+    ui.label(RichText::new(tl!("FEMA's National Flood Hazard Layer: effective flood zones, floodways, base flood elevations, levees and map panels. Its flood layers are drawn only from zoom 15 (closer than about 1:36,000), its availability map only farther out.")).weak());
     let words = search_box(app, ui, "fema", tl!("Search layers…"));
     let look = listing(app, FEMA_NFHL, "arcgis");
     let mut add = None;
@@ -501,7 +542,14 @@ pub fn fema_nfhl(app: &mut RustGisApp, ui: &mut egui::Ui) {
 pub fn national_map(app: &mut RustGisApp, ui: &mut egui::Ui) {
     ui.label(RichText::new(tl!("USGS The National Map's map services (topographic maps, imagery, elevation, hydrography, boundaries and more) and a few partners'. Each is added as a tile layer.")).weak());
     let words = search_box(app, ui, "nationalmap", tl!("Search services…"));
-    let catalog = app.session.run("nationalMap.services", &Value::Null).unwrap_or_default();
+    // The catalog is fixed: read once.
+    if app.ui.web_services.national_map.is_none() {
+        match app.session.run("nationalMap.services", &Value::Null) {
+            Ok(v) => app.ui.web_services.national_map = Some(Arc::new(v)),
+            Err(e) => app.ui.web_services.note = Some((false, e)),
+        }
+    }
+    let catalog = app.ui.web_services.national_map.clone().unwrap_or_default();
     let services = layers_of_key(&catalog, "services");
     let mut add = None;
     let shown_total =

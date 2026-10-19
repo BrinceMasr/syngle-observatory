@@ -561,6 +561,19 @@ fn add_csv(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     })
 }
 
+/// Add From Service connects to a directory's folder or service (or back to one): the way back
+/// becomes `way` once connected, and stays `before` when connecting fails.
+fn go_to(app: &mut RustGisApp, url: &str, kind: &str, way: Vec<(String, &'static str)>, before: Vec<(String, &'static str)>) {
+    app.dialogs.info = None;
+    match app.run("ui.addService", json!({"url": url, "type": kind})) {
+        Ok(_) => app.ui.service_browse.back = way,
+        Err(e) => {
+            app.ui.service_browse.back = before;
+            app.dialogs.error = Some(e);
+        }
+    }
+}
+
 /// How many of a service's layers Add From Service lists.
 const SHOWN_LAYERS: usize = 500;
 
@@ -740,23 +753,16 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     }
     // Into a directory's folder or service, keeping the way back; or back out of it.
     let here = app.ui.service.as_ref().map(|c| (c.url.clone(), c.kind));
-    if let (Some(url), Some(here)) = (open, here.clone()) {
-        let mut way = std::mem::take(&mut app.ui.service_browse.back);
+    if let (Some(url), Some(here)) = (open, here) {
+        let before = app.ui.service_browse.back.clone();
+        let mut way = before.clone();
         way.push(here);
-        app.dialogs.info = None;
-        let r = app.run("ui.addService", json!({"url": url, "type": "arcgis"}));
-        app.ui.service_browse.back = way;
-        if let Err(e) = r {
-            app.dialogs.error = Some(e);
-        }
+        go_to(app, &url, "arcgis", way, before);
     } else if back && let Some((url, kind)) = app.ui.service_browse.back.pop() {
-        let way = std::mem::take(&mut app.ui.service_browse.back);
-        app.dialogs.info = None;
-        let r = app.run("ui.addService", json!({"url": url, "type": kind}));
-        app.ui.service_browse.back = way;
-        if let Err(e) = r {
-            app.dialogs.error = Some(e);
-        }
+        let way = app.ui.service_browse.back.clone();
+        let mut before = way.clone();
+        before.push((url.clone(), kind));
+        go_to(app, &url, kind, way, before);
     }
     if app.ui.service_import.is_some() {
         ui.horizontal(|ui| {

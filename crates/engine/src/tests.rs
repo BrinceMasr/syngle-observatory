@@ -5134,6 +5134,19 @@ fn gml_mapinfo_and_topojson() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Fields of the World's fields and density are two looks of one archive and stay side by side;
+/// the fields again at another score threshold replace the earlier ones.
+#[test]
+fn fields_of_the_world_looks() {
+    let mut s = Session::new(Project::default());
+    s.run("fieldsOfTheWorld.add", &json!({"year": 2024, "draw": "fields"})).unwrap();
+    s.run("fieldsOfTheWorld.add", &json!({"year": 2024, "draw": "density"})).unwrap();
+    s.run("fieldsOfTheWorld.add", &json!({"year": 2024, "draw": "fields", "minScore": 50})).unwrap();
+    let names: Vec<&str> = s.map().tiles.iter().map(|t| t.name.as_str()).collect();
+    assert_eq!(names, ["Fields of the World 2024 fields", "Fields of the World 2024 density"]);
+    assert!(s.map().tiles[0].style_layers.contains("50"));
+}
+
 /// A time-enabled WMTS layer (NASA GIBS's) is added at the date asked for, or its default; an
 /// ArcGIS services directory lists its folders and services to open, which aren't added.
 #[test]
