@@ -355,7 +355,9 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
             zoom(s);
             Ok(r)
         }
-        Offer::Service { url: open } => Err(format!("{url}: '{want}' is a folder or service the directory lists: list its layers (service.layers with url {open})")),
+        Offer::Service { url: open } => {
+            Err(format!("{url}: '{want}' is a folder or service the directory lists: list its layers (service.layers with url {open})"))
+        }
         Offer::Coverage(c) => {
             let (get, _) = coverage_request(s, p, c)?;
             #[cfg(target_arch = "wasm32")]

@@ -528,9 +528,8 @@ fn wmts(url: &str, root: &Node) -> Service {
         let matrix = format!("{prefix}{{z}}");
         // A time dimension: the template with `{Time}` is preferred, which takes the time asked
         // for (its default otherwise); without one, a template with no `{Time}` is.
-        let time = children(&layer, "Dimension")
-            .find(|d| child_text(d, "Identifier").is_some_and(|i| i.eq_ignore_ascii_case("time")))
-            .map(|d| {
+        let time =
+            children(&layer, "Dimension").find(|d| child_text(d, "Identifier").is_some_and(|i| i.eq_ignore_ascii_case("time"))).map(|d| {
                 let default = child_text(&d, "Default").and_then(|t| checked_time(&t).ok()).unwrap_or_else(|| "default".into());
                 let values = children(&d, "Value").take(MAX_TIME_VALUES).map(|v| text_of(&v)).filter(|v| v.len() <= 100).collect();
                 LayerTime { default, values }
@@ -544,12 +543,9 @@ fn wmts(url: &str, root: &Node) -> Service {
             .filter_map(|r| r.attribute("template").filter(|t| is_web(t)).map(str::to_string))
             .collect();
         let timed = |t: &&String| t.contains("{Time}");
-        let resource = if time.is_some() {
-            templates.iter().find(timed).or_else(|| templates.first())
-        } else {
-            templates.iter().find(|t| !timed(t))
-        }
-        .cloned();
+        let resource =
+            if time.is_some() { templates.iter().find(timed).or_else(|| templates.first()) } else { templates.iter().find(|t| !timed(t)) }
+                .cloned();
         // A `{Time}` the layer has no dimension for can't be filled.
         let time = time.filter(|_| resource.as_ref().is_none_or(|t| t.contains("{Time}")));
         let template = match resource {
@@ -1193,7 +1189,9 @@ fn arcgis(url: &str, v: &serde_json::Value) -> Result<Service, String> {
         // seen whole this way, where its features would stop at the server's record limit.
         if !template_is_cache(&service) {
             for l in v.get("layers").and_then(|l| l.as_array()).into_iter().flatten().take(MAX_LAYERS) {
-                let (Some(id), Some(name)) = (l.get("id").and_then(|i| i.as_i64()), l.get("name").and_then(|n| n.as_str())) else { continue };
+                let (Some(id), Some(name)) = (l.get("id").and_then(|i| i.as_i64()), l.get("name").and_then(|n| n.as_str())) else {
+                    continue;
+                };
                 let template = format!(
                     "{b}/export?bbox={{bbox-epsg-3857}}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image&layers=show:{id}"
                 );
@@ -1301,7 +1299,8 @@ fn arcgis_directory(b: &str, v: &serde_json::Value) -> Service {
         });
     }
     for s in v.get("services").and_then(|s| s.as_array()).into_iter().flatten().take(MAX_LAYERS) {
-        let (Some(name), Some(kind)) = (s.get("name").and_then(|n| n.as_str()).and_then(arcgis_name), s.get("type").and_then(|t| t.as_str()))
+        let (Some(name), Some(kind)) =
+            (s.get("name").and_then(|n| n.as_str()).and_then(arcgis_name), s.get("type").and_then(|t| t.as_str()))
         else {
             continue;
         };
@@ -1424,7 +1423,14 @@ fn ogc_api(url: &str, v: &serde_json::Value) -> Result<Service, String> {
         let items = if query_value(&items, "limit").is_some() { items } else { with_query(&items, &format!("limit={OGC_API_LIMIT}")) };
         // GeoJSON asked for unless the link says it is already.
         let items = if declared_geojson || query_value(&items, "f").is_some() { items } else { with_query(&items, "f=json") };
-        service.layers.push(ServiceLayer { name: id.to_string(), title, offer: Offer::Features { url: items }, bbox, tilesets: None, time: None });
+        service.layers.push(ServiceLayer {
+            name: id.to_string(),
+            title,
+            offer: Offer::Features { url: items },
+            bbox,
+            tilesets: None,
+            time: None,
+        });
     }
     if unreadable > 0 {
         service.notes.push(format!("{unreadable} collections link to their items with an address RustGIS doesn't fetch and are left out"));
@@ -2133,13 +2139,19 @@ mod tests {
         let s = parse("https://gibs.example.org/wmts/1.0.0/WMTSCapabilities.xml", GIBS.as_bytes()).unwrap();
         assert_eq!(s.layers.len(), 3, "{:?}", s.notes);
         let tc = &s.layers[0];
-        assert_eq!(tc.offer, Offer::Tiles { template: "https://gibs.example.org/TC/default/{Time}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpeg".into() });
+        assert_eq!(
+            tc.offer,
+            Offer::Tiles { template: "https://gibs.example.org/TC/default/{Time}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpeg".into() }
+        );
         let time = tc.time.as_ref().unwrap();
         assert_eq!(time.default, "2024-06-02");
         assert_eq!(time.values, ["2000-02-24/2024-06-02/P1D"]);
         let coast = &s.layers[1];
         assert_eq!(coast.time, None);
-        assert_eq!(coast.offer, Offer::Tiles { template: "https://gibs.example.org/Coast/default/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png".into() });
+        assert_eq!(
+            coast.offer,
+            Offer::Tiles { template: "https://gibs.example.org/Coast/default/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png".into() }
+        );
         // A default that isn't a time never reaches an address: the service's own `default`.
         assert_eq!(s.layers[2].time.as_ref().unwrap().default, "default");
         assert!(checked_time("2024-06-01").is_ok() && checked_time("2024-06-01T10:00:00Z").is_ok());

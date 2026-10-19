@@ -735,8 +735,10 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
             }
             let words: Vec<String> = app.ui.service_browse.filter.split_whitespace().map(str::to_lowercase).collect();
             let text = |l: &Value, k: &str| l.get(k).and_then(Value::as_str).unwrap_or("").to_lowercase();
-            let matching: Vec<&Value> =
-                layers.iter().filter(|l| words.iter().all(|w| text(l, "title").contains(w.as_str()) || text(l, "name").contains(w.as_str()))).collect();
+            let matching: Vec<&Value> = layers
+                .iter()
+                .filter(|l| words.iter().all(|w| text(l, "title").contains(w.as_str()) || text(l, "name").contains(w.as_str())))
+                .collect();
             if matching.len() > SHOWN_LAYERS {
                 ui.label(
                     egui::RichText::new(crate::i18n::fmt("The first {n} are listed.", &[("n", &SHOWN_LAYERS.to_string())])).small().weak(),

@@ -59,14 +59,35 @@ const fn nm(id: &'static str, category: &'static str, title: &'static str, url: 
 /// The National Map's map services, by category (GeoLibre's catalog of them, less the Special
 /// Edition 250K Maps index, which the server no longer has).
 const NATIONAL_MAP: &[NmService] = &[
-    NmService { max_zoom: 16, ..nm("basemap/USGSTopo", "Basemaps", "USGS Topo", "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer", Mode::Tile) },
     NmService {
         max_zoom: 16,
-        ..nm("basemap/USGSImageryOnly", "Basemaps", "USGS Imagery Only", "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer", Mode::Tile)
+        ..nm(
+            "basemap/USGSTopo",
+            "Basemaps",
+            "USGS Topo",
+            "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer",
+            Mode::Tile,
+        )
     },
     NmService {
         max_zoom: 16,
-        ..nm("basemap/USGSImageryTopo", "Basemaps", "USGS Imagery Topo", "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer", Mode::Tile)
+        ..nm(
+            "basemap/USGSImageryOnly",
+            "Basemaps",
+            "USGS Imagery Only",
+            "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer",
+            Mode::Tile,
+        )
+    },
+    NmService {
+        max_zoom: 16,
+        ..nm(
+            "basemap/USGSImageryTopo",
+            "Basemaps",
+            "USGS Imagery Topo",
+            "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer",
+            Mode::Tile,
+        )
     },
     NmService {
         max_zoom: 16,
@@ -80,12 +101,42 @@ const NATIONAL_MAP: &[NmService] = &[
     },
     NmService {
         max_zoom: 16,
-        ..nm("basemap/USGSHydroCached", "Basemaps", "USGS Hydro Cached", "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer", Mode::Tile)
+        ..nm(
+            "basemap/USGSHydroCached",
+            "Basemaps",
+            "USGS Hydro Cached",
+            "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer",
+            Mode::Tile,
+        )
     },
-    nm("hydro/3DHP_all", "Hydrography", "3D Hydrography Program (3DHP)", "https://hydro.nationalmap.gov/arcgis/rest/services/3DHP_all/MapServer", Mode::Export),
-    nm("hydro/nhd", "Hydrography", "National Hydrography Dataset (NHD)", "https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer", Mode::Export),
-    nm("hydro/NHDPlus_HR", "Hydrography", "NHDPlus High Resolution", "https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer", Mode::Export),
-    nm("hydro/wbd", "Hydrography", "Watershed Boundary Dataset (WBD)", "https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer", Mode::Export),
+    nm(
+        "hydro/3DHP_all",
+        "Hydrography",
+        "3D Hydrography Program (3DHP)",
+        "https://hydro.nationalmap.gov/arcgis/rest/services/3DHP_all/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "hydro/nhd",
+        "Hydrography",
+        "National Hydrography Dataset (NHD)",
+        "https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "hydro/NHDPlus_HR",
+        "Hydrography",
+        "NHDPlus High Resolution",
+        "https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "hydro/wbd",
+        "Hydrography",
+        "Watershed Boundary Dataset (WBD)",
+        "https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer",
+        Mode::Export,
+    ),
     nm(
         "elevation/3DEPElevation",
         "Elevation",
@@ -93,7 +144,13 @@ const NATIONAL_MAP: &[NmService] = &[
         "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer",
         Mode::Image(Some(r#"{"rasterFunction":"Hillshade Gray"}"#)),
     ),
-    nm("imagery/USGSNAIPPlus", "Imagery", "NAIP Plus Imagery", "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer", Mode::Image(None)),
+    nm(
+        "imagery/USGSNAIPPlus",
+        "Imagery",
+        "NAIP Plus Imagery",
+        "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPPlus/ImageServer",
+        Mode::Image(None),
+    ),
     nm(
         "imagery/USGSNAIPImagery",
         "Imagery",
@@ -108,11 +165,41 @@ const NATIONAL_MAP: &[NmService] = &[
         "https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer",
         Mode::Image(Some(r#"{"rasterFunction":"NDVI_Color"}"#)),
     ),
-    nm("carto/contours", "Cartography", "Elevation Contours", "https://carto.nationalmap.gov/arcgis/rest/services/contours/MapServer", Mode::Export),
-    nm("partnerships/USGSTrails", "Cartography", "USGS Trails", "https://partnerships.nationalmap.gov/arcgis/rest/services/USGSTrails/MapServer", Mode::Export),
-    nm("carto/geonames", "Cartography", "Geographic Names (GNIS)", "https://carto.nationalmap.gov/arcgis/rest/services/geonames/MapServer", Mode::Export),
-    nm("carto/govunits", "Cartography", "Governmental Unit Boundaries", "https://carto.nationalmap.gov/arcgis/rest/services/govunits/MapServer", Mode::Export),
-    nm("carto/map_indices", "Cartography", "Map Indices", "https://carto.nationalmap.gov/arcgis/rest/services/map_indices/MapServer", Mode::Export),
+    nm(
+        "carto/contours",
+        "Cartography",
+        "Elevation Contours",
+        "https://carto.nationalmap.gov/arcgis/rest/services/contours/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "partnerships/USGSTrails",
+        "Cartography",
+        "USGS Trails",
+        "https://partnerships.nationalmap.gov/arcgis/rest/services/USGSTrails/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "carto/geonames",
+        "Cartography",
+        "Geographic Names (GNIS)",
+        "https://carto.nationalmap.gov/arcgis/rest/services/geonames/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "carto/govunits",
+        "Cartography",
+        "Governmental Unit Boundaries",
+        "https://carto.nationalmap.gov/arcgis/rest/services/govunits/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "carto/map_indices",
+        "Cartography",
+        "Map Indices",
+        "https://carto.nationalmap.gov/arcgis/rest/services/map_indices/MapServer",
+        Mode::Export,
+    ),
     nm(
         "carto/selectable_polygons",
         "Cartography",
@@ -120,16 +207,40 @@ const NATIONAL_MAP: &[NmService] = &[
         "https://carto.nationalmap.gov/arcgis/rest/services/selectable_polygons/MapServer",
         Mode::Export,
     ),
-    nm("carto/structures", "Cartography", "Structures", "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer", Mode::Export),
-    nm("carto/transportation", "Cartography", "Transportation", "https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer", Mode::Export),
+    nm(
+        "carto/structures",
+        "Cartography",
+        "Structures",
+        "https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "carto/transportation",
+        "Cartography",
+        "Transportation",
+        "https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer",
+        Mode::Export,
+    ),
     NmService {
         attribution: "FEMA",
-        ..nm("fema/NFHL", "Hazards", "FEMA National Flood Hazard Layer", "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer", Mode::Export)
+        ..nm(
+            "fema/NFHL",
+            "Hazards",
+            "FEMA National Flood Hazard Layer",
+            "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer",
+            Mode::Export,
+        )
     },
     NmService {
         attribution: "USGS, Esri",
         max_zoom: 15,
-        ..nm("esri/USA_Topo_Maps", "Other Data", "Scanned USA Topo Maps", "https://services.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer", Mode::Tile)
+        ..nm(
+            "esri/USA_Topo_Maps",
+            "Other Data",
+            "Scanned USA Topo Maps",
+            "https://services.arcgisonline.com/arcgis/rest/services/USA_Topo_Maps/MapServer",
+            Mode::Tile,
+        )
     },
     NmService {
         attribution: "BLM",
@@ -151,8 +262,20 @@ const NATIONAL_MAP: &[NmService] = &[
             Mode::Export,
         )
     },
-    nm("index/3DEPElevationIndex", "Indexes", "3DEP Elevation Index", "https://index.nationalmap.gov/arcgis/rest/services/3DEPElevationIndex/MapServer", Mode::Export),
-    nm("index/NHDPlus_HR_Index", "Indexes", "NHDPlus HR Index", "https://index.nationalmap.gov/arcgis/rest/services/NHDPlus_HR_Index/MapServer", Mode::Export),
+    nm(
+        "index/3DEPElevationIndex",
+        "Indexes",
+        "3DEP Elevation Index",
+        "https://index.nationalmap.gov/arcgis/rest/services/3DEPElevationIndex/MapServer",
+        Mode::Export,
+    ),
+    nm(
+        "index/NHDPlus_HR_Index",
+        "Indexes",
+        "NHDPlus HR Index",
+        "https://index.nationalmap.gov/arcgis/rest/services/NHDPlus_HR_Index/MapServer",
+        Mode::Export,
+    ),
     nm(
         "index/USGS_Seamless1m_Index",
         "Indexes",
@@ -184,14 +307,17 @@ const NATIONAL_MAP: &[NmService] = &[
 ];
 
 /// The categories of [`NATIONAL_MAP`], in their order.
-pub const NATIONAL_MAP_CATEGORIES: [&str; 8] = ["Basemaps", "Hydrography", "Elevation", "Imagery", "Cartography", "Hazards", "Other Data", "Indexes"];
+pub const NATIONAL_MAP_CATEGORIES: [&str; 8] =
+    ["Basemaps", "Hydrography", "Elevation", "Imagery", "Cartography", "Hazards", "Other Data", "Indexes"];
 
 /// The tile template a service is drawn with.
 fn national_map_template(s: &NmService) -> String {
     let url = s.url;
     match s.mode {
         Mode::Tile => format!("{url}/tile/{{z}}/{{y}}/{{x}}"),
-        Mode::Export => format!("{url}/export?bbox={{bbox-epsg-3857}}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image"),
+        Mode::Export => {
+            format!("{url}/export?bbox={{bbox-epsg-3857}}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image")
+        }
         Mode::Image(rule) => {
             let rule = rule.map(|r| format!("&renderingRule={}", percent_encode(r)));
             format!(
@@ -205,7 +331,13 @@ fn national_map_template(s: &NmService) -> String {
 /// A query value with everything but letters, digits and `-_.~` percent-encoded.
 fn percent_encode(s: &str) -> String {
     s.bytes()
-        .map(|b| if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') { char::from(b).to_string() } else { format!("%{b:02X}") })
+        .map(|b| {
+            if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
+                char::from(b).to_string()
+            } else {
+                format!("%{b:02X}")
+            }
+        })
         .collect()
 }
 
@@ -327,7 +459,10 @@ mod tests {
         let ids: std::collections::HashSet<_> = NATIONAL_MAP.iter().map(|s| s.id).collect();
         assert_eq!(ids.len(), NATIONAL_MAP.len(), "ids are unique");
         let hill = NATIONAL_MAP.iter().find(|s| s.id == "elevation/3DEPElevation").map(national_map_template).unwrap_or_default();
-        assert!(hill.contains("/exportImage?") && hill.contains("&renderingRule=%7B%22rasterFunction%22%3A%22Hillshade%20Gray%22%7D"), "{hill}");
+        assert!(
+            hill.contains("/exportImage?") && hill.contains("&renderingRule=%7B%22rasterFunction%22%3A%22Hillshade%20Gray%22%7D"),
+            "{hill}"
+        );
     }
 
     #[test]
