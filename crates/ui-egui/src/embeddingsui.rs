@@ -115,6 +115,10 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
         Ok(found) => match found {
             Ok((tiles, complete)) => {
                 let st = &mut app.ui.embeddings;
+                // A search for a dataset no longer picked: its tiles aren't this one's.
+                if st.searched.is_some_and(|(_, d)| d != st.dataset) {
+                    return;
+                }
                 st.info = Some(if tiles.is_empty() {
                     tl!("Nothing found where the map is").to_string()
                 } else if complete {

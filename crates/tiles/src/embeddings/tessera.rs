@@ -350,6 +350,13 @@ mod tests {
         assert!(p.cut && p.chunks.len() <= MAX_CHUNKS);
         assert!(plan(g, [-83.93, 35.96, -83.92, 35.97], 2016).is_err());
         assert!(plan(g, [100.0, 35.0, 101.0, 36.0], 2024).is_err());
+        // South of the equator: the zone's group spans both hemispheres in EPSG:326xx, its
+        // northings negative there (spatial:bbox from −8 929 280 m). Cape Town, zone 34.
+        let south = Grid { zone: 34, ..g };
+        let p = plan(south, [18.42, -33.93, 18.43, -33.92], 2024).unwrap();
+        let row = 9_338_880.0 - (-3_755_000.0);
+        assert!(((p.row0 as f64) * 10.0 - row).abs() < 5_000.0, "{}", p.row0);
+        assert!(!p.cut && !p.chunks.is_empty());
         assert_eq!(tiles([-84.0, 35.0, -77.0, 36.0], 2024).iter().map(|t| t.id.as_str()).collect::<Vec<_>>(), vec!["utm17", "utm18"]);
     }
 
@@ -372,7 +379,9 @@ mod tests {
         assert_eq!(r.crs.epsg(), 32617);
         // Chunks missing, short or junk: blank, never a panic.
         let none: Vec<Option<Vec<u8>>> = vec![None; p.chunks.len()];
-        assert!(assemble(&p, [0, 1, 2], &none, &none).is_err() || assemble(&p, [0, 1, 2], &none, &none).is_ok());
+        // Nothing embedded: a raster of no valid pixels (the add says there are none).
+        let blank = assemble(&p, [0, 1, 2], &none, &none).unwrap();
+        assert!(blank.bands.iter().all(|b| b.stats.count == 0));
         let short: Vec<Option<Vec<u8>>> = p.chunks.iter().map(|_| Some(vec![1, 2, 3])).collect();
         let _ = assemble(&p, [0, 1, 2], &short, &short);
     }
