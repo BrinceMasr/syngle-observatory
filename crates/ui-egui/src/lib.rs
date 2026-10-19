@@ -52,6 +52,7 @@ mod sourcespane;
 mod sqlpane;
 mod stacui;
 mod table;
+mod textform;
 pub mod theme;
 mod tilt_drape;
 mod tilt_settle;
@@ -385,6 +386,8 @@ pub enum RightPane {
     Bookmarks,
     /// The selected layout element's properties (#516).
     Format,
+    /// A Home › Web Data service: the one `UiState::web_data` names.
+    WebData,
     /// A plugin's panel: the one `UiState::plugin_panel` names.
     Plugin,
 }
@@ -399,6 +402,9 @@ pub struct UiState {
     pub right: Option<RightPane>,
     /// The right panes open as tabs, in the order they were opened (#303).
     pub right_open: Vec<RightPane>,
+    /// The Web Data service the Web Data pane shows (a `ui.dialog` name, see
+    /// `panes::web_data_name`).
+    pub web_data: &'static str,
     pub dark: bool,
     /// The theme follows the system's light or dark setting until the user picks one.
     pub dark_follows_system: bool,
@@ -563,6 +569,7 @@ impl Default for UiState {
             left: Some(LeftPane::Contents),
             right: None,
             right_open: Vec::new(),
+            web_data: "opendata",
             dark: false,
             dark_follows_system: true,
             language: i18n::AUTO.into(),
@@ -1529,6 +1536,7 @@ impl RustGisApp {
             // The Directions pane; with "from"/"to" (and "via", "mode"), opened on that route.
             "ui.pane.directions" if p.get("from").is_some() || p.get("to").is_some() => navui::open_with(self, p),
             "ui.pane.directions" => toggle_right(&mut self.ui, RightPane::Directions),
+            "ui.pane.webData" => toggle_right(&mut self.ui, RightPane::WebData),
             "ui.pane.bookmarks" => toggle_right(&mut self.ui, RightPane::Bookmarks),
             "ui.pane.format" => toggle_right(&mut self.ui, RightPane::Format),
             // A plugin's panel: `{"id": plugin}`.
@@ -2604,6 +2612,12 @@ impl RustGisApp {
             }
             "ui.dialog" => {
                 let which = p.get("name").and_then(Value::as_str).unwrap_or("");
+                // A Web Data service opens in the right pane, beside the map it searches.
+                if let Some(name) = panes::web_data_name(which) {
+                    self.ui.web_data = name;
+                    self.ui.open_right(RightPane::WebData);
+                    return Ok(Value::Null);
+                }
                 self.dialogs.open(which, &self.session)?;
                 // The text graphic dialog remembers where the map was clicked.
                 if which == "graphicText" {

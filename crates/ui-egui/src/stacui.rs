@@ -379,7 +379,7 @@ fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
 /// catalog or collection below it, `{"phase": "pre" | "post"}` sets the phase and
 /// `{"search": true}` finds items at once.
 pub fn open_preset(app: &mut RustGisApp, preset: Option<Preset>, p: &serde_json::Value) -> Result<(), String> {
-    app.dialogs.open("stac", &app.session)?;
+    app.run("ui.dialog", serde_json::json!({"name": "stac"}))?;
     if let Some(preset) = preset
         && shown_preset(&app.ui.stac) != Some(preset)
     {
@@ -483,7 +483,7 @@ fn add_item_asset(app: &mut RustGisApp, item: &Item, key: Option<&str>) {
 pub fn open_link(app: &mut RustGisApp, url: &str) -> Result<(), String> {
     let url = url.trim();
     rustgis_engine::render::rustgis_tiles::address::check(url, None)?;
-    app.dialogs.open("stac", &app.session)?;
+    app.run("ui.dialog", serde_json::json!({"name": "stac"}))?;
     let slot = fetch(url);
     app.ui.stac.error = None;
     app.ui.stac.info = Some(i18n::fmt("Opening {url}…", &[("url", url)]));
@@ -944,7 +944,7 @@ mod tests {
         assert!(app.run("ui.stac.nope", json!({})).is_err());
         // An API's preset fetches nothing until Find Items.
         app.run("ui.stac.sentinel2", serde_json::Value::Null).unwrap();
-        assert_eq!(app.dialogs.open, Some("stac"));
+        assert_eq!(app.ui.web_data, "stac");
         assert_eq!((app.ui.stac.collection.as_str(), app.ui.stac.sortby.as_str()), ("sentinel-2-c1-l2a", "eo:cloud_cover"));
         assert_eq!(title(&app), "Sentinel-2 Explorer");
         assert!(app.ui.stac.waiting.is_none() && app.ui.stac.use_view);

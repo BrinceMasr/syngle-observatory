@@ -66,13 +66,7 @@ impl Dialogs {
             "addUrl" => "addUrl",
             "addService" => "addService",
             "addDatabase" => "addDatabase",
-            "stac" => "stac",
             "s3" => "s3",
-            "osm" => "osm",
-            "boundaries" => "boundaries",
-            "overture" => "overture",
-            "sourcecoop" => "sourcecoop",
-            "opendata" => "opendata",
             "zarr" => "zarr",
             "exportLayer" => "exportLayer",
             "saveProject" => "saveProject",
@@ -152,13 +146,7 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
         "addUrl" => "Add Data From URL",
         "addService" => "Add From Service",
         "addDatabase" => "Add From Database",
-        "stac" => crate::stacui::title(app),
         "s3" => "S3 Buckets",
-        "osm" => "OpenStreetMap",
-        "boundaries" => "Administrative Boundaries",
-        "overture" => "Overture Maps",
-        "sourcecoop" => "Source Cooperative",
-        "opendata" => "Search Open Data",
         "zarr" => "Add Zarr Variable",
         "exportLayer" => "Export Features",
         "saveProject" => "Save Project As",
@@ -182,7 +170,7 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
         .show(ctx, |ui| {
         ui.set_width(match which {
             "coordinateSystem" | "zarr" => 660.0,
-            "addTiles" | "addUrl" | "addService" | "stac" | "s3" | "sourcecoop" | "opendata" => 560.0,
+            "addTiles" | "addUrl" | "addService" | "s3" => 560.0,
             _ => 440.0,
         });
         ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
@@ -216,13 +204,7 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
             "addUrl" => close = add_url(app, ui),
             "addService" => close = add_service(app, ui),
             "addDatabase" => close = add_database(app, ui),
-            "stac" => crate::stacui::dialog(app, ui),
             "s3" => crate::s3ui::dialog(app, ui),
-            "osm" => crate::portalsui::osm(app, ui),
-            "boundaries" => crate::portalsui::boundaries(app, ui),
-            "overture" => crate::catalogsui::overture(app, ui),
-            "sourcecoop" => crate::catalogsui::sourcecoop(app, ui),
-            "opendata" => crate::opendataui::dialog(app, ui),
             "zarr" => close = crate::zarrui::dialog(app, ui),
             "exportLayer" => close = export_layer(app, ui),
             "camera" => {
@@ -250,23 +232,11 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
                 });
             }
             "graphicText" => {
-                ui.label(tl!("Text"));
-                let hint = tl!("Shift+Enter starts a new line.");
-                ui.add(text_box(&mut app.dialogs.text).hint_text(hint).desired_rows(2).desired_width(f32::INFINITY));
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(egui::RichText::new(tl!("Dynamic text:")).small().weak());
-                    for (token, what) in rustgis_engine::map::graphics::TOKENS {
-                        if ui.small_button(*token).on_hover_text(tl!(*what)).clicked() {
-                            app.dialogs.text.push_str(token);
-                        }
-                    }
-                });
-                // The size in points, within what text graphics draw (#457).
-                let fonts = rustgis_engine::map::graphics::FONT_SIZE;
-                ui.horizontal(|ui| {
-                    ui.label(tl!("Size"));
-                    ui.add(egui::DragValue::new(&mut app.dialogs.size).range(fonts).speed(0.1).suffix(" pt"));
-                });
+                // The form a layout's text has too (#516); colour and boldness aren't kept by text
+                // graphics yet. What it settles is saved by the dialog's button.
+                let d = &mut app.dialogs;
+                let fields = crate::textform::Fields { text: &mut d.text, size: &mut d.size, color: None, bold: None };
+                crate::textform::show(ui, "graphic_text", &[rustgis_engine::map::graphics::TOKENS], fields, |_| {});
                 // Editing a placed text: `a` and `b` hold its layer id and row.
                 let editing = app.dialogs.mode == "edit";
                 close = buttons(app, ui, if editing { "Save" } else { "Add" }, |app| {
