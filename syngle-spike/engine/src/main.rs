@@ -126,7 +126,11 @@ fn main() {
         match cmd {
             "ping" => emit(&json!({"event":"pong","id":id,"t":now_ms()})),
             "open" => {
-                let which = msg.get("url").and_then(Value::as_str).map(|u| (u, "url")).or_else(|| msg.get("path").and_then(Value::as_str).map(|p| (p, "path")));
+                let which = msg
+                    .get("url")
+                    .and_then(Value::as_str)
+                    .map(|u| (u, "url"))
+                    .or_else(|| msg.get("path").and_then(Value::as_str).map(|p| (p, "path")));
                 let Some((target, kind)) = which else {
                     emit(&json!({"event":"error","id":id,"error":"open needs url or path"}));
                     continue;
@@ -146,7 +150,9 @@ fn main() {
             "project" => {
                 let t = Instant::now();
                 let text = serde_json::to_string(&session.project).unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}"));
-                emit(&json!({"event":"project","id":id,"t":now_ms(),"serializeMs":t.elapsed().as_secs_f64() * 1000.0,"bytes":text.len(),"text":text}));
+                emit(
+                    &json!({"event":"project","id":id,"t":now_ms(),"serializeMs":t.elapsed().as_secs_f64() * 1000.0,"bytes":text.len(),"text":text}),
+                );
             }
             "stats" => {
                 use std::sync::atomic::Ordering;
@@ -236,12 +242,7 @@ struct Request {
     range: Option<ByteRange>,
 }
 
-fn handle(
-    mut stream: TcpStream,
-    cfg: &Cfg,
-    counters: &Counters,
-    project: &std::sync::Mutex<String>,
-) -> std::io::Result<()> {
+fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::sync::Mutex<String>) -> std::io::Result<()> {
     use std::sync::atomic::Ordering;
     stream.set_nodelay(true).ok();
     let mut reader = BufReader::new(stream.try_clone()?);
@@ -320,7 +321,13 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
             let bytes = text.into_bytes();
             return (200, (head(200, "application/json", bytes.len() as u64, None, false), bytes.len() as u64), bytes);
         }
-        "/spike/instrument.js" => return (200, (head(200, "text/javascript", INSTRUMENT.len() as u64, None, false), INSTRUMENT.len() as u64), INSTRUMENT.as_bytes().to_vec()),
+        "/spike/instrument.js" => {
+            return (
+                200,
+                (head(200, "text/javascript", INSTRUMENT.len() as u64, None, false), INSTRUMENT.len() as u64),
+                INSTRUMENT.as_bytes().to_vec(),
+            );
+        }
         other => {
             let decoded = percent_decode(other);
             if decoded.contains("..") {
