@@ -298,8 +298,9 @@ archives are added as tile layers read in place; the `geoparquet/`, `geojson/`, 
 year at a time (2017 to 2025; 2nd Edition, CC BY 4.0). Each year is a PMTiles archive on Source
 Cooperative read in place. Fields are drawn from zoom 9, filled and outlined by the model's score
 (0 to 100: red below 45, through orange and yellow, to green from 80); zoomed out, field density
-cells are drawn instead, coloured by the share of each cell covered by fields. **Lowest score**
-hides the fields scoring below it. `fieldsOfTheWorld.add` does the same (`"year"`, `"draw"`:
+cells are drawn instead, coloured by the share of each cell covered by fields: **Add field
+boundaries** and **Add field density** add each. **Score threshold** hides the fields scoring below
+it. `fieldsOfTheWorld.add` does the same (`"year"`, `"draw"`:
 `both`, `fields` or `density`, `"minScore"`):
 
 ```sh
@@ -311,13 +312,13 @@ The look is the tile layer's own style layers (`map.addTiles` takes MapLibre sty
 
 ## NASA Earthdata
 
-**Home › Web Data › NASA Earthdata…** opens **Add From Service** connected to NASA's
+**Home › Web Data › NASA Earthdata…** lists the layers of NASA's
 [Global Imagery Browse Services](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api)
 (GIBS) in Web Mercator: more than a thousand layers of satellite imagery and science data (MODIS,
-VIIRS, Landsat, sea surface temperature, aerosols, fires…). **Filter** narrows the list by words.
-Most layers change day by day: **Date** (YYYY-MM-DD) picks the day they are added at, and empty
-adds the service's default (its latest). The same layer can be added at several dates, each a
-layer named with its date. A WMTS layer with a time dimension works the same way in any service,
+VIIRS, Landsat, sea surface temperature, aerosols, fires…), grouped by mission or instrument (the
+first part of their names) and searched by words. Most layers change day by day: **Date**
+(YYYY-MM-DD) picks the day they are added at, and empty adds the service's default (its latest).
+The same layer can be added at several dates, each a layer named with its date. A WMTS layer with a time dimension works the same way in any service,
 and with commands `service.add` takes `"time"`:
 
 ```sh
@@ -328,24 +329,26 @@ rustgis-cli run --cmd 'service.add={"url":"https://gibs.earthdata.nasa.gov/wmts/
 
 **Home › Web Data › United States** holds services covering the United States.
 
-**EnviroAtlas…** opens **Add From Service** on the US EPA's
-[EnviroAtlas](https://www.epa.gov/enviroatlas) services directory
-(`https://enviroatlas.epa.gov/arcgis/rest/services`). Add From Service browses any ArcGIS services
-directory: its folders and the map, feature, image and vector tile services in them are listed
+**EnviroAtlas…** shows the US EPA's [EnviroAtlas](https://www.epa.gov/enviroatlas) services
+(`https://enviroatlas.epa.gov/arcgis/rest/services`) as a tree: folders, their services (**Add**
+adds a service's whole map or image), and each service's layers, each with an **Add** of its own
+(drawn alone). A search looks through every folder's services. **Add From Service** also browses
+any ArcGIS services directory: its folders and the map, feature, image and vector tile services in them are listed
 with **Open**, which lists that folder or service (**Back** returns). A map service offers its
 whole map, each of its layers drawn alone (`… (map)`) and its layers' features. With commands,
 `service.layers` on a directory lists its folders and services, each with the `url` to list next.
 
-**FEMA NFHL…** opens **Add From Service** on FEMA's
+**FEMA NFHL…** lists the layers of FEMA's
 [National Flood Hazard Layer](https://www.fema.gov/flood-maps/national-flood-hazard-layer) map
-service (`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer`): the whole map,
-or one layer such as Flood Hazard Zones drawn alone. Its layers are drawn only zoomed in, and
-FEMA's server can be slow to answer.
+service (`https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer`), searched by
+words: **Add** draws the whole map or one layer such as Flood Hazard Zones alone, and
+**Features** downloads a layer's features in the view (up to the server's limit). Its flood layers are drawn only closer than about 1:36,000 (zoom 14),
+and FEMA's server can be slow to answer.
 
 **The National Map…** lists 31 map services of the USGS
 [The National Map](https://www.usgs.gov/programs/national-geospatial-program/national-map) and
 partners by category (basemaps, hydrography, elevation, imagery, cartography, hazards, other data,
-indexes), filtered by words; **Add** adds one as a tile layer (the basemaps from their tile caches,
+indexes), searched by words; **Add** adds one as a tile layer (the basemaps from their tile caches,
 the others as images the server draws). `nationalMap.services` lists them and `nationalMap.add`
 (`"service"`: an id or title) adds one:
 
@@ -353,7 +356,9 @@ the others as images the server draws). `nationalMap.services` lists them and `n
 rustgis-cli run --cmd 'nationalMap.add={"service":"basemap/USGSTopo"}' --cmd 'nationalMap.add={"service":"hydro/wbd"}' --cmd 'map.goToXY={"lon":-105.27,"lat":40.0,"scale":300000}' --cmd 'share.exportMap={"path":"topo.png"}'
 ```
 
-All of these work in the web app too: their documents and tiles are fetched like any other.
+`ui.dialog` opens these panels on a search with `"search"`
+(`{"name": "nasaEarthdata", "search": "sea surface temperature"}`). All of these work in the web
+app too: their documents and tiles are fetched like any other.
 
 ## Geocoding addresses
 

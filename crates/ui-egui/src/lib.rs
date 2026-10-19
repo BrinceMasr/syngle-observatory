@@ -490,6 +490,9 @@ pub struct UiState {
     /// Add From Service's list: its filter, a time-enabled layer's date, and the directories
     /// opened on the way to the service shown (Back returns to them).
     pub service_browse: ServiceBrowse,
+    /// The Web Data panels of single services (NASA Earthdata, EnviroAtlas, FEMA NFHL, The
+    /// National Map, Fields of the World): their documents, searches and choices.
+    pub web_services: webdataui::State,
     pub service_import: Option<serviceui::Import>,
     pub service_group_name: String,
     /// Add From Service › Catalogue: the search and the records found.
@@ -610,6 +613,7 @@ impl Default for UiState {
             link_zoomed: false,
             service: None,
             service_browse: ServiceBrowse::default(),
+            web_services: Default::default(),
             service_import: None,
             service_group_name: "My OGC Layer".into(),
             csw: Default::default(),
@@ -2623,6 +2627,10 @@ impl RustGisApp {
                 self.dialogs.open(which, &self.session)?;
                 // Natural Earth is Source Cooperative's browser locked to its product; Source
                 // Cooperative opened after it starts from the products again.
+                // A Web Data panel opened on a search.
+                if let Some(words) = p.get("search").and_then(Value::as_str) {
+                    webdataui::set_search(self, which, words);
+                }
                 if which == "naturalEarth" {
                     catalogsui::natural_earth(self);
                 } else if which == "sourcecoop" && self.ui.catalogs.locked {

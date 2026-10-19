@@ -74,6 +74,9 @@ impl Dialogs {
             "sourcecoop" => "sourcecoop",
             "naturalEarth" => "naturalEarth",
             "nationalMap" => "nationalMap",
+            "nasaEarthdata" => "nasaEarthdata",
+            "enviroAtlas" => "enviroAtlas",
+            "femaNfhl" => "femaNfhl",
             "fieldsOfTheWorld" => "fieldsOfTheWorld",
             "opendata" => "opendata",
             "zarr" => "zarr",
@@ -122,10 +125,6 @@ impl Dialogs {
             // A file name can't hold a folder separator, which a project name may.
             "saveProject" => self.text = format!("{}.rgis", s.project.name.replace(['/', '\\'], "-")),
             "exportLayer" => self.mode = "geojson",
-            "fieldsOfTheWorld" => {
-                self.a = rustgis_engine::cmd::webdata::FIELDS_YEARS.end().to_string();
-                self.mode = "both";
-            }
             // A table of addresses is what's usually geocoded: picked by its id (`flag` says the
             // choice is a table), since names can repeat.
             "geocode" => {
@@ -167,6 +166,9 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
         "sourcecoop" => "Source Cooperative",
         "naturalEarth" => "Natural Earth",
         "nationalMap" => "The National Map",
+        "nasaEarthdata" => "NASA Earthdata",
+        "enviroAtlas" => "EnviroAtlas",
+        "femaNfhl" => "FEMA NFHL",
         "fieldsOfTheWorld" => "Fields of the World",
         "opendata" => "Search Open Data",
         "zarr" => "Add Zarr Variable",
@@ -192,7 +194,9 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
         .show(ctx, |ui| {
         ui.set_width(match which {
             "coordinateSystem" | "zarr" => 660.0,
-            "addTiles" | "addUrl" | "addService" | "stac" | "s3" | "sourcecoop" | "naturalEarth" | "nationalMap" | "opendata" => 560.0,
+            "addTiles" | "addUrl" | "addService" | "stac" | "s3" | "sourcecoop" | "naturalEarth" | "opendata" => 560.0,
+            // Web Data panels laid out for a narrow pane.
+            "nationalMap" | "nasaEarthdata" | "enviroAtlas" | "femaNfhl" | "fieldsOfTheWorld" => 440.0,
             _ => 440.0,
         });
         ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
@@ -233,10 +237,16 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
             "overture" => crate::catalogsui::overture(app, ui),
             "sourcecoop" | "naturalEarth" => crate::catalogsui::sourcecoop(app, ui),
             // In a window (until the Web Data pane), which doesn't scroll by itself.
-            "nationalMap" => {
-                egui::ScrollArea::vertical().max_height(460.0).show(ui, |ui| crate::webdataui::national_map(app, ui));
+            // In a window until the Web Data pane, which scrolls them itself.
+            "nationalMap" | "nasaEarthdata" | "enviroAtlas" | "femaNfhl" | "fieldsOfTheWorld" => {
+                egui::ScrollArea::vertical().max_height(560.0).show(ui, |ui| match which {
+                    "nationalMap" => crate::webdataui::national_map(app, ui),
+                    "nasaEarthdata" => crate::webdataui::nasa_earthdata(app, ui),
+                    "enviroAtlas" => crate::webdataui::enviroatlas(app, ui),
+                    "femaNfhl" => crate::webdataui::fema_nfhl(app, ui),
+                    _ => crate::webdataui::fields_of_the_world(app, ui),
+                });
             }
-            "fieldsOfTheWorld" => crate::webdataui::fields_of_the_world(app, ui),
             "opendata" => crate::opendataui::dialog(app, ui),
             "zarr" => close = crate::zarrui::dialog(app, ui),
             "exportLayer" => close = export_layer(app, ui),
