@@ -198,8 +198,9 @@ pub fn detect<'a>(values: impl Iterator<Item = &'a Value>, sample: usize) -> Opt
     }
     let (i, n) = counts.iter().enumerate().max_by_key(|(_, n)| **n)?;
     let kind = [Kind::EpochMs, Kind::EpochS, Kind::Year, Kind::Text].get(i).copied()?;
-    // Years and text dates mix (`1958`, `1958-03-01`): count them together.
-    let n = if kind == Kind::Text { n + counts[Kind::Year as usize] } else { *n };
+    // Years and text dates mix (`1958`, `1958-03-01`): counted together as text, which reads both.
+    let (text, years) = (counts[Kind::Text as usize], counts[Kind::Year as usize]);
+    let (kind, n) = if matches!(kind, Kind::Text | Kind::Year) && text > 0 { (Kind::Text, text + years) } else { (kind, *n) };
     (n > 0 && seen > 0).then(|| (kind, n as f64 / seen as f64))
 }
 
@@ -327,6 +328,18 @@ pub fn fill_template(template: &str, t: f64) -> String {
     out
 }
 
+/// The finest unit a dated URL names (an hour, a day, a month or a year), which is what it
+/// changes by; `None` for a URL without dates.
+pub fn template_unit(template: &str) -> Option<Unit> {
+    if !is_template(template) {
+        return None;
+    }
+    // Placeholders differ between two instants exactly when a unit apart.
+    let t = parse_text("2001-02-03T04:00:00Z")?;
+    let base = fill_template(template, t);
+    Unit::ALL.into_iter().find(|u| fill_template(template, add(t, *u, 1)) != base)
+}
+
 /// Whether a URL has date placeholders [`fill_template`] fills.
 pub fn is_template(url: &str) -> bool {
     fill_template(url, 0.0) != url
@@ -338,7 +351,8 @@ pub fn parse_input(v: &serde_json::Value) -> Option<f64> {
     let t = match v {
         serde_json::Value::Number(n) => {
             let x = n.as_f64()?;
-            if x.fract() == 0.0 && (-MAX_YEAR as f64..=9999.0).contains(&x) && x.abs() < 1e5 { Civil::date(x as i64, 1, 1).ms() } else { x }
+            // A whole number up to 9999 is a year; anything else is milliseconds since 1970.
+            if x.fract() == 0.0 && x.abs() <= 9999.0 { Civil::date(x as i64, 1, 1).ms() } else { x }
         }
         serde_json::Value::String(s) => match s.trim().parse::<f64>() {
             Ok(x) => return parse_input(&serde_json::json!(x)),
@@ -482,6 +496,11 @@ mod tests {
         assert_eq!(fill_template("https://x/{YYYY}{MM}{DD}_{YYYYMMDD}.tif", t), "https://x/20230805_20230805.tif");
         assert_eq!(fill_template("open {brace", t), "open {brace");
         assert!(is_template("a/{date:YYYY}.tif"));
+        assert_eq!(template_unit("a/{date:YYYY}.tif"), Some(Unit::Year));
+        assert_eq!(template_unit("a/{YYYY}{MM}.tif"), Some(Unit::Month));
+        assert_eq!(template_unit("a/{date:YYYY-MM-DD}/{z}/{x}/{y}.png"), Some(Unit::Day));
+        assert_eq!(template_unit("a/{date:YYYY-MM-DDTHH}.png"), Some(Unit::Hour));
+        assert_eq!(template_unit("a/{z}/{x}/{y}.png"), None);
         assert!(!is_template("a/{z}/{x}/{y}.png"));
         assert_eq!(parse_input(&serde_json::json!(2015)), Some(d("2015-01-01")));
         assert_eq!(parse_input(&serde_json::json!("2015-06")), Some(d("2015-06-01")));

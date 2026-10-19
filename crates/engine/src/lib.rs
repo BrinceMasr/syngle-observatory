@@ -689,6 +689,12 @@ impl Session {
             // session's own flag says so, not the answer, which a plugin's command could forge.
             (Ok(_), Some(_)) if std::mem::take(&mut self.request_only) => {}
             (Ok(_), Some(mut snap)) => {
+                // An edit may change the dates the time slider's window filters on.
+                for m in &mut self.project.maps {
+                    if m.time.is_some() {
+                        m.apply_time();
+                    }
+                }
                 // Undo keeps streamed layers' sources, not their windows: they read the view again.
                 strip_windows(&mut snap);
                 self.undo.push((snap, open_layout, label, self.actor.clone()));

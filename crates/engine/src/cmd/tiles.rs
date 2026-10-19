@@ -224,7 +224,13 @@ fn dated_start(s: &mut Session, p: &Value) -> Result<f64, String> {
         return Ok(t.current);
     }
     let keys = ["start", "end", "unit", "interval", "dates"];
-    let given: serde_json::Map<String, Value> = keys.iter().filter_map(|k| p.get(*k).map(|v| (k.to_string(), v.clone()))).collect();
+    let mut given: serde_json::Map<String, Value> = keys.iter().filter_map(|k| p.get(*k).map(|v| (k.to_string(), v.clone()))).collect();
+    // Steps by what the address changes by: a day for `{date:YYYY-MM-DD}`, a year for `{YYYY}`.
+    if !given.contains_key("unit")
+        && let Some(u) = ps(p, "url").and_then(rustgis_data::time::template_unit)
+    {
+        given.insert("unit".into(), json!(u.code()));
+    }
     if given.contains_key("start") || given.contains_key("dates") {
         super::time::set(s, &Value::Object(given))?;
     }

@@ -152,18 +152,21 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
         let mut h = ui.new_child(
             egui::UiBuilder::new().max_rect(hr.shrink2(vec2(10.0, 3.0))).layout(egui::Layout::left_to_right(egui::Align::Center)),
         );
-        header(app, &mut h, &t, &tk);
+        // The steps, listed once a frame.
+        let steps = t.steps();
+        let cur = t.index_in(&steps);
+        header(app, &mut h, &t, &steps, &tk);
         // Transport and timeline.
         let (br, _) = ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::hover());
         let mut b = ui.new_child(
             egui::UiBuilder::new().max_rect(br.shrink2(vec2(10.0, 4.0))).layout(egui::Layout::left_to_right(egui::Align::Center)),
         );
-        transport(app, &mut b, &t);
-        timeline(app, &mut b, &t, &tk);
+        transport(app, &mut b, &t, &steps);
+        timeline(app, &mut b, &t, &steps, cur, &tk);
     });
 }
 
-fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
+fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], tk: &Tokens) {
     let (r, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
     icons::paint(ui.painter(), r, "time_slider", tk.icon, tk.accent);
     ui.label(egui::RichText::new(tl!("Time Slider")).font(semibold(13.0)));
@@ -171,7 +174,6 @@ fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
     ui.label(egui::RichText::new(t.label(t.current)).font(semibold(15.0)).color(tk.accent_text));
     // The window by the steps it takes in: the first, and the last before its end.
     let (from, to) = t.window();
-    let steps = t.steps();
     let last = steps.iter().rev().find(|s| **s < to).copied().unwrap_or(t.current);
     let window = if !from.is_finite() {
         crate::i18n::fmt("showing everything through {to}", &[("to", &t.label(last))])
@@ -245,18 +247,20 @@ fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
 
 /// Binds and unbinds layers, choosing each one's date field.
 fn layers_menu(app: &mut RustGisApp, ui: &mut Ui) {
-    let layers: Vec<(u32, String, Option<String>, Vec<(String, f64)>)> = app
-        .session
-        .map()
-        .layers
-        .iter()
-        .filter(|l| !l.is_raster())
-        .map(|l| (l.id, l.name.clone(), l.time.as_ref().map(|t| t.field.clone()), time_fields(&l.dataset)))
-        .filter(|(_, _, bound, fields)| bound.is_some() || !fields.is_empty())
-        .collect();
-    let dated_tiles: Vec<String> = app.session.map().tiles.iter().filter(|t| t.time_url.is_some()).map(|t| t.name.clone()).collect();
-    let n = layers.iter().filter(|l| l.2.is_some()).count() + dated_tiles.len();
+    let m = app.session.map();
+    let n = m.layers.iter().filter(|l| l.time.is_some()).count() + m.tiles.iter().filter(|t| t.time_url.is_some()).count();
     ui.menu_button(crate::i18n::fmt("Layers ({n})", &[("n", &n.to_string())]), |ui| {
+        // Read only while the menu is open: finding date fields reads every field's values.
+        let layers: Vec<(u32, String, Option<String>, Vec<(String, f64)>)> = app
+            .session
+            .map()
+            .layers
+            .iter()
+            .filter(|l| !l.is_raster())
+            .map(|l| (l.id, l.name.clone(), l.time.as_ref().map(|t| t.field.clone()), time_fields(&l.dataset)))
+            .filter(|(_, _, bound, fields)| bound.is_some() || !fields.is_empty())
+            .collect();
+        let dated_tiles: Vec<String> = app.session.map().tiles.iter().filter(|t| t.time_url.is_some()).map(|t| t.name.clone()).collect();
         if layers.is_empty() && dated_tiles.is_empty() {
             ui.label(tl!("No layer has a field of dates."));
         }
@@ -286,7 +290,7 @@ fn layers_menu(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn transport(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider) {
+fn transport(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64]) {
     let playing = app.time.playing.is_some();
     small(ui, app, "time_first", "", "Go to the first step.", "time.goTo", json!({"date": t.start}), false);
     small(ui, app, "time_prev", "", "Go back a step.", "time.step", json!({"by": -1}), false);
@@ -301,16 +305,15 @@ fn transport(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider) {
         playing,
     );
     small(ui, app, "time_next", "", "Go forward a step.", "time.step", json!({"by": 1}), false);
-    let last = t.steps().last().copied().unwrap_or(t.end);
+    let last = steps.last().copied().unwrap_or(t.end);
     small(ui, app, "time_last", "", "Go to the last step.", "time.goTo", json!({"date": last}), false);
     ui.add_space(6.0);
 }
 
 /// The timeline: a bar per step (its height the features it holds), the window shaded, and the
 /// current step marked; click or drag to move.
-fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
-    let steps = t.steps();
-    let counts = counts(app, t, &steps);
+fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], cur: usize, tk: &Tokens) {
+    let counts = counts(app, t, steps);
     let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height().max(40.0)), Sense::click_and_drag());
     let p = ui.painter_at(r);
     let track = Rect::from_min_max(pos2(r.min.x + 6.0, r.min.y + 2.0), pos2(r.max.x - 6.0, r.max.y - 16.0));
@@ -322,7 +325,7 @@ fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
     // The window, shaded.
     let (from, to) = t.window();
     let first = steps.iter().position(|s| *s >= from).unwrap_or(0);
-    let last = steps.iter().rposition(|s| *s < to).unwrap_or(t.index());
+    let last = steps.iter().rposition(|s| *s < to).unwrap_or(cur);
     if last >= first {
         let a = x_of(first as f64) - track.width() / n as f32 / 2.0;
         let b = x_of(last as f64) + track.width() / n as f32 / 2.0;
@@ -334,7 +337,7 @@ fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
     for (i, c) in counts.iter().enumerate().filter(|(_, c)| **c > 0) {
         let x = x_of(i as f64);
         let h = (*c as f32 / top) * (track.height() - 6.0);
-        let col = if i == t.index() { tk.accent } else { tk.accent.gamma_multiply(0.45) };
+        let col = if i == cur { tk.accent } else { tk.accent.gamma_multiply(0.45) };
         p.rect_filled(Rect::from_min_max(pos2(x - bw / 2.0, track.max.y - 3.0 - h), pos2(x + bw / 2.0, track.max.y - 3.0)), 1.0, col);
     }
     // Tick labels: about one per 90 px.
@@ -348,7 +351,7 @@ fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
         p.galley(pos2(left, track.max.y + 4.0), g, tk.text_dim);
     }
     // The current step.
-    let x = x_of(t.index() as f64);
+    let x = x_of(cur as f64);
     p.line_segment([pos2(x, track.min.y - 1.0), pos2(x, track.max.y + 1.0)], Stroke::new(2.0, tk.accent));
     p.circle_filled(pos2(x, track.min.y + 3.0), 4.5, tk.accent);
     p.circle_stroke(pos2(x, track.min.y + 3.0), 4.5, Stroke::new(1.5, Color32::WHITE));
@@ -356,7 +359,7 @@ fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
         && (resp.clicked() || resp.dragged())
     {
         let i = i_of(pos.x);
-        if i != t.index()
+        if i != cur
             && let Some(s) = steps.get(i)
         {
             let _ = app.run("time.goTo", json!({"date": s}));

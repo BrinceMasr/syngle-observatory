@@ -138,7 +138,9 @@ fn bind(s: &mut Session, p: &Value) -> CmdResult {
     }
     // A slider made for this layer takes the given settings; one already on keeps its own unless
     // given others.
-    set(s, p)?;
+    let own: serde_json::Map<String, Value> =
+        ["start", "end", "unit", "interval", "show"].iter().filter_map(|k| p.get(*k).map(|v| (k.to_string(), v.clone()))).collect();
+    set(s, &Value::Object(own))?;
     s.active_layer = Some(id);
     let mut r = info(s);
     r["field"] = json!(field);
@@ -176,6 +178,9 @@ pub(crate) fn set(s: &mut Session, p: &Value) -> CmdResult {
     };
     let m = s.map_mut();
     let fresh = m.time.is_none();
+    if fresh && start.is_none() && dates.is_none() {
+        return Err("the time slider is off: give its start (and end), or bind a layer (time.bind)".into());
+    }
     let t = m.time.get_or_insert_with(|| {
         let a = start.or(dates.as_ref().and_then(|d| d.first().copied())).unwrap_or(0.0);
         let z = end.or(dates.as_ref().and_then(|d| d.last().copied())).unwrap_or(a);
@@ -244,47 +249,54 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
     if steps.is_empty() {
         return Err("no step falls between from and to".into());
     }
-    if steps.len() > MAX_FRAMES || steps.len() as f64 * w * h > 1.5e9 {
+    // A zip holds every frame until it is written; a GIF takes each as it is made.
+    let budget = if gif { 4.0e9 } else { 1.5e9 };
+    if steps.len() > MAX_FRAMES || steps.len() as f64 * w * h > budget {
         return Err(format!("{} frames at {w:.0} × {h:.0} is too many; narrow from and to, or lower the size", steps.len()));
     }
     let saved_size = s.view_size;
     s.view_size = (w, h);
-    let mut frames = Vec::new();
-    let mut result = Ok(());
-    for (i, t) in steps.iter().enumerate() {
-        if let Some(sl) = s.map_mut().time.as_mut() {
-            sl.current = *t;
-        }
-        s.map_mut().apply_time();
-        match super::share::map_png(s, Some(w), Some(h), Some(96.0)) {
-            Ok(png) => frames.push((format!("frame_{:04}.png", i + 1), png)),
-            Err(e) => {
-                result = Err(e);
-                break;
-            }
-        }
-    }
+    // The slider and the view size come back however the frames end (an error, or a panic the
+    // session catches).
+    let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frames(s, &steps, w, h, gif.then_some(speed))));
     s.view_size = saved_size;
     s.map_mut().time = Some(saved);
     s.map_mut().apply_time();
-    result?;
-    let bytes = if gif { encode_gif(&frames, speed)? } else { rustgis_data::zip::write(&frames)? };
+    let bytes = made.map_err(|_| "exporting the time steps failed unexpectedly".to_string())??;
     rustgis_data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
-    Ok(json!({"path": path, "frames": frames.len(), "bytes": bytes.len()}))
+    Ok(json!({"path": path, "frames": steps.len(), "bytes": bytes.len()}))
 }
 
-/// PNG frames as an animated GIF that loops, each shown for `speed` milliseconds.
-fn encode_gif(frames: &[(String, Vec<u8>)], speed: u32) -> Result<Vec<u8>, String> {
+/// Renders the map at each step: an animated GIF that loops, each frame shown for `gif`
+/// milliseconds, or (`None`) a zip of PNGs.
+fn frames(s: &mut Session, steps: &[f64], w: f64, h: f64, gif: Option<u32>) -> Result<Vec<u8>, String> {
     use image::codecs::gif::{GifEncoder, Repeat};
     let mut out = Vec::new();
+    let mut pngs = Vec::new();
     {
-        let mut enc = GifEncoder::new_with_speed(&mut out, 10);
-        enc.set_repeat(Repeat::Infinite).map_err(|e| e.to_string())?;
-        for (_, png) in frames {
-            let img = image::load_from_memory_with_format(png, image::ImageFormat::Png).map_err(|e| e.to_string())?.to_rgba8();
-            let delay = image::Delay::from_numer_denom_ms(speed, 1);
-            enc.encode_frame(image::Frame::from_parts(img, 0, 0, delay)).map_err(|e| e.to_string())?;
+        let mut enc = match gif {
+            Some(_) => {
+                let mut e = GifEncoder::new_with_speed(&mut out, 10);
+                e.set_repeat(Repeat::Infinite).map_err(|e| e.to_string())?;
+                Some(e)
+            }
+            None => None,
+        };
+        for (i, t) in steps.iter().enumerate() {
+            if let Some(sl) = s.map_mut().time.as_mut() {
+                sl.current = *t;
+            }
+            s.map_mut().apply_time();
+            let png = super::share::map_png(s, Some(w), Some(h), Some(96.0))?;
+            match (&mut enc, gif) {
+                (Some(e), Some(ms)) => {
+                    let img = image::load_from_memory_with_format(&png, image::ImageFormat::Png).map_err(|e| e.to_string())?.to_rgba8();
+                    let delay = image::Delay::from_numer_denom_ms(ms, 1);
+                    e.encode_frame(image::Frame::from_parts(img, 0, 0, delay)).map_err(|e| e.to_string())?;
+                }
+                _ => pngs.push((format!("frame_{:04}.png", i + 1), png)),
+            }
         }
     }
-    Ok(out)
+    if gif.is_some() { Ok(out) } else { rustgis_data::zip::write(&pngs) }
 }

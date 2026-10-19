@@ -494,8 +494,8 @@ impl Layer {
     pub fn drawn_rows(&self, scale: f64) -> Vec<bool> {
         let mut rows = self.visible_rows();
         if let Some(keep) = self.time.as_ref().and_then(|t| t.keeps(&self.dataset)) {
-            for (r, k) in rows.iter_mut().zip(keep) {
-                *r = *r && k;
+            for (r, k) in rows.iter_mut().zip(keep.iter()) {
+                *r = *r && *k;
             }
         }
         for f in self.display_filters.iter().filter(|f| f.applies(scale)) {

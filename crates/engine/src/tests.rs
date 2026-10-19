@@ -9337,6 +9337,34 @@ fn time_slider_shows_the_features_of_its_window() {
 }
 
 #[test]
+fn time_slider_survives_saving_cumulative_edits_and_bad_parameters() {
+    let mut s = timed_events();
+    // Text and epoch dates come before whole numbers that may only look like years.
+    let fields = s.run("time.fields", &Value::Null).unwrap();
+    assert_eq!(fields["fields"].as_array().unwrap().last().unwrap()["field"], "year");
+    // A bad parameter leaves nothing behind: no slider, no binding.
+    assert!(s.run("time.bind", &json!({"field": "when", "unit": "fortnight"})).is_err());
+    assert!(s.map().time.is_none() && s.map().layers[0].time.is_none());
+    // Settings without a span don't turn an off slider on.
+    assert!(s.run("time.set", &json!({"loop": false})).is_err());
+    assert!(s.map().time.is_none());
+    s.run("time.bind", &json!({"field": "when"})).unwrap();
+    s.run("time.set", &json!({"date": "2015-03", "show": "cumulative"})).unwrap();
+    assert_eq!(shown(&s), ["e0", "e1", "e2", "e3"]);
+    // Saved with its unbounded window, and opened again.
+    let text = serde_json::to_string(&s.project).unwrap();
+    let mut t = Session::new(Project::from_json(&text).unwrap());
+    assert_eq!(shown(&t), ["e0", "e1", "e2", "e3"]);
+    // An edited date moves its feature in or out of the window at once.
+    t.active_layer = t.map().layer_by_name("Events").map(|l| l.id);
+    t.run("edit.setValue", &json!({"row": 7, "field": "when", "value": "2015-02-14"})).unwrap();
+    assert_eq!(shown(&t), ["e0", "e1", "e2", "e3", "e7"]);
+    // A field that is gone filters nothing.
+    t.run("edit.deleteField", &json!({"field": "when"})).unwrap();
+    assert_eq!(shown(&t).len(), 8);
+}
+
+#[test]
 fn time_slider_fills_dated_tile_addresses_and_exports_its_steps() {
     let mut s = timed_events();
     let r = s
@@ -9348,6 +9376,16 @@ fn time_slider_fills_dated_tile_addresses_and_exports_its_steps() {
     assert_eq!(r["url"], "https://example.com/2023-08-01/{z}/{x}/{y}.png");
     let i = s.run("time.info", &Value::Null).unwrap();
     assert_eq!((i["unit"].as_str(), i["steps"].as_u64()), (Some("day"), Some(31)), "{i}");
+    // Three days of daily imagery step by the day the address names, not by the hour.
+    let mut short = timed_events();
+    short
+        .run(
+            "map.addTiles",
+            &json!({"url": "https://example.com/{date:YYYY-MM-DD}/{z}/{x}/{y}.png", "start": "2023-08-28", "end": "2023-08-30"}),
+        )
+        .unwrap();
+    let i = short.run("time.info", &Value::Null).unwrap();
+    assert_eq!((i["unit"].as_str(), i["steps"].as_u64()), (Some("day"), Some(3)), "{i}");
     s.run("time.goTo", &json!({"date": "2023-08-30"})).unwrap();
     assert_eq!(s.map().tiles[0].url, "https://example.com/2023-08-30/{z}/{x}/{y}.png");
     // Kept in the project as its template, filled again when opened.

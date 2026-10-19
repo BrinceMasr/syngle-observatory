@@ -82,8 +82,12 @@ impl TimeSlider {
 
     /// The index of the step at or before the current one.
     pub fn index(&self) -> usize {
-        let s = self.steps();
-        s.iter().rposition(|t| *t <= self.current).unwrap_or(0)
+        self.index_in(&self.steps())
+    }
+
+    /// [`index`](Self::index) in its steps, already listed.
+    pub fn index_in(&self, steps: &[f64]) -> usize {
+        steps.partition_point(|t| *t <= self.current).saturating_sub(1)
     }
 
     /// Moves `n` steps (back when negative); wraps around when `wrap`, else stops at the ends.
@@ -166,8 +170,9 @@ impl TimeSlider {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TimeBinding {
     pub field: String,
-    /// The window last applied (`None`: the slider is off and every feature shows).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// The window last applied (`None`: the slider is off and every feature shows). Not saved:
+    /// a cumulative one is unbounded, which JSON can't hold; opening a project applies it again.
+    #[serde(skip)]
     pub window: Option<(f64, f64)>,
     /// The rows that window keeps, worked out when it was applied.
     #[serde(skip)]
@@ -188,19 +193,22 @@ impl TimeBinding {
         });
     }
 
-    /// Whether row `r` is in the window (every row is when there is none).
-    pub fn keeps(&self, ds: &Dataset) -> Option<Vec<bool>> {
+    /// The rows in the window (`None`: there is none, and every row shows). The rows worked out
+    /// when it was applied serve while the layer has as many features; the session applies the
+    /// window again after every edit.
+    pub fn keeps(&self, ds: &Dataset) -> Option<std::borrow::Cow<'_, [bool]>> {
         let w = self.window?;
         let n = ds.features.len();
-        Some(if self.shown.len() == n { self.shown.as_ref().clone() } else { rows_in(ds, &self.field, w) })
+        Some(if self.shown.len() == n { std::borrow::Cow::Borrowed(self.shown.as_slice()) } else { rows_in(ds, &self.field, w).into() })
     }
 }
 
 /// The rows of `ds` whose `field` names a moment in `[from, to)` (a moment, when they are one).
 pub fn rows_in(ds: &Dataset, field: &str, (from, to): (f64, f64)) -> Vec<bool> {
     let n = ds.features.len();
-    let Some(fi) = ds.field_index(field) else { return vec![false; n] };
-    let Some((kind, _)) = time::detect((0..n).map(|r| ds.value(r, fi)), 500) else { return vec![false; n] };
+    // A field gone (renamed, deleted) or holding no dates filters nothing.
+    let Some(fi) = ds.field_index(field) else { return vec![true; n] };
+    let Some((kind, _)) = time::detect((0..n).map(|r| ds.value(r, fi)), 500) else { return vec![true; n] };
     (0..n).map(|r| time::instant(ds.value(r, fi), kind).is_some_and(|t| if from == to { t == from } else { t >= from && t < to })).collect()
 }
 
@@ -240,21 +248,25 @@ pub fn field_span(ds: &Dataset, field: &str) -> Option<(f64, f64)> {
 }
 
 /// The fields of `ds` that hold dates, best first, with the share of values that read as one
-/// (at least 60%).
+/// (at least 60%). Fields of whole numbers that read as years (which may be counts or heights)
+/// come after the others.
 pub fn time_fields(ds: &Dataset) -> Vec<(String, f64)> {
     let n = ds.features.len();
-    let mut out: Vec<(String, f64, usize)> = ds
+    let mut out: Vec<(String, f64, bool, usize)> = ds
         .fields
         .iter()
         .enumerate()
         .filter_map(|(fi, f)| {
-            let (_, share) = time::detect((0..n).map(|r| ds.value(r, fi)), 500)?;
+            let (kind, share) = time::detect((0..n).map(|r| ds.value(r, fi)), 500)?;
+            if share < 0.6 {
+                return None;
+            }
             let mut distinct: Vec<String> = (0..n.min(500)).map(|r| ds.value(r, fi).to_string()).collect();
             distinct.sort();
             distinct.dedup();
-            (share >= 0.6).then(|| (f.name.clone(), share, distinct.len()))
+            Some((f.name.clone(), share, kind == time::Kind::Year, distinct.len()))
         })
         .collect();
-    out.sort_by(|a, b| b.1.total_cmp(&a.1).then(b.2.cmp(&a.2)));
-    out.into_iter().map(|(n, s, _)| (n, s)).collect()
+    out.sort_by(|a, b| a.2.cmp(&b.2).then(b.1.total_cmp(&a.1)).then(b.3.cmp(&a.3)));
+    out.into_iter().map(|(n, s, ..)| (n, s)).collect()
 }
