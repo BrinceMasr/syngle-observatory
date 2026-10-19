@@ -376,6 +376,12 @@ Several **Home › Web Data** entries open the same search on one service, with 
 | **United States › US Federal GIS…**, **US State GIS…**, **US Local GIS…** | The public GIS portals of 24 federal agencies (by department), every state and the District of Columbia, and 146 counties and cities (by state): pick a group and a portal; an ArcGIS organisation's public items (`arcgis-portal` with `"org"`), or a Socrata site | The service, or the file |
 | **United States › USGS 3DEP DEM…** (`usgs-dem`) | USGS elevation models from [The National Map](https://apps.nationalmap.gov) where the map is: 1 m, 1/9, 1/3 (the default) or 1 arc-second, or Alaska's 5 m (`"dataset"`), each tile's newest current edition | A GeoTIFF, read in place |
 
+Results are cards, as in GeoLibre: a picture when the service has one, what the item is, who
+shared it and when, and **Details** (its description, id and extent), **Portal** (its page),
+**Zoom** (to its extent) and **Add**. A web map's **Add** lists its layers to add one by one. ArcGIS
+portals keep a search to **All**, **Imagery**, **Maps**, **Features** or **Web maps**, list their
+newest items when opened, and page with **Load more**.
+
 The search by place (OpenAerialMap, LiDAR HD, 3DEP) is always where the map is, and its words, when
 given, keep to the images or tiles that have them. In the web app, the Ocean Data Platform's
 features are read through GeoLibre's relay (`tiles.geolibre.app`), the platform answering only its

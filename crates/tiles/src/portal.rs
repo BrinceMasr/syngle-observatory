@@ -81,6 +81,8 @@ pub struct Portal {
     /// What else keeps the search to some datasets: an ArcGIS organisation's id, the USGS
     /// elevation model's name ([`DEM_DATASETS`]).
     pub filter: Option<String>,
+    /// The kind of ArcGIS items searched ([`ARCGIS_KINDS`]), all when none.
+    pub category: Option<&'static str>,
 }
 
 /// What a resource is to RustGIS: a file read by address, or a service of a type.
@@ -104,7 +106,7 @@ pub struct Resource {
 }
 
 /// A dataset found.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Dataset {
     pub id: String,
     pub title: String,
@@ -116,9 +118,15 @@ pub struct Dataset {
     /// Its extent (west, south, east, north), when the portal says.
     pub bbox: Option<[f64; 4]>,
     pub resources: Vec<Resource>,
-    /// The address listing its files, when they aren't in the search's answer (Hugging Face):
-    /// [`Portal::parse_listing`] reads it.
+    /// The address listing its files, when they aren't in the search's answer (Hugging Face), or
+    /// its layers (an ArcGIS web map): [`Portal::parse_listing`] reads it.
     pub listing: Option<String>,
+    /// What it is, as the portal says (`Image service`, `Web map`, `Point cloud`…).
+    pub kind: String,
+    /// When it was made or last changed (`2026-10-16`), when the portal says.
+    pub date: String,
+    /// A small picture of it, by its address.
+    pub thumbnail: Option<String>,
 }
 
 /// A host name: letters, digits, dots and dashes.
@@ -153,7 +161,7 @@ impl Portal {
                 let base = base.split(['?', '#']).next().unwrap_or(&base).trim_end_matches('/').to_string();
                 let base = base.split("/api/").next().unwrap_or(&base).to_string();
                 let kind = if host_of(&base).eq_ignore_ascii_case("catalog.data.gov") { Kind::DataGov } else { Kind::Ckan };
-                Ok(Portal { kind, base, domain: None, filter: None })
+                Ok(Portal { kind, base, domain: None, filter: None, category: None })
             }
             Some("socrata") => {
                 let (base, domain) = match url {
@@ -172,7 +180,7 @@ impl Portal {
                         }
                     }
                 };
-                Ok(Portal { kind: Kind::Socrata, base, domain, filter: None })
+                Ok(Portal { kind: Kind::Socrata, base, domain, filter: None, category: None })
             }
             Some("arcgis-hub") | Some("hub") | Some("arcgis") => {
                 let base = match url {
@@ -185,7 +193,7 @@ impl Portal {
                     }
                     None => HUB.to_string(),
                 };
-                Ok(Portal { kind: Kind::Hub, base, domain: None, filter: None })
+                Ok(Portal { kind: Kind::Hub, base, domain: None, filter: None, category: None })
             }
             Some("arcgis-portal") | Some("arcgis-online") | Some("earthdata-gis") => {
                 let default =
@@ -201,7 +209,7 @@ impl Portal {
                 // An organisation's ArcGIS Online address answers only its own pages' requests:
                 // its items are searched on ArcGIS Online.
                 let base = if host_of(&base).to_ascii_lowercase().ends_with(".maps.arcgis.com") { ARCGIS_ONLINE.to_string() } else { base };
-                Ok(Portal { kind: Kind::ArcGis, base, domain: None, filter: None })
+                Ok(Portal { kind: Kind::ArcGis, base, domain: None, filter: None, category: None })
             }
             Some("geolens") => {
                 let base = match url {
@@ -210,7 +218,7 @@ impl Portal {
                 };
                 let base = base.split(['?', '#']).next().unwrap_or(&base).trim_end_matches('/').to_string();
                 let base = base.split("/api/").next().unwrap_or(&base).trim_end_matches("/api").to_string();
-                Ok(Portal { kind: Kind::GeoLens, base, domain: None, filter: None })
+                Ok(Portal { kind: Kind::GeoLens, base, domain: None, filter: None, category: None })
             }
             Some(k) => {
                 let (kind, base) = match k {
@@ -225,7 +233,7 @@ impl Portal {
                         ));
                     }
                 };
-                Ok(Portal { kind, base: base.to_string(), domain: None, filter: None })
+                Ok(Portal { kind, base: base.to_string(), domain: None, filter: None, category: None })
             }
         }
     }
@@ -254,6 +262,40 @@ impl Portal {
             _ => return Err(format!("{} takes no filter", self.label())),
         }
         Ok(self)
+    }
+
+    /// Keeps an ArcGIS portal's search to a kind of item ([`ARCGIS_KINDS`]: imagery, maps,
+    /// features or webmaps); none or `all` searches every kind.
+    pub fn with_category(mut self, category: Option<&str>) -> Result<Portal, String> {
+        let Some(c) = category.map(str::trim).filter(|c| !c.is_empty() && *c != "all") else { return Ok(self) };
+        if self.kind != Kind::ArcGis {
+            return Err(format!("{} takes no kind of item", self.label()));
+        }
+        let found = ARCGIS_KINDS.iter().find(|(k, _)| k.eq_ignore_ascii_case(c)).map(|(k, _)| *k);
+        self.category = Some(found.ok_or_else(|| format!("'{c}': the kinds are all, imagery, maps, features and webmaps"))?);
+        Ok(self)
+    }
+
+    /// How many datasets the search found in all, and the address of its next page, from its
+    /// answer (`url`: the page's address), when the portal pages (ArcGIS portals,
+    /// OpenAerialMap).
+    pub fn paging(&self, url: &str, bytes: &[u8]) -> (Option<u64>, Option<String>) {
+        let Ok(v) = serde_json::from_slice::<Value>(bytes) else { return (None, None) };
+        match self.kind {
+            Kind::ArcGis => {
+                let total = v.get("total").and_then(Value::as_u64);
+                let next = v.get("nextStart").and_then(Value::as_i64).filter(|n| *n > 1 && *n < 10_000);
+                (total, next.map(|n| replace_param(url, "start", &n.to_string())))
+            }
+            Kind::OpenAerialMap => {
+                let total = v.pointer("/meta/found").and_then(Value::as_u64);
+                let page = v.pointer("/meta/page").and_then(Value::as_u64).unwrap_or(1);
+                let limit = v.pointer("/meta/limit").and_then(Value::as_u64).unwrap_or(MAX_RESULTS as u64).max(1);
+                let more = total.is_some_and(|t| page * limit < t) && page < 200;
+                (total, more.then(|| replace_param(url, "page", &(page + 1).to_string())))
+            }
+            _ => (None, None),
+        }
     }
 
     /// Whether a search needs words (the others list what's where the map is, or everything).
@@ -330,7 +372,9 @@ impl Portal {
                     q.push_str(&format!("({words}) AND "));
                 }
                 q.push('(');
-                q.push_str(&ARCGIS_TYPES.iter().map(|t| format!("type:\"{t}\"")).collect::<Vec<_>>().join(" OR "));
+                let types: &[&str] =
+                    self.category.and_then(|c| ARCGIS_KINDS.iter().find(|(k, _)| *k == c)).map(|(_, t)| *t).unwrap_or(&ARCGIS_TYPES);
+                q.push_str(&types.iter().map(|t| format!("type:\"{t}\"")).collect::<Vec<_>>().join(" OR "));
                 q.push(')');
                 if let Some(org) = &self.filter {
                     q.push_str(&format!(" AND orgid:{org}"));
@@ -646,6 +690,9 @@ fn ckan_dataset(base: &str, d: &Value) -> Option<Dataset> {
         bbox,
         resources,
         listing: None,
+        kind: String::new(),
+        date: String::new(),
+        thumbnail: None,
     })
 }
 
@@ -676,6 +723,9 @@ fn datagov_dataset(base: &str, d: &Value) -> Option<Dataset> {
         bbox: d.get("spatial_shape").and_then(bbox_of),
         resources,
         listing: None,
+        kind: String::new(),
+        date: String::new(),
+        thumbnail: None,
     })
 }
 
@@ -704,6 +754,9 @@ fn socrata_dataset(r: &Value) -> Option<Dataset> {
         bbox: None,
         resources: vec![Resource { format: "GeoJSON".into(), url, using: Use::File }],
         listing: None,
+        kind: String::new(),
+        date: String::new(),
+        thumbnail: None,
         id,
     })
 }
@@ -726,12 +779,23 @@ fn hub_dataset(base: &str, f: &Value) -> Option<Dataset> {
         bbox: p.get("extent").and_then(bbox_of),
         resources: vec![resource],
         listing: None,
+        kind: String::new(),
+        date: String::new(),
+        thumbnail: None,
         id,
     })
 }
 
 /// The item types an ArcGIS portal's search asks for: those RustGIS adds.
-const ARCGIS_TYPES: [&str; 5] = ["Feature Service", "Map Service", "Image Service", "Vector Tile Service", "GeoJson"];
+const ARCGIS_TYPES: [&str; 6] = ["Feature Service", "Map Service", "Image Service", "Vector Tile Service", "GeoJson", "Web Map"];
+
+/// The kinds of ArcGIS items a search can keep to: a name and the item types.
+pub const ARCGIS_KINDS: [(&str, &[&str]); 4] = [
+    ("imagery", &["Image Service"]),
+    ("maps", &["Map Service", "Vector Tile Service"]),
+    ("features", &["Feature Service", "GeoJson"]),
+    ("webmaps", &["Web Map"]),
+];
 
 /// The most LiDAR HD tiles a search lists.
 pub const IGN_MAX_TILES: usize = 500;
@@ -743,6 +807,50 @@ const MAX_FILES: usize = 200;
 fn arcgis_words(q: &str) -> String {
     let plain: String = q.chars().take(MAX_QUERY).map(|c| if c.is_alphanumeric() || c == '_' || c == '.' { c } else { ' ' }).collect();
     plain.split_whitespace().filter(|w| !matches!(*w, "AND" | "OR" | "NOT")).collect::<Vec<_>>().join(" ")
+}
+
+/// A web map's layers (its operational layers, those in groups too) RustGIS adds: ArcGIS services,
+/// named by their titles.
+fn web_map_layers(v: &Value, from: &str) -> Result<Vec<Resource>, String> {
+    // A layer in a group is named after the group too (groups often repeat their layers' titles).
+    fn walk(layers: &Value, depth: usize, group: &str, out: &mut Vec<Resource>, from: &str) {
+        for l in layers.as_array().into_iter().flatten().take(500) {
+            if out.len() >= MAX_FILES {
+                return;
+            }
+            let title = text(l, "title", 200);
+            let named = match (group.is_empty(), title.is_empty()) {
+                (true, _) => title.clone(),
+                (false, true) => group.to_string(),
+                (false, false) => format!("{group} › {title}"),
+            };
+            if depth < 6
+                && let Some(inner) = l.get("layers")
+            {
+                walk(inner, depth + 1, &named, out, from);
+            }
+            let url = text(l, "url", 2048);
+            if let Some(mut r) = classify("ArcGIS REST", "", &url).filter(|r| crate::address::check(&r.url, Some(from)).is_ok()) {
+                if !named.is_empty() {
+                    r.format = named;
+                }
+                out.push(r);
+            }
+        }
+    }
+    let ops = v.get("operationalLayers").ok_or("not an ArcGIS web map (it has no operational layers)")?;
+    let mut out = Vec::new();
+    walk(ops, 0, "", &mut out, from);
+    Ok(out)
+}
+
+/// An address with its query parameter `key` set to `value`.
+fn replace_param(url: &str, key: &str, value: &str) -> String {
+    let (path, query) = url.split_once('?').unwrap_or((url, ""));
+    let mut parts: Vec<String> =
+        query.split('&').filter(|p| !p.is_empty() && p.split('=').next() != Some(key)).map(str::to_string).collect();
+    parts.push(format!("{key}={value}"));
+    format!("{path}?{}", parts.join("&"))
 }
 
 /// A Hugging Face dataset named whole (`owner/name`, or its page's address).
@@ -769,29 +877,71 @@ fn id_ok(id: &str) -> bool {
     !id.is_empty() && id.len() <= 100 && !id.starts_with('.') && id.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))
 }
 
-/// An ArcGIS portal's item: its service, or a GeoJSON file's data.
+/// A picture's address, if it is a web one.
+fn picture(url: String) -> Option<String> {
+    (url.starts_with("https://") && url.len() <= 2048).then_some(url)
+}
+
+/// The day (`2026-10-16`) of a time in milliseconds since 1970.
+fn day_of_ms(ms: f64) -> String {
+    if !ms.is_finite() || !(0.0..=1e15).contains(&ms) {
+        return String::new();
+    }
+    // Days to a civil date (Howard Hinnant's algorithm).
+    let z = (ms / 86_400_000.0).floor() as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}")
+}
+
+/// An ArcGIS item type as a label (`Image Service` → `Image service`).
+fn type_label(t: &str) -> String {
+    let mut words = t.split_whitespace();
+    let first = words.next().unwrap_or("").to_string();
+    std::iter::once(first).chain(words.map(str::to_lowercase)).collect::<Vec<_>>().join(" ")
+}
+
+/// An ArcGIS portal's item: its service, a GeoJSON file's data, or a web map, whose layers are
+/// listed after.
 fn arcgis_dataset(base: &str, d: &Value) -> Option<Dataset> {
     let id = text(d, "id", 64);
     if !id.bytes().all(|b| b.is_ascii_alphanumeric()) || id.is_empty() {
         return None;
     }
-    let resource = match text(d, "type", 80).as_str() {
-        "GeoJson" => Resource { format: "GeoJSON".into(), url: format!("{base}/sharing/rest/content/items/{id}/data"), using: Use::File },
-        _ => classify("ArcGIS REST", "", &text(d, "url", 2048))?,
+    let ty = text(d, "type", 80);
+    let (resources, listing) = match ty.as_str() {
+        "GeoJson" => (
+            vec![Resource { format: "GeoJSON".into(), url: format!("{base}/sharing/rest/content/items/{id}/data"), using: Use::File }],
+            None,
+        ),
+        "Web Map" => (Vec::new(), Some(format!("{base}/sharing/rest/content/items/{id}/data?f=json"))),
+        _ => (vec![classify("ArcGIS REST", "", &text(d, "url", 2048))?], None),
     };
     // `[[west, south], [east, north]]`.
     let bbox = d.get("extent").and_then(Value::as_array).and_then(|e| {
         let (a, b) = (e.first()?.as_array()?, e.get(1)?.as_array()?);
         bbox4(&Value::Array(vec![a.first()?.clone(), a.get(1)?.clone(), b.first()?.clone(), b.get(1)?.clone()]))
     });
+    let thumb = text(d, "thumbnail", 300);
+    let snippet_text = text(d, "snippet", 2000);
+    let long = snippet(&text(d, "description", 4000));
     Some(Dataset {
         title: text(d, "title", 300),
-        description: snippet(&Some(text(d, "snippet", 2000)).filter(|s| !s.is_empty()).unwrap_or_else(|| text(d, "description", 4000))),
+        description: if long.is_empty() { snippet(&snippet_text) } else { long },
         organization: text(d, "owner", 200),
         page: Some(format!("{base}/home/item.html?id={id}")),
         bbox,
-        resources: vec![resource],
-        listing: None,
+        resources,
+        listing,
+        kind: type_label(&ty),
+        date: d.get("modified").and_then(Value::as_f64).map(day_of_ms).unwrap_or_default(),
+        thumbnail: (!thumb.is_empty() && !thumb.contains("..")).then(|| format!("{base}/sharing/rest/content/items/{id}/info/{thumb}")),
         id,
     })
 }
@@ -803,17 +953,21 @@ fn oam_dataset(d: &Value) -> Option<Dataset> {
     if let Some(g) = d.get("gsd").and_then(Value::as_f64).filter(|g| g.is_finite() && *g > 0.0) {
         about.push(if g < 1.0 { format!("{:.0} cm per pixel", g * 100.0) } else { format!("{g:.1} m per pixel") });
     }
-    about.push(text(d, "acquisition_end", 10));
     about.retain(|a| !a.is_empty());
+    let p = d.get("properties");
+    let sensor = p.map(|p| text(p, "sensor", 100)).unwrap_or_default();
     Some(Dataset {
         id: text(d, "_id", 64),
         title: Some(text(d, "title", 300)).filter(|t| !t.is_empty()).unwrap_or_else(|| "Untitled image".into()),
-        description: about.join(" · "),
+        description: if sensor.is_empty() { String::new() } else { format!("Sensor: {sensor}") },
         organization: text(d, "provider", 200),
         page: None,
         bbox: d.get("bbox").and_then(bbox4).or_else(|| d.pointer("/geojson").and_then(bbox_of)),
         resources: vec![resource],
         listing: None,
+        kind: about.join(" · "),
+        date: text(d, "acquisition_end", 10),
+        thumbnail: p.and_then(|p| picture(text(p, "thumbnail", 2048))),
     })
 }
 
@@ -836,21 +990,22 @@ fn dem_dataset(i: &Value) -> Option<(String, (bool, String), Dataset)> {
     let bbox = i.get("boundingBox").and_then(|b| {
         bbox4(&Value::Array(vec![b.get("minX")?.clone(), b.get("minY")?.clone(), b.get("maxX")?.clone(), b.get("maxY")?.clone()]))
     });
-    let mut about = vec![text(i, "datasetName", 120)];
+    let mut kind = "GeoTIFF".to_string();
     if let Some(n) = i.get("sizeInBytes").and_then(Value::as_f64).filter(|n| *n > 0.0) {
-        about.push(format!("{:.0} MB", n / 1e6));
+        kind.push_str(&if n >= 1e6 { format!(" · {:.0} MB", n / 1e6) } else { format!(" · {:.0} KB", (n / 1e3).max(1.0)) });
     }
-    about.push(date.chars().take(10).collect());
-    about.retain(|a| !a.is_empty());
     let d = Dataset {
         id: Some(text(i, "sourceId", 100)).filter(|s| !s.is_empty()).unwrap_or_else(|| title.clone()),
         title,
-        description: about.join(" · "),
+        description: text(i, "datasetName", 200),
         organization: "USGS".into(),
         page: Some(text(i, "metaUrl", 500)).filter(|p| p.starts_with("https://")),
         bbox,
         resources: vec![resource],
         listing: None,
+        kind,
+        date: date.chars().take(10).collect(),
+        thumbnail: picture(text(i, "previewGraphicURL", 2048)),
     };
     // A current edition before a historical one, then the newest.
     Some((tile, (!url.contains("/historical/"), date), d))
@@ -878,23 +1033,23 @@ fn ign_dataset(f: &Value) -> Option<Dataset> {
         return None;
     }
     let tile = text(p, "coordonnees_nw", 40);
-    let mut about = Vec::new();
+    let mut kind = "Point cloud".to_string();
     if let Some(n) = p.get("nombre_points").and_then(Value::as_f64).filter(|n| *n > 0.0) {
-        about.push(format!("{:.1} million points", n / 1e6));
+        kind.push_str(&format!(" · {:.1} million points", n / 1e6));
     }
-    let date = text(p, "date_fin_acquisition", 20).trim_end_matches('Z').to_string();
-    if !date.is_empty() {
-        about.push(format!("acquired {date}"));
-    }
+    let mission = text(p, "code_mission", 40);
     Some(Dataset {
         id: text(f, "id", 100),
         title: if tile.is_empty() { url.rsplit('/').next().unwrap_or("").to_string() } else { format!("LiDAR HD {tile}") },
-        description: about.join(" · "),
+        description: if mission.is_empty() { String::new() } else { format!("Mission {mission}, Lambert-93 tile {tile}") },
         organization: "IGN".into(),
         page: None,
         bbox: f.get("geometry").and_then(bbox_of),
         resources: vec![Resource { format: "COPC".into(), url, using: Use::File }],
         listing: None,
+        kind,
+        date: text(p, "date_fin_acquisition", 20).trim_end_matches('Z').to_string(),
+        thumbnail: None,
     })
 }
 
@@ -907,15 +1062,14 @@ fn geolens_dataset(base: &str, f: &Value) -> Option<Dataset> {
     if !id_ok(&id) || raster {
         return None;
     }
-    let mut about = vec![text(p, "geometry_type", 40).to_lowercase()];
+    let geometry = text(p, "geometry_type", 40).to_lowercase();
+    let mut kind = if geometry.is_empty() { "Features".to_string() } else { format!("Features ({geometry})") };
     if let Some(n) = p.get("feature_count").and_then(Value::as_u64) {
-        about.push(format!("{n} features"));
+        kind.push_str(&format!(" · {n}"));
     }
-    about.retain(|a| !a.is_empty());
-    let description = snippet(&text(p, "description", 4000));
     Some(Dataset {
         title: text(p, "title", 300),
-        description: if description.is_empty() { about.join(" · ") } else { format!("{} · {description}", about.join(" · ")) },
+        description: snippet(&text(p, "description", 4000)),
         organization: text(p, "license", 100),
         page: None,
         bbox: f.get("geometry").and_then(bbox_of),
@@ -925,6 +1079,9 @@ fn geolens_dataset(base: &str, f: &Value) -> Option<Dataset> {
             using: Use::File,
         }],
         listing: None,
+        kind,
+        date: String::new(),
+        thumbnail: None,
         id,
     })
 }
@@ -951,19 +1108,21 @@ fn hf_dataset(base: &str, d: &Value) -> Option<Dataset> {
         .filter(|t| t.starts_with("license:") || t.starts_with("task_categories:") || t.starts_with("modality:"))
         .take(6)
         .collect();
-    let mut about = Vec::new();
+    let mut kind = "Dataset".to_string();
     if let Some(n) = d.get("downloads").and_then(Value::as_u64) {
-        about.push(format!("{n} downloads"));
+        kind.push_str(&format!(" · {n} downloads"));
     }
-    about.extend(tags.iter().map(|t| t.replace(':', ": ")));
     Some(Dataset {
         organization: owner.to_string(),
         title: id.clone(),
-        description: about.join(" · "),
+        description: tags.iter().map(|t| t.replace(':', ": ")).collect::<Vec<_>>().join(" · "),
         page: Some(format!("{base}/datasets/{id}")),
         bbox: None,
         resources: Vec::new(),
         listing: Some(format!("{base}/api/datasets/{id}/tree/main?recursive=true&limit=1000")),
+        kind,
+        date: text(d, "lastModified", 10),
+        thumbnail: None,
         id,
     })
 }
@@ -991,6 +1150,9 @@ fn ocean_dataset(base: &str, f: &Value) -> Option<Dataset> {
         bbox: f.get("bbox").and_then(bbox4),
         resources: vec![Resource { format: "GeoJSON".into(), url, using: Use::File }],
         listing: None,
+        kind: "Features".into(),
+        date: Some(text(p, "start_datetime", 10)).filter(|d| !d.is_empty()).unwrap_or_else(|| text(p, "datetime", 10)),
+        thumbnail: None,
         id,
     })
 }
@@ -1005,6 +1167,12 @@ impl Portal {
     pub fn listing_of(&self, dataset: &str) -> Option<String> {
         match self.kind {
             Kind::HuggingFace => hf_repo(dataset).map(|id| format!("{}/api/datasets/{id}/tree/main?recursive=true&limit=1000", self.base)),
+            // A web map's layers.
+            Kind::ArcGis => {
+                let id = dataset.trim();
+                (!id.is_empty() && id.len() <= 64 && id.bytes().all(|b| b.is_ascii_alphanumeric()))
+                    .then(|| format!("{}/sharing/rest/content/items/{id}/data?f=json", self.base))
+            }
             _ => None,
         }
     }
@@ -1013,6 +1181,9 @@ impl Portal {
     /// RustGIS adds, named by their path in the dataset.
     pub fn parse_listing(&self, from: &str, bytes: &[u8]) -> Result<Vec<Resource>, String> {
         let v: Value = serde_json::from_slice(bytes).map_err(|_| format!("{}: the listing isn't JSON", self.label()))?;
+        if self.kind == Kind::ArcGis {
+            return web_map_layers(&v, from);
+        }
         let entries = v.as_array().ok_or_else(|| format!("{}: not a listing of files", self.label()))?;
         // `…/api/datasets/{owner}/{name}/tree/…`: the dataset.
         let repo = from
@@ -1224,7 +1395,7 @@ mod tests {
         let o = br#"{"meta":{"found":2},"results":[{"_id":"1","uuid":"https://oin.s3.amazonaws.com/a/b.tif","title":"Village","provider":"HOT","platform":"uav","gsd":0.05,"acquisition_end":"2026-09-20T06:00:00Z","bbox":[-77.3,4.85,-77.2,4.86]},{"_id":"2","uuid":"https://oin.s3.amazonaws.com/a/c.tif","title":"Coast","bbox":[1,2,3]}]}"#;
         let ds = oam.parse("https://api.openaerialmap.org/meta", o, Some([-80.0, 0.0, -70.0, 10.0]), "").unwrap();
         assert_eq!(ds.len(), 2, "an image whose box isn't one is kept");
-        assert_eq!(ds[0].description, "uav · 5 cm per pixel · 2026-09-20");
+        assert_eq!((ds[0].kind.as_str(), ds[0].date.as_str()), ("uav · 5 cm per pixel", "2026-09-20"));
         assert_eq!(oam.parse("https://api.openaerialmap.org/meta", o, None, "coast").unwrap()[0].title, "Coast");
 
         let dem = Portal::new(Some("usgs-dem"), None).unwrap();
@@ -1237,7 +1408,10 @@ mod tests {
         let i = br#"{"features":[{"id":"metadata.1","geometry":{"type":"Polygon","coordinates":[[[2.3,48.8],[2.31,48.8],[2.31,48.81],[2.3,48.8]]]},"properties":{"coordonnees_nw":"0650-6858","nombre_points":17455527,"date_fin_acquisition":"2023-03-01Z","url_npl":"https://data.geopf.fr/telechargement/download/x/LHD_FXX_0650_6858_PTS_LAMB93_IGN69.copc.laz"}},{"id":"metadata.2","properties":{"url_npl":"http://x.org/a.laz"}}]}"#;
         let ds = ign.parse("https://data.geopf.fr/wfs?x", i, None, "").unwrap();
         assert_eq!(ds.len(), 1);
-        assert_eq!((ds[0].title.as_str(), ds[0].description.as_str()), ("LiDAR HD 0650-6858", "17.5 million points · acquired 2023-03-01"));
+        assert_eq!(
+            (ds[0].title.as_str(), ds[0].kind.as_str(), ds[0].date.as_str()),
+            ("LiDAR HD 0650-6858", "Point cloud · 17.5 million points", "2023-03-01")
+        );
 
         let gl = Portal::new(Some("geolens"), None).unwrap();
         let g = br#"{"type":"FeatureCollection","features":[{"id":"8c26-1","properties":{"title":"Tracks","record_type":"vector_dataset","geometry_type":"MULTILINESTRING","feature_count":12}},{"id":"r1","properties":{"title":"DEM","record_type":"raster_dataset","band_count":1}},{"id":"../x","properties":{"title":"Bad"}}]}"#;
@@ -1249,7 +1423,7 @@ mod tests {
         let h = br#"[{"id":"giswqs/geospatial","downloads":10,"gated":false,"private":false,"tags":["license:mit","region:us"]},{"id":"a/gated","gated":"manual"},{"id":"noslash"}]"#;
         let ds = hf.parse("https://huggingface.co/api/datasets?search=x", h, None, "").unwrap();
         assert_eq!(ds.len(), 1);
-        assert_eq!((ds[0].description.as_str(), ds[0].resources.len()), ("10 downloads · license: mit", 0));
+        assert_eq!((ds[0].kind.as_str(), ds[0].description.as_str(), ds[0].resources.len()), ("Dataset · 10 downloads", "license: mit", 0));
         let listing = ds[0].listing.clone().unwrap();
         assert_eq!(Some(listing.clone()), hf.listing_of("giswqs/geospatial"));
         let files = br#"[{"type":"directory","path":"naip"},{"type":"file","path":"naip/a b.tif"},{"type":"file","path":"README.md"},{"type":"file","path":"x/../../etc.geojson"},{"type":"file","path":"z.pmtiles"}]"#;
@@ -1280,6 +1454,47 @@ mod tests {
                 let _ = p.parse_listing("https://huggingface.co/api/datasets/a/b/tree/main", junk);
             }
         }
+    }
+
+    #[test]
+    fn arcgis_kinds_pages_and_web_maps() {
+        let p = Portal::new(Some("earthdata-gis"), None).unwrap().with_category(Some("webmaps")).unwrap();
+        let u = p.search_url("", None, 20);
+        assert!(u.contains("%28type%3A%22Web%20Map%22%29") && !u.contains("Image%20Service"), "{u}");
+        assert!(Portal::new(Some("geolens"), None).unwrap().with_category(Some("maps")).is_err());
+        assert!(p.clone().with_category(Some("rasters")).is_err());
+        assert_eq!(p.clone().with_category(Some("all")).unwrap().category, Some("webmaps"), "all keeps the portal as it was");
+        // Pages.
+        let (total, next) = p.paging(&u, br#"{"total":1966,"start":1,"num":20,"nextStart":21,"results":[]}"#);
+        assert_eq!(total, Some(1966));
+        assert!(next.as_deref().is_some_and(|n| n.ends_with("&start=21") && n.matches("start=").count() == 1), "{next:?}");
+        assert_eq!(p.paging(&u, br#"{"total":3,"nextStart":-1}"#).1, None);
+        let oam = Portal::new(Some("openaerialmap"), None).unwrap();
+        let ou = oam.search_url("", Some([0.0, 0.0, 1.0, 1.0]), 5);
+        let (t, n) = oam.paging(&ou, br#"{"meta":{"found":326,"page":1,"limit":50},"results":[]}"#);
+        assert_eq!((t, n.as_deref().map(|n| n.contains("page=2"))), (Some(326), Some(true)));
+        assert_eq!(oam.paging(&ou, br#"{"meta":{"found":40,"page":1,"limit":50}}"#).1, None);
+        assert_eq!(oam.paging(&ou, b"junk"), (None, None));
+        // A web map's item, its kind, date and picture, and its layers.
+        let a = br#"{"results":[{"id":"w1","type":"Web Map","title":"Isaias","owner":"patrick_rea","modified":1792108800000,"thumbnail":"thumbnail/t.png"}]}"#;
+        let ds = p.parse("https://gis.earthdata.nasa.gov/portal/sharing/rest/search", a, None, "").unwrap();
+        let d = &ds[0];
+        assert_eq!((d.kind.as_str(), d.date.as_str()), ("Web map", "2026-10-16"));
+        assert_eq!(
+            d.thumbnail.as_deref(),
+            Some("https://gis.earthdata.nasa.gov/portal/sharing/rest/content/items/w1/info/thumbnail/t.png")
+        );
+        let listing = d.listing.clone().unwrap();
+        assert_eq!(Some(listing.clone()), p.listing_of("w1"));
+        let wm = br#"{"operationalLayers":[{"title":"Optical","url":"https://gis.earthdata.nasa.gov/portal/rest/services/a/ImageServer"},{"layerType":"GroupLayer","title":"Sept","layers":[{"title":"Flood","url":"https://gis.earthdata.nasa.gov/portal/rest/services/b/MapServer/2"}]},{"title":"Notes"},{"title":"Local","url":"http://169.254.169.254/rest/services/c/FeatureServer/0"}]}"#;
+        let layers = p.parse_listing(&listing, wm).unwrap();
+        assert_eq!(layers.iter().map(|r| r.format.as_str()).collect::<Vec<_>>(), vec!["Optical", "Sept › Flood"]);
+        assert_eq!(layers[1].using, Use::Service { kind: "arcgis", layer: Some("2".into()) });
+        assert!(p.parse_listing(&listing, b"{}").is_err());
+        assert_eq!(day_of_ms(0.0), "1970-01-01");
+        assert_eq!(day_of_ms(951_782_400_000.0), "2000-02-29");
+        assert_eq!(day_of_ms(f64::NAN), "");
+        assert_eq!(replace_param("https://x.org/s?a=1&start=1&b=2", "start", "41"), "https://x.org/s?a=1&b=2&start=41");
     }
 
     #[test]

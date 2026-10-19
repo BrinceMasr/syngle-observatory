@@ -64,9 +64,35 @@ fn service(id: &str) -> Option<&'static Service> {
     SERVICES.iter().find(|s| s.id == id)
 }
 
-/// The dialog's choices, the search under way and what it found.
+/// A search under way: the portal, its address, the box it keeps to, its words, what it is on
+/// (the US portal picked when it began), and whether it is a next page (added to the list).
+struct Pending {
+    portal: Portal,
+    url: String,
+    area: Option<[f64; 4]>,
+    query: String,
+    source: String,
+    more: bool,
+    slot: Answer,
+}
+
+/// A result's picture: being fetched, ready, or not to be had.
+enum Thumb {
+    Loading(Answer),
+    Ready(egui::TextureHandle),
+    Failed,
+}
+
+/// The most pictures kept (a few pages of results).
+const MAX_THUMBS: usize = 200;
+
+/// The kinds of ArcGIS items the chips keep a search to.
+const CHIPS: [(&str, &str); 5] =
+    [("all", "All"), ("imagery", "Imagery"), ("maps", "Maps"), ("features", "Features"), ("webmaps", "Web maps")];
+
+/// The pane's choices, the search under way and what it found.
 pub struct State {
-    /// The Web Data service the dialog is on, or none (Search Open Data, any portal).
+    /// The Web Data service the pane is on, or none (Search Open Data, any portal).
     pub service: Option<&'static str>,
     pub portal: &'static str,
     pub url: String,
@@ -78,13 +104,19 @@ pub struct State {
     pub catalog: usize,
     /// The 3DEP elevation model searched (in [`DEM_DATASETS`]).
     pub dem: usize,
-    /// The search under way: the portal, its address, the box it keeps to, its words and what it
-    /// is on (the US portal picked when it began).
-    waiting: Option<(Portal, String, Option<[f64; 4]>, String, String, Answer)>,
-    /// A dataset's files being listed: the dataset (its place in `found`), the portal, the
-    /// listing's address.
+    /// The kind of ArcGIS items searched (a [`CHIPS`] name).
+    pub category: &'static str,
+    waiting: Option<Pending>,
+    /// A dataset's files or layers being listed: the dataset (its place in `found`), the portal,
+    /// the listing's address.
     listing: Option<(usize, Portal, String, Answer)>,
     pub found: Vec<Dataset>,
+    /// How many the search found in all, when the portal says, and its next page's address.
+    total: Option<u64>,
+    next: Option<(Portal, String, Option<[f64; 4]>, String, String)>,
+    /// The results whose details are shown.
+    open: std::collections::HashSet<usize>,
+    thumbs: std::collections::HashMap<String, Thumb>,
     pub error: Option<String>,
     pub info: Option<String>,
 }
@@ -100,9 +132,14 @@ impl Default for State {
             set: 0,
             catalog: 0,
             dem: 2,
+            category: "all",
             waiting: None,
             listing: None,
             found: Vec::new(),
+            total: None,
+            next: None,
+            open: Default::default(),
+            thumbs: Default::default(),
             error: None,
             info: None,
         }
@@ -110,7 +147,7 @@ impl Default for State {
 }
 
 impl State {
-    /// The dialog's title: the service's, or Search Open Data's.
+    /// The pane's title: the service's, or Search Open Data's.
     pub fn title(&self) -> &'static str {
         self.service.and_then(service).map(|s| s.title).unwrap_or("Search Open Data")
     }
@@ -127,24 +164,43 @@ impl State {
     }
 }
 
-/// Lands the search's answer, and a dataset's listing.
+/// Starts fetching `url` off the frame.
+fn fetch(url: &str) -> Answer {
+    let slot: Answer = Slot::default();
+    let land = slot.clone();
+    cache::download(url, Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)));
+    slot
+}
+
+/// Lands the search's answer, a dataset's listing and the results' pictures.
 pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
     poll_listing(app, ctx);
-    let Some((_, _, _, _, _, slot)) = &app.ui.opendata.waiting else { return };
-    let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
+    poll_thumbs(app, ctx);
+    let Some(w) = &app.ui.opendata.waiting else { return };
+    let Some(r) = w.slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
         return;
     };
-    let Some((portal, url, area, query, source, _)) = app.ui.opendata.waiting.take() else { return };
+    let Some(w) = app.ui.opendata.waiting.take() else { return };
     let st = &mut app.ui.opendata;
-    match r.and_then(|b| portal.parse(&url, &b, area, &query)) {
-        Ok(found) => {
-            st.info = Some(if found.is_empty() {
-                tl!("No datasets with data RustGIS can add").to_string()
+    match r.and_then(|b| w.portal.parse(&w.url, &b, w.area, &w.query).map(|found| (found, w.portal.paging(&w.url, &b)))) {
+        Ok((found, (total, next))) => {
+            if w.more {
+                st.found.extend(found);
             } else {
-                crate::i18n::fmt("{n} datasets on {portal}", &[("n", &found.len().to_string()), ("portal", &source)])
+                st.found = found;
+            }
+            st.total = total;
+            st.next = next.map(|n| (w.portal.clone(), n, w.area, w.query.clone(), w.source.clone()));
+            let shown = st.found.len().to_string();
+            st.info = Some(match total {
+                _ if st.found.is_empty() => tl!("No datasets with data RustGIS can add").to_string(),
+                Some(t) => crate::i18n::fmt(
+                    "Showing {n} of {total} on {portal}",
+                    &[("n", &shown), ("total", &t.to_string()), ("portal", &w.source)],
+                ),
+                None => crate::i18n::fmt("{n} datasets on {portal}", &[("n", &shown), ("portal", &w.source)]),
             });
-            st.found = found;
         }
         Err(e) => st.error = Some(e),
     }
@@ -161,7 +217,7 @@ fn poll_listing(app: &mut RustGisApp, ctx: &egui::Context) {
     match r.and_then(|b| portal.parse_listing(&url, &b)) {
         Ok(files) => {
             if files.is_empty() {
-                st.info = Some(tl!("The dataset has no files RustGIS can add").to_string());
+                st.info = Some(tl!("The dataset has nothing RustGIS can add").to_string());
             }
             if let Some(d) = st.found.get_mut(i) {
                 d.resources = files;
@@ -172,13 +228,37 @@ fn poll_listing(app: &mut RustGisApp, ctx: &egui::Context) {
     }
 }
 
-/// Fills the dialog from `ui.searchOpenData`'s parameters (`service`, `portal`, `url`, `query`,
-/// `view`) and, with a query, starts the search. A service opens the dialog on it alone.
+/// Lands the pictures fetched, as textures.
+fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
+    let mut waiting = false;
+    for (url, thumb) in app.ui.opendata.thumbs.iter_mut() {
+        let Thumb::Loading(slot) = thumb else { continue };
+        let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
+            waiting = true;
+            continue;
+        };
+        *thumb = match r.and_then(|b| cache::decode_image(&b)) {
+            Ok(pm) => {
+                let img = egui::ColorImage::from_rgba_premultiplied([pm.width() as usize, pm.height() as usize], pm.data());
+                Thumb::Ready(ctx.load_texture(format!("webdata_thumb_{url}"), img, egui::TextureOptions::LINEAR))
+            }
+            Err(_) => Thumb::Failed,
+        };
+    }
+    if waiting {
+        ctx.request_repaint_after(std::time::Duration::from_millis(150));
+    }
+}
+
+/// Fills the pane from `ui.searchOpenData`'s parameters (`service`, `portal`, `url`, `query`,
+/// `view`, `type`) and, with a query (or for a service that needs none), starts the search. A
+/// service opens the pane on it alone.
 pub fn start(app: &mut RustGisApp, p: &serde_json::Value) {
     let text = |k: &str| p.get(k).and_then(serde_json::Value::as_str).map(str::trim);
     let svc = text("service").and_then(service);
     let st = &mut app.ui.opendata;
-    if st.service != svc.map(|s| s.id) {
+    let fresh = st.service != svc.map(|s| s.id);
+    if fresh {
         // Another service: its own choices.
         *st = State { service: svc.map(|s| s.id), ..State::default() };
         if let Some(s) = svc {
@@ -199,17 +279,23 @@ pub fn start(app: &mut RustGisApp, p: &serde_json::Value) {
     if let Some(u) = text("url") {
         st.url = u.to_string();
     }
+    if let Some(c) = text("type").and_then(|c| CHIPS.iter().find(|(k, _)| *k == c)) {
+        st.category = c.0;
+    }
     if let Some(v) = p.get("view").and_then(serde_json::Value::as_bool) {
         // A search by place is always where the map is.
         st.here = v || Portal::new(Some(st.portal), None).is_ok_and(|p| p.needs_place());
     }
-    if let Some(q) = text("query").filter(|q| !q.is_empty()) {
+    let words = text("query").filter(|q| !q.is_empty());
+    if let Some(q) = words {
         st.query = q.to_string();
-        if st.waiting.is_none() {
-            st.error = None;
-            st.info = None;
-            search(app);
-        }
+    }
+    // A service that lists without words shows its newest datasets as it opens, as a search does.
+    let lists = svc.is_some() && fresh && Portal::new(Some(st.portal), None).is_ok_and(|p| !p.needs_query() && !p.needs_place());
+    if (words.is_some() || lists) && st.waiting.is_none() {
+        st.error = None;
+        st.info = None;
+        search(app, false);
     }
 }
 
@@ -236,50 +322,58 @@ fn params(st: &State) -> serde_json::Value {
     {
         p["dataset"] = json!(label);
     }
+    if p["portal"] == "arcgis-portal" || p["portal"] == "earthdata-gis" {
+        p["type"] = json!(st.category);
+    }
     p
 }
 
-/// Starts a search for the dialog's choices.
-fn search(app: &mut RustGisApp) {
+/// Starts a search for the pane's choices, or (`more`) its next page.
+fn search(app: &mut RustGisApp, more: bool) {
+    if more {
+        let Some((portal, url, area, query, source)) = app.ui.opendata.next.take() else { return };
+        let slot = fetch(&url);
+        app.ui.opendata.waiting = Some(Pending { portal, url, area, query, source, more, slot });
+        return;
+    }
     let p = params(&app.ui.opendata);
     match rustgis_engine::cmd::portals::portal_query(&app.session, &p) {
         Ok((portal, query, area, limit)) => {
             let url = portal.search_url(&query, area, limit);
-            let slot: Answer = Slot::default();
-            let land = slot.clone();
-            cache::download(&url, Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)));
+            let slot = fetch(&url);
             let st = &mut app.ui.opendata;
             st.found.clear();
+            st.open.clear();
             st.listing = None;
+            st.total = None;
+            st.next = None;
             let source = st.source(&portal);
-            st.waiting = Some((portal, url, area, query, source, slot));
+            st.waiting = Some(Pending { portal, url, area, query, source, more: false, slot });
         }
         Err(e) => app.ui.opendata.error = Some(e),
     }
 }
 
-/// Starts listing a dataset's files.
+/// Starts listing a dataset's files or layers.
 fn list_files(app: &mut RustGisApp, i: usize) {
     let st = &app.ui.opendata;
     let Some(url) = st.found.get(i).and_then(|d| d.listing.clone()) else { return };
     match Portal::new(Some(st.portal), None) {
         Ok(portal) => {
-            let slot: Answer = Slot::default();
-            let land = slot.clone();
-            cache::download(&url, Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)));
+            let slot = fetch(&url);
             app.ui.opendata.listing = Some((i, portal, url, slot));
         }
         Err(e) => app.ui.opendata.error = Some(e),
     }
 }
 
-/// What the dialog says the service is.
+/// What the pane says the service is.
 fn about(id: Option<&str>) -> &'static str {
     match id {
         Some("arcgis-portal") => {
-            "Public layers on ArcGIS Online or another ArcGIS portal: feature, map, image and vector tile services, and GeoJSON files."
+            "Public layers on ArcGIS Online or another ArcGIS portal: feature, map, image and vector tile services, web maps and GeoJSON files."
         }
-        Some("earthdata-gis") => "NASA's Earthdata GIS: imagery, maps and features of Earth science data as ArcGIS services.",
+        Some("earthdata-gis") => "NASA's Earthdata GIS: imagery, maps, features and web maps of Earth science data.",
         Some("geolens") => "A GeoLens server's datasets, read as features (the first 1,000 of each).",
         Some("huggingface") => {
             "Datasets on Hugging Face by name or owner/name; browse a dataset's files and add GeoTIFFs, GeoParquet, PMTiles, LiDAR and other files."
@@ -297,11 +391,20 @@ fn about(id: Option<&str>) -> &'static str {
     }
 }
 
-/// The dialog: a portal (or the service's catalog), a search, and the datasets found with their
-/// resources.
+/// What a click on a result asks for.
+enum Act {
+    Details(usize),
+    Zoom([f64; 4]),
+    Add(String, Use, String),
+    List(usize),
+}
+
+/// The pane: a portal (or the service's catalog), a search, and the datasets found as cards with
+/// their pictures and actions.
 pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
+    let t = crate::theme::Tokens::get(ui.ctx());
     let svc = app.ui.opendata.service.and_then(service);
-    ui.label(egui::RichText::new(tl!(about(svc.map(|s| s.id)))).weak());
+    ui.label(egui::RichText::new(tl!(about(svc.map(|s| s.id)))).color(t.text_dim));
     let busy = app.ui.opendata.waiting.is_some();
     let mut go = false;
     // The fields fill the pane, beside their labels.
@@ -347,109 +450,224 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
                 }
             }
         }
-        let place = Portal::new(Some(st.portal), None).is_ok_and(|p| p.needs_place());
-        ui.label(tl!("Search"));
-        // A Socrata site among the US portals is searched by words only.
-        let needs = {
-            let p = params(st);
-            Portal::new(p["portal"].as_str(), p["url"].as_str()).is_ok_and(|p| p.needs_query())
-        };
-        ui.horizontal(|ui| {
-            let hint = match svc.map(|s| s.id) {
-                Some("huggingface") => tl!("a name, or owner/name such as giswqs/geospatial"),
-                _ if place => tl!("words to keep to (optional)"),
-                Some(_) if needs => tl!("words (this portal needs some)"),
-                Some(_) => tl!("words (optional)"),
-                None => tl!("parks, bike lanes, flood zones…"),
-            };
-            let r = ui.add(egui::TextEdit::singleline(&mut st.query).hint_text(hint).desired_width(w - 100.0));
-            let enter = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-            go = (ui.add_enabled(!busy, egui::Button::new(tl!("Find Datasets"))).clicked() || enter) && !busy;
-        });
-        ui.end_row();
-        ui.label("");
-        // A search by place is always where the map is.
-        ui.add_enabled(!place, egui::Checkbox::new(&mut st.here, tl!("Only where the map is")));
-        if place {
-            st.here = true;
-        }
-        ui.end_row();
     });
-    if go {
-        app.ui.opendata.error = None;
-        app.ui.opendata.info = None;
-        search(app);
+    let st = &mut app.ui.opendata;
+    let place = Portal::new(Some(st.portal), None).is_ok_and(|p| p.needs_place());
+    // A Socrata site among the US portals is searched by words only.
+    let needs = {
+        let p = params(st);
+        Portal::new(p["portal"].as_str(), p["url"].as_str()).is_ok_and(|p| p.needs_query())
+    };
+    let hint: String = match svc {
+        Some(s) if s.id == "huggingface" => tl!("a name, or owner/name such as giswqs/geospatial").into(),
+        _ if place => tl!("words to keep to (optional)").into(),
+        Some(_) if needs => tl!("Search (this portal needs words)…").into(),
+        Some(s) => crate::i18n::fmt("Search {name}…", &[("name", tl!(s.title))]),
+        None => tl!("parks, bike lanes, flood zones…").into(),
+    };
+    ui.horizontal(|ui| {
+        let button = ui.spacing().interact_size.x + 50.0;
+        let r = ui.add(egui::TextEdit::singleline(&mut st.query).hint_text(hint).desired_width((ui.available_width() - button).max(120.0)));
+        let enter = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        let search = egui::Button::new(egui::RichText::new(tl!("Search")).color(t.on_accent)).fill(t.accent);
+        go = (ui.add_enabled(!busy, search).clicked() || enter) && !busy;
+    });
+    // ArcGIS portals: the kind of item, as chips.
+    let arcgis = matches!(params(st)["portal"].as_str(), Some("arcgis-portal" | "earthdata-gis"));
+    if arcgis {
+        ui.horizontal_wrapped(|ui| {
+            for (key, label) in CHIPS {
+                if ui.selectable_label(st.category == key, tl!(label)).clicked() && st.category != key {
+                    st.category = key;
+                    go = !busy;
+                }
+            }
+        });
     }
-    if busy || app.ui.opendata.listing.is_some() {
+    // A search by place is always where the map is.
+    if ui.add_enabled(!place, egui::Checkbox::new(&mut st.here, tl!("Limit to map view"))).changed() {
+        go = !busy;
+    }
+    if place {
+        st.here = true;
+    }
+    if go {
+        st.error = None;
+        st.info = None;
+        search(app, false);
+    }
+    let st = &app.ui.opendata;
+    if busy || st.listing.is_some() {
         ui.horizontal(|ui| {
             ui.spinner();
-            ui.label(if busy { tl!("Searching…") } else { tl!("Listing files…") });
+            ui.label(if busy { tl!("Searching…") } else { tl!("Listing…") });
         });
     }
-    let t = crate::theme::Tokens::get(ui.ctx());
-    if let Some(e) = &app.ui.opendata.error {
+    if let Some(e) = &st.error {
         ui.label(egui::RichText::new(e).color(t.red));
     }
-    if let Some(i) = &app.ui.opendata.info {
-        ui.label(egui::RichText::new(i).weak());
+    if let Some(i) = &st.info {
+        ui.label(egui::RichText::new(i).color(t.text_dim));
     }
-    // A resource clicked: its address, how it is used, and the dataset's title.
-    let mut picked = None;
-    let mut browse = None;
-    let listing = app.ui.opendata.listing.is_some();
-    // The pane scrolls the list.
-    ui.vertical(|ui| {
-        for (i, d) in app.ui.opendata.found.iter().enumerate() {
-            ui.push_id(i, |ui| {
-                ui.label(egui::RichText::new(&d.title).strong());
-                if !d.organization.is_empty() && d.organization != d.title {
-                    ui.label(egui::RichText::new(&d.organization).small());
+    let listing = st.listing.is_some();
+    let mut act = None;
+    let mut wanted = Vec::new();
+    for (i, d) in st.found.iter().enumerate() {
+        let thumb = d.thumbnail.as_ref().and_then(|u| match st.thumbs.get(u) {
+            Some(Thumb::Ready(tex)) => Some(tex.clone()),
+            None => {
+                wanted.push(u.clone());
+                None
+            }
+            _ => None,
+        });
+        ui.push_id(i, |ui| {
+            if let Some(a) = card(ui, &t, d, thumb, st.open.contains(&i), i, busy || listing) {
+                act = Some(a);
+            }
+        });
+    }
+    let more = st.next.is_some() && !busy;
+    if more && ui.button(tl!("Load more")).clicked() {
+        search(app, true);
+    }
+    // Pictures of the results shown, fetched once each.
+    let st = &mut app.ui.opendata;
+    for u in wanted {
+        if st.thumbs.len() >= MAX_THUMBS {
+            break;
+        }
+        let slot = fetch(&u);
+        st.thumbs.insert(u, Thumb::Loading(slot));
+    }
+    match act {
+        Some(Act::Details(i)) => {
+            if !st.open.remove(&i) {
+                st.open.insert(i);
+            }
+        }
+        Some(Act::Zoom(b)) => {
+            if let Err(e) = app.run("map.zoomToExtent", json!({"extent": b})) {
+                app.ui.opendata.error = Some(e);
+            }
+        }
+        Some(Act::List(i)) => {
+            app.ui.opendata.error = None;
+            list_files(app, i);
+        }
+        Some(Act::Add(url, using, title)) => {
+            app.ui.opendata.error = None;
+            let r = match using {
+                Use::File => app.run("ui.addUrl", json!({"url": url, "name": title})).map(|_| ()),
+                // A service: Add From Service, connected, to pick its layer.
+                Use::Service { kind, .. } => app
+                    .run("ui.dialog", json!({"name": "addService"}))
+                    .and_then(|_| app.run("ui.addService", json!({"url": url, "type": kind})))
+                    .map(|_| ()),
+            };
+            if let Err(e) = r {
+                app.ui.opendata.error = Some(e);
+            }
+        }
+        None => {}
+    }
+}
+
+/// A result's card: its picture, title, what it is, who made it and when, and its actions
+/// (Details, Portal, Zoom, Add), its details below when shown.
+fn card(
+    ui: &mut egui::Ui,
+    t: &crate::theme::Tokens,
+    d: &Dataset,
+    thumb: Option<egui::TextureHandle>,
+    open: bool,
+    i: usize,
+    busy: bool,
+) -> Option<Act> {
+    let mut act = None;
+    egui::Frame::NONE.fill(t.input).stroke(egui::Stroke::new(1.0, t.border)).corner_radius(6).inner_margin(egui::Margin::same(8)).show(
+        ui,
+        |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal_top(|ui| {
+                if let Some(tex) = &thumb {
+                    let size = tex.size_vec2();
+                    let h = 64.0;
+                    let w = (size.x / size.y.max(1.0) * h).clamp(48.0, 96.0);
+                    ui.add(egui::Image::new(tex).fit_to_exact_size(vec2(w, h)).corner_radius(4));
                 }
-                if !d.description.is_empty() {
-                    ui.label(egui::RichText::new(&d.description).small().weak());
-                }
-                ui.horizontal_wrapped(|ui| {
-                    if d.listing.is_some() && ui.add_enabled(!busy && !listing, egui::Button::new(tl!("Browse Files")).small()).clicked() {
-                        browse = Some(i);
+                ui.vertical(|ui| {
+                    ui.add(egui::Label::new(egui::RichText::new(&d.title).strong()).wrap());
+                    let meta: Vec<&str> =
+                        [d.kind.as_str(), d.organization.as_str(), d.date.as_str()].into_iter().filter(|s| !s.is_empty()).collect();
+                    if !meta.is_empty() {
+                        ui.add(egui::Label::new(egui::RichText::new(meta.join(" · ")).small().color(t.text_dim)).wrap());
                     }
-                    for r in &d.resources {
-                        let label = crate::i18n::fmt("Add {format}", &[("format", &r.format)]);
-                        if ui.add_enabled(!busy, egui::Button::new(label).small()).on_hover_text(&r.url).clicked() {
-                            // A file of a dataset is named after the file.
-                            let name = if d.listing.is_none() && d.resources.len() > 1 && r.format.contains('.') {
-                                r.format.rsplit('/').next().unwrap_or(&r.format).to_string()
-                            } else {
-                                d.title.clone()
-                            };
-                            picked = Some((r.url.clone(), r.using.clone(), name));
+                    ui.horizontal_wrapped(|ui| {
+                        if (!d.description.is_empty() || !d.id.is_empty())
+                            && ui.add(egui::Button::new(tl!("Details")).selected(open)).clicked()
+                        {
+                            act = Some(Act::Details(i));
                         }
-                    }
-                    if let Some(page) = &d.page {
-                        ui.hyperlink_to(tl!("Page"), page);
-                    }
+                        if let Some(page) = &d.page
+                            && ui.button(tl!("Portal")).on_hover_text(page).clicked()
+                        {
+                            ui.ctx().open_url(egui::OpenUrl::new_tab(page));
+                        }
+                        if let Some(b) = d.bbox
+                            && ui.button(tl!("Zoom")).clicked()
+                        {
+                            act = Some(Act::Zoom(b));
+                        }
+                        if d.listing.is_some() {
+                            if ui.add_enabled(!busy, egui::Button::new(tl!("Add"))).on_hover_text(tl!("List what it holds")).clicked() {
+                                act = Some(Act::List(i));
+                            }
+                        } else if let [r] = d.resources.as_slice() {
+                            if ui
+                                .add_enabled(!busy, egui::Button::new(tl!("Add")))
+                                .on_hover_text(format!("{} · {}", r.format, r.url))
+                                .clicked()
+                            {
+                                act = Some(Act::Add(r.url.clone(), r.using.clone(), d.title.clone()));
+                            }
+                        } else if !d.resources.is_empty() {
+                            ui.add_enabled_ui(!busy, |ui| {
+                                ui.menu_button(tl!("Add ▾"), |ui| {
+                                    for r in &d.resources {
+                                        if ui.button(&r.format).on_hover_text(&r.url).clicked() {
+                                            // A file of a dataset is named after the file.
+                                            let name = if r.format.contains('.') || r.format.len() > 12 {
+                                                r.format.rsplit('/').next().unwrap_or(&r.format).to_string()
+                                            } else {
+                                                d.title.clone()
+                                            };
+                                            act = Some(Act::Add(r.url.clone(), r.using.clone(), name));
+                                            ui.close();
+                                        }
+                                    }
+                                });
+                            });
+                        }
+                    });
                 });
-                ui.separator();
             });
-        }
-    });
-    if let Some(i) = browse {
-        app.ui.opendata.error = None;
-        list_files(app, i);
-    }
-    if let Some((url, using, title)) = picked {
-        app.ui.opendata.error = None;
-        let r = match using {
-            Use::File => app.run("ui.addUrl", json!({"url": url, "name": title})).map(|_| ()),
-            // A service: Add From Service, connected, to pick its layer.
-            Use::Service { kind, .. } => app
-                .run("ui.dialog", json!({"name": "addService"}))
-                .and_then(|_| app.run("ui.addService", json!({"url": url, "type": kind})))
-                .map(|_| ()),
-        };
-        if let Err(e) = r {
-            app.ui.opendata.error = Some(e);
-        }
-    }
+            if open {
+                if !d.description.is_empty() {
+                    ui.add(egui::Label::new(egui::RichText::new(&d.description).small()).wrap());
+                }
+                if !d.id.is_empty() {
+                    ui.label(egui::RichText::new(crate::i18n::fmt("Id: {id}", &[("id", &d.id)])).small().color(t.text_dim));
+                }
+                if let Some(b) = d.bbox {
+                    let extent = format!("{:.4}, {:.4}, {:.4}, {:.4}", b[0], b[1], b[2], b[3]);
+                    ui.label(egui::RichText::new(crate::i18n::fmt("Extent: {extent}", &[("extent", &extent)])).small().color(t.text_dim));
+                }
+            }
+        },
+    );
+    ui.add_space(2.0);
+    act
 }
 
 /// The US portal picker: a set (department or state), then its portal.

@@ -19,10 +19,10 @@ pub fn commands() -> Vec<C> {
         ),
         C::new("boundaries.countries", "List geoBoundaries Countries", "Home › Add › Web Data", boundaries_countries).view(),
         C::new("portal.search", "Search Open Data", "Home › Add › Web Data", portal_search).view().params(
-            r#"{"query"?: text (needed by ckan, socrata, arcgis-hub and huggingface), "portal"?: "ckan" (data.gov's catalogue, the default, or any CKAN site) | "socrata" | "arcgis-hub" | "arcgis-portal" (ArcGIS Online, or the portal at url) | "earthdata-gis" (NASA's) | "openaerialmap" | "usgs-dem" (3DEP elevation models) | "ign-lidar" (IGN's LiDAR HD tiles, France) | "geolens" | "huggingface" (a dataset's files: portal.files) | "ocean-data", "url"?: "the portal: a CKAN site (https://open.canada.ca/data), a Socrata site (data.cityofnewyork.us), an ArcGIS Hub site, an ArcGIS portal, a GeoLens server", "org"?: "an ArcGIS organisation's id: its public items only", "dataset"?: "usgs-dem's elevation model: 1 meter, 1/9 arc-second (about 3 m), 1/3 arc-second (about 10 m, the default), 1 arc-second (about 30 m), Alaska 5 meter", "bbox"?: [west, south, east, north] | "view", "view"?: bool (true: where the map is; openaerialmap, usgs-dem and ign-lidar search where the map is unless given a bbox), "limit"?: 1–50 (20)}"#,
+            r#"{"query"?: text (needed by ckan, socrata, arcgis-hub and huggingface), "portal"?: "ckan" (data.gov's catalogue, the default, or any CKAN site) | "socrata" | "arcgis-hub" | "arcgis-portal" (ArcGIS Online, or the portal at url) | "earthdata-gis" (NASA's) | "openaerialmap" | "usgs-dem" (3DEP elevation models) | "ign-lidar" (IGN's LiDAR HD tiles, France) | "geolens" | "huggingface" (a dataset's files: portal.files) | "ocean-data", "url"?: "the portal: a CKAN site (https://open.canada.ca/data), a Socrata site (data.cityofnewyork.us), an ArcGIS Hub site, an ArcGIS portal, a GeoLens server", "org"?: "an ArcGIS organisation's id: its public items only", "type"?: "an ArcGIS portal's kind of item: all (the default), imagery, maps, features or webmaps", "dataset"?: "usgs-dem's elevation model: 1 meter, 1/9 arc-second (about 3 m), 1/3 arc-second (about 10 m, the default), 1 arc-second (about 30 m), Alaska 5 meter", "bbox"?: [west, south, east, north] | "view", "view"?: bool (true: where the map is; openaerialmap, usgs-dem and ign-lidar search where the map is unless given a bbox), "limit"?: 1–50 (20)}"#,
         ),
         C::new("portal.files", "List a Dataset's Files", "Home › Add › Web Data", portal_files).view().params(
-            r#"{"dataset": "a Hugging Face dataset, owner/name (portal.search lists them)", "portal"?: "huggingface" (the default)}"#,
+            r#"{"dataset": "a Hugging Face dataset, owner/name, or an ArcGIS web map's item id (portal.search lists them)", "portal"?: "huggingface" (the default) | "arcgis-portal" | "earthdata-gis", "url"?: "the ArcGIS portal"}"#,
         ),
         C::new("portal.add", "Add Open Data", "Home › Add › Web Data", portal_add).params(
             r#"{"url": "a resource's address, as portal.search lists it", "use"?: "file" (read by address, the default) | "wms" | "wfs" | "arcgis" (a service), "layer"?: "a service's layer (default: its first)", "name"?: text, "portal"?: "the portal's address the resource came from (an address it gives may not reach into the local network)"}"#,
@@ -118,7 +118,8 @@ fn boundaries_countries(_s: &mut Session, _p: &Value) -> CmdResult {
 
 /// The portal and search a command names.
 pub fn portal_query(s: &Session, p: &Value) -> Result<(Portal, String, Option<[f64; 4]>, usize), String> {
-    let portal = Portal::new(ps(p, "portal"), ps(p, "url"))?.with_filter(ps(p, "org").or_else(|| ps(p, "dataset")))?;
+    let portal =
+        Portal::new(ps(p, "portal"), ps(p, "url"))?.with_filter(ps(p, "org").or_else(|| ps(p, "dataset")))?.with_category(ps(p, "type"))?;
     let query = ps(p, "query").map(str::trim).unwrap_or("").to_string();
     if query.is_empty() && portal.needs_query() {
         return Err("query is required (such as parks)".into());
@@ -141,9 +142,9 @@ pub fn dataset_json(d: &portal::Dataset) -> Value {
             Use::Service { kind, layer } => json!({"format": r.format, "url": r.url, "use": kind, "layer": layer}),
         })
         .collect();
-    let mut v = json!({"id": d.id, "title": d.title, "description": d.description, "organization": d.organization, "page": d.page, "bbox": d.bbox, "resources": resources});
+    let mut v = json!({"id": d.id, "title": d.title, "kind": d.kind, "date": d.date, "description": d.description, "organization": d.organization, "page": d.page, "thumbnail": d.thumbnail, "bbox": d.bbox, "resources": resources});
     if d.listing.is_some() {
-        v["files"] = json!("portal.files lists them");
+        v["files"] = json!("portal.files lists them (a web map's layers, a Hugging Face dataset's files)");
     }
     v
 }
@@ -157,16 +158,23 @@ fn portal_search(s: &mut Session, p: &Value) -> CmdResult {
 
 /// The listing address of a dataset a command names (Hugging Face's `owner/name`).
 pub fn files_query(p: &Value) -> Result<(Portal, String), String> {
-    let portal = Portal::new(Some(ps(p, "portal").unwrap_or("huggingface")), None)?;
-    let name = ps(p, "dataset").map(str::trim).filter(|d| !d.is_empty()).ok_or("dataset is required (owner/name)")?;
-    let url = portal.listing_of(name).ok_or_else(|| format!("'{name}': a Hugging Face dataset is owner/name"))?;
+    let portal = Portal::new(Some(ps(p, "portal").unwrap_or("huggingface")), ps(p, "url"))?;
+    let name = ps(p, "dataset").map(str::trim).filter(|d| !d.is_empty()).ok_or("dataset is required (owner/name, or a web map's id)")?;
+    let url =
+        portal.listing_of(name).ok_or_else(|| format!("'{name}': a Hugging Face dataset is owner/name, an ArcGIS web map its item id"))?;
     Ok((portal, url))
 }
 
 fn portal_files(_s: &mut Session, p: &Value) -> CmdResult {
     let (portal, url) = files_query(p)?;
     let files = portal.parse_listing(&url, &fetch(&url)?)?;
-    let list: Vec<Value> = files.iter().map(|r| json!({"path": r.format, "url": r.url})).collect();
+    let list: Vec<Value> = files
+        .iter()
+        .map(|r| match &r.using {
+            Use::File => json!({"path": r.format, "url": r.url, "use": "file"}),
+            Use::Service { kind, layer } => json!({"title": r.format, "url": r.url, "use": kind, "layer": layer}),
+        })
+        .collect();
     Ok(json!({"count": list.len(), "files": list}))
 }
 
