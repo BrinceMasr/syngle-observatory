@@ -1,0 +1,1062 @@
+{
+ "measuredAt": "2026-10-19T11:44:09.850Z",
+ "cold": [
+  {
+   "tag": "fix-rtx-webgpu-parquet",
+   "runs": 3,
+   "fromSpawnMs": [
+    927,
+    907,
+    888
+   ],
+   "medianMs": 907,
+   "firstDataFeatures": [
+    30000,
+    30000,
+    30000
+   ],
+   "firstDataColourHits": [
+    157687,
+    157687,
+    157687
+   ],
+   "backend": "webgpu",
+   "appCanvasContext": "not webgl2 (WebGPU, or another context)"
+  },
+  {
+   "tag": "fix-uhd-webgpu-parquet",
+   "runs": 3,
+   "fromSpawnMs": [
+    930,
+    922,
+    830
+   ],
+   "medianMs": 922,
+   "firstDataFeatures": [
+    30000,
+    30000,
+    30000
+   ],
+   "firstDataColourHits": [
+    157688,
+    157688,
+    157688
+   ],
+   "backend": "webgpu",
+   "appCanvasContext": "not webgl2 (WebGPU, or another context)"
+  },
+  {
+   "tag": "fix-rtx-webgpu-fgb",
+   "runs": 3,
+   "fromSpawnMs": [
+    1693,
+    1724,
+    1765
+   ],
+   "medianMs": 1724,
+   "firstDataFeatures": [
+    25155,
+    25155,
+    25155
+   ],
+   "firstDataColourHits": [
+    22848,
+    22848,
+    22848
+   ],
+   "backend": "webgpu",
+   "appCanvasContext": "not webgl2 (WebGPU, or another context)"
+  },
+  {
+   "tag": "fix-uhd-webgpu-fgb",
+   "runs": 3,
+   "fromSpawnMs": [
+    2179,
+    2313,
+    2196
+   ],
+   "medianMs": 2196,
+   "firstDataFeatures": [
+    25155,
+    25155,
+    25155
+   ],
+   "firstDataColourHits": [
+    22849,
+    22849,
+    22849
+   ],
+   "backend": "webgpu",
+   "appCanvasContext": "not webgl2 (WebGPU, or another context)"
+  },
+  {
+   "tag": "fix-rtx-webgl2-fgb",
+   "runs": 3,
+   "fromSpawnMs": [
+    1732,
+    1740,
+    1778
+   ],
+   "medianMs": 1740,
+   "firstDataFeatures": [
+    25155,
+    25155,
+    25155
+   ],
+   "firstDataColourHits": [
+    22848,
+    22848,
+    22848
+   ],
+   "backend": "webgl2",
+   "appCanvasContext": "webgl2"
+  },
+  {
+   "tag": "fix-uhd-webgl2-fgb",
+   "runs": 3,
+   "fromSpawnMs": [
+    2964,
+    2593,
+    2634
+   ],
+   "medianMs": 2634,
+   "firstDataFeatures": [
+    25155,
+    25155,
+    25155
+   ],
+   "firstDataColourHits": [
+    22849,
+    22849,
+    22849
+   ],
+   "backend": "webgl2",
+   "appCanvasContext": "webgl2"
+  }
+ ],
+ "pan": [
+  {
+   "run": "fix-pan-rtx-1m-draw-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 349,
+   "wallMs": 17238.6,
+   "frameMs": {
+    "n": 348,
+    "p50": 44.5,
+    "p95": 89.5,
+    "p99": 173.10000014305115,
+    "max": 1188.0999999046326
+   },
+   "renderMs": {
+    "n": 5,
+    "p50": 66.19999999999999,
+    "p95": 85.6,
+    "p99": 85.6,
+    "max": 85.6
+   },
+   "fpsFromP50": 22.5,
+   "renders": 5,
+   "fastRepaints": 339,
+   "droppedOver1p5": 128,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 2000000,
+   "fullDrawMs": [
+    71.9
+   ],
+   "painted": 31500,
+   "cameraMoved": 0.0721,
+   "memory": {
+    "rendererMb": 750,
+    "gpuProcessMb": 487,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-rtx-1m-draw-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 353,
+   "wallMs": 17538.2,
+   "frameMs": {
+    "n": 352,
+    "p50": 44.60000014305115,
+    "p95": 90.60000014305115,
+    "p99": 174.59999990463257,
+    "max": 1187.8000001907349
+   },
+   "renderMs": {
+    "n": 5,
+    "p50": 61.699999999999996,
+    "p95": 66.8,
+    "p99": 66.8,
+    "max": 66.8
+   },
+   "fpsFromP50": 22.4,
+   "renders": 5,
+   "fastRepaints": 343,
+   "droppedOver1p5": 131,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 2000000,
+   "fullDrawMs": [
+    67
+   ],
+   "painted": 31500,
+   "cameraMoved": 0.0721,
+   "memory": {
+    "rendererMb": 749,
+    "gpuProcessMb": 479,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-rtx-1m-perceived-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 876,
+   "wallMs": 17007.6,
+   "frameMs": {
+    "n": 875,
+    "p50": 16.699999809265137,
+    "p95": 17.200000047683716,
+    "p99": 260.2999999523163,
+    "max": 324.09999990463257
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 262.79999999999995,
+    "p95": 321.2,
+    "p99": 321.2,
+    "max": 321.2
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 10,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    252.6,
+    794.2
+   ],
+   "painted": 32463,
+   "cameraMoved": 0.0709,
+   "memory": {
+    "rendererMb": 489,
+    "gpuProcessMb": 196,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-rtx-1m-perceived-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 865,
+   "wallMs": 16927.6,
+   "frameMs": {
+    "n": 864,
+    "p50": 16.699999809265137,
+    "p95": 17.200000047683716,
+    "p99": 267.10000014305115,
+    "max": 332
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 265.5,
+    "p95": 329,
+    "p99": 329,
+    "max": 329
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 10,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    258.1,
+    808.8
+   ],
+   "painted": 32463,
+   "cameraMoved": 0.071,
+   "memory": {
+    "rendererMb": 487,
+    "gpuProcessMb": 195,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-rtx-30k-draw-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 12867,
+   "wallMs": 17461.5,
+   "frameMs": {
+    "n": 12866,
+    "p50": 1,
+    "p95": 2.5,
+    "p99": 3.0999999046325684,
+    "max": 137.09999990463257
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 27.599999999999998,
+    "p95": 30.900000000000002,
+    "p99": 30.900000000000002,
+    "max": 30.900000000000002
+   },
+   "fpsFromP50": 1000,
+   "renders": 18,
+   "fastRepaints": 12835,
+   "droppedOver1p5": 3447,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    11.5
+   ],
+   "painted": 62422,
+   "cameraMoved": 0.076,
+   "memory": {
+    "rendererMb": 246,
+    "gpuProcessMb": 334,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-rtx-30k-draw-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 12936,
+   "wallMs": 17358.7,
+   "frameMs": {
+    "n": 12935,
+    "p50": 1,
+    "p95": 2.5,
+    "p99": 3.1000001430511475,
+    "max": 84.39999985694885
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 27.900000000000002,
+    "p95": 32.5,
+    "p99": 32.5,
+    "max": 32.5
+   },
+   "fpsFromP50": 1000,
+   "renders": 18,
+   "fastRepaints": 12900,
+   "droppedOver1p5": 3413,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    12.4
+   ],
+   "painted": 62422,
+   "cameraMoved": 0.076,
+   "memory": {
+    "rendererMb": 247,
+    "gpuProcessMb": 346,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-rtx-30k-perceived-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 1057,
+   "wallMs": 17802.7,
+   "frameMs": {
+    "n": 1056,
+    "p50": 16.699999809265137,
+    "p95": 17.200000047683716,
+    "p99": 17.300000190734863,
+    "max": 212
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 15.4,
+    "p95": 41.300000000000004,
+    "p99": 41.300000000000004,
+    "max": 41.300000000000004
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 2,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    40.5,
+    46.6
+   ],
+   "painted": 64267,
+   "cameraMoved": 0.0758,
+   "memory": {
+    "rendererMb": 237,
+    "gpuProcessMb": 203,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-rtx-30k-perceived-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 1028,
+   "wallMs": 17318.8,
+   "frameMs": {
+    "n": 1027,
+    "p50": 16.700000047683716,
+    "p95": 17.200000047683716,
+    "p99": 17.5,
+    "max": 211.59999990463257
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 14.7,
+    "p95": 41.7,
+    "p99": 41.7,
+    "max": 41.7
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 2,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    40,
+    47.199999999999996
+   ],
+   "painted": 64267,
+   "cameraMoved": 0.0758,
+   "memory": {
+    "rendererMb": 234,
+    "gpuProcessMb": 197,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-1m-draw-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 68,
+   "wallMs": 22453.9,
+   "frameMs": {
+    "n": 67,
+    "p50": 1.7000000476837158,
+    "p95": 3.3999998569488525,
+    "p99": 22326.89999985695,
+    "max": 22326.89999985695
+   },
+   "renderMs": {
+    "n": 0,
+    "p50": null,
+    "p95": null,
+    "p99": null,
+    "max": null
+   },
+   "fpsFromP50": 588.2,
+   "renders": 0,
+   "fastRepaints": 64,
+   "droppedOver1p5": 7,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 2000000,
+   "fullDrawMs": [
+    72.7
+   ],
+   "painted": 96199,
+   "cameraMoved": 0.1258,
+   "memory": {
+    "rendererMb": 686,
+    "gpuProcessMb": 618,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-1m-draw-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 68,
+   "wallMs": 22442.9,
+   "frameMs": {
+    "n": 67,
+    "p50": 1.7000000476837158,
+    "p95": 3.700000047683716,
+    "p99": 22302.900000095367,
+    "max": 22302.900000095367
+   },
+   "renderMs": {
+    "n": 0,
+    "p50": null,
+    "p95": null,
+    "p99": null,
+    "max": null
+   },
+   "fpsFromP50": 588.2,
+   "renders": 0,
+   "fastRepaints": 63,
+   "droppedOver1p5": 10,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 2000000,
+   "fullDrawMs": [
+    74.30000000000001
+   ],
+   "painted": 96199,
+   "cameraMoved": 0.1258,
+   "memory": {
+    "rendererMb": 687,
+    "gpuProcessMb": 618,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-1m-perceived-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 783,
+   "wallMs": 17410.7,
+   "frameMs": {
+    "n": 782,
+    "p50": 16.699999809265137,
+    "p95": 17.299999952316284,
+    "p99": 290.40000009536743,
+    "max": 458.2000000476837
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 285.3,
+    "p95": 344.4,
+    "p99": 344.4,
+    "max": 344.4
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 15,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    276.6,
+    835.5
+   ],
+   "painted": 32464,
+   "cameraMoved": 0.0709,
+   "memory": {
+    "rendererMb": 487,
+    "gpuProcessMb": 235,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-1m-perceived-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 795,
+   "wallMs": 17549.7,
+   "frameMs": {
+    "n": 794,
+    "p50": 16.699999809265137,
+    "p95": 17.200000047683716,
+    "p99": 272,
+    "max": 481.09999990463257
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 269.1,
+    "p95": 326.79999999999995,
+    "p99": 326.79999999999995,
+    "max": 326.79999999999995
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 15,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    257.2,
+    798.2
+   ],
+   "painted": 32464,
+   "cameraMoved": 0.0709,
+   "memory": {
+    "rendererMb": 488,
+    "gpuProcessMb": 234,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-30k-draw-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 496,
+   "wallMs": 17326.3,
+   "frameMs": {
+    "n": 495,
+    "p50": 41,
+    "p95": 49.5,
+    "p99": 51.40000009536743,
+    "max": 707.9000000953674
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 28.2,
+    "p95": 30.900000000000002,
+    "p99": 30.900000000000002,
+    "max": 30.900000000000002
+   },
+   "fpsFromP50": 24.4,
+   "renders": 18,
+   "fastRepaints": 472,
+   "droppedOver1p5": 2,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    11.5
+   ],
+   "painted": 62423,
+   "cameraMoved": 0.0759,
+   "memory": {
+    "rendererMb": 243,
+    "gpuProcessMb": 518,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-30k-draw-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 479,
+   "wallMs": 16677.7,
+   "frameMs": {
+    "n": 478,
+    "p50": 40.799999952316284,
+    "p95": 49.200000047683716,
+    "p99": 51.200000047683716,
+    "max": 728.7000000476837
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 28.1,
+    "p95": 33.2,
+    "p99": 33.2,
+    "max": 33.2
+   },
+   "fpsFromP50": 24.5,
+   "renders": 18,
+   "fastRepaints": 455,
+   "droppedOver1p5": 2,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    11.700000000000001
+   ],
+   "painted": 63794,
+   "cameraMoved": 0.0763,
+   "memory": {
+    "rendererMb": 243,
+    "gpuProcessMb": 519,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-30k-perceived-run1",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 1039,
+   "wallMs": 17532.4,
+   "frameMs": {
+    "n": 1038,
+    "p50": 16.699999809265137,
+    "p95": 17.200000047683716,
+    "p99": 17.799999952316284,
+    "max": 203
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 15.5,
+    "p95": 41,
+    "p99": 41,
+    "max": 41
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 4,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    38.199999999999996,
+    47.9
+   ],
+   "painted": 65681,
+   "cameraMoved": 0.0759,
+   "memory": {
+    "rendererMb": 237,
+    "gpuProcessMb": 239,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix-pan-uhd-30k-perceived-run2",
+   "dir": "fix43",
+   "ok": true,
+   "renderer": "default-cpu",
+   "uncapped": false,
+   "samples": 1031,
+   "wallMs": 17355.6,
+   "frameMs": {
+    "n": 1030,
+    "p50": 16.699999809265137,
+    "p95": 17.200000047683716,
+    "p99": 17.5,
+    "max": 195.69999980926514
+   },
+   "renderMs": {
+    "n": 10,
+    "p50": 16.9,
+    "p95": 45,
+    "p99": 45,
+    "max": 45
+   },
+   "fpsFromP50": 59.9,
+   "renders": 10,
+   "fastRepaints": 0,
+   "droppedOver1p5": 2,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 0,
+   "fullDrawMs": [
+    38.1,
+    49
+   ],
+   "painted": 64268,
+   "cameraMoved": 0.0759,
+   "memory": {
+    "rendererMb": 237,
+    "gpuProcessMb": 247,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix2-pan-rtx-1m-draw-run1",
+   "dir": "fix43gpu",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 352,
+   "wallMs": 17614.8,
+   "frameMs": {
+    "n": 351,
+    "p50": 47.10000014305115,
+    "p95": 90.20000004768372,
+    "p99": 174.39999985694885,
+    "max": 1167.0999999046326
+   },
+   "renderMs": {
+    "n": 7,
+    "p50": 64.19999999999999,
+    "p95": 79.69999999999999,
+    "p99": 79.69999999999999,
+    "max": 79.69999999999999
+   },
+   "fpsFromP50": 21.2,
+   "renders": 7,
+   "fastRepaints": 339,
+   "droppedOver1p5": 132,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 2000000,
+   "fullDrawMs": [
+    70.1
+   ],
+   "painted": 30788,
+   "cameraMoved": 0.0717,
+   "memory": {
+    "rendererMb": 750,
+    "gpuProcessMb": 484,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix2-pan-rtx-1m-draw-run2",
+   "dir": "fix43gpu",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 355,
+   "wallMs": 17777.6,
+   "frameMs": {
+    "n": 354,
+    "p50": 47.200000047683716,
+    "p95": 89.5,
+    "p99": 175.20000004768372,
+    "max": 1168.7999999523163
+   },
+   "renderMs": {
+    "n": 5,
+    "p50": 63.2,
+    "p95": 76,
+    "p99": 76,
+    "max": 76
+   },
+   "fpsFromP50": 21.2,
+   "renders": 5,
+   "fastRepaints": 344,
+   "droppedOver1p5": 129,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 2000000,
+   "fullDrawMs": [
+    70
+   ],
+   "painted": 32026,
+   "cameraMoved": 0.0724,
+   "memory": {
+    "rendererMb": 751,
+    "gpuProcessMb": 482,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix2-pan-rtx-30k-draw-run1",
+   "dir": "fix43gpu",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 13085,
+   "wallMs": 17124.8,
+   "frameMs": {
+    "n": 13084,
+    "p50": 1,
+    "p95": 2.4000000953674316,
+    "p99": 3.3999998569488525,
+    "max": 36.59999990463257
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 27.599999999999998,
+    "p95": 29.9,
+    "p99": 29.9,
+    "max": 29.9
+   },
+   "fpsFromP50": 1000,
+   "renders": 18,
+   "fastRepaints": 13055,
+   "droppedOver1p5": 3309,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    11.799999999999999
+   ],
+   "painted": 62422,
+   "cameraMoved": 0.076,
+   "memory": {
+    "rendererMb": 246,
+    "gpuProcessMb": 327,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix2-pan-rtx-30k-draw-run2",
+   "dir": "fix43gpu",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 12823,
+   "wallMs": 17353.6,
+   "frameMs": {
+    "n": 12822,
+    "p50": 1,
+    "p95": 2.5,
+    "p99": 3.5999999046325684,
+    "max": 57.10000014305115
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 28.2,
+    "p95": 30.900000000000002,
+    "p99": 30.900000000000002,
+    "max": 30.900000000000002
+   },
+   "fpsFromP50": 1000,
+   "renders": 18,
+   "fastRepaints": 12785,
+   "droppedOver1p5": 3293,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    11.9
+   ],
+   "painted": 62422,
+   "cameraMoved": 0.076,
+   "memory": {
+    "rendererMb": 249,
+    "gpuProcessMb": 328,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix2-pan-uhd-1m-draw-run1",
+   "dir": "fix43gpu",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 68,
+   "wallMs": 22456,
+   "frameMs": {
+    "n": 67,
+    "p50": 1.6999998092651367,
+    "p95": 4.400000095367432,
+    "p99": 22319.700000047684,
+    "max": 22319.700000047684
+   },
+   "renderMs": {
+    "n": 0,
+    "p50": null,
+    "p95": null,
+    "p99": null,
+    "max": null
+   },
+   "fpsFromP50": 588.2,
+   "renders": 0,
+   "fastRepaints": 63,
+   "droppedOver1p5": 6,
+   "featuresHeld": 1000000,
+   "gpuPointInstances": 2000000,
+   "fullDrawMs": [
+    70.8
+   ],
+   "painted": 96200,
+   "cameraMoved": 0.126,
+   "memory": {
+    "rendererMb": 684,
+    "gpuProcessMb": 617,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix2-pan-uhd-30k-draw-run1",
+   "dir": "fix43gpu",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 502,
+   "wallMs": 17585.2,
+   "frameMs": {
+    "n": 501,
+    "p50": 41.39999985694885,
+    "p95": 49.40000009536743,
+    "p99": 50.59999990463257,
+    "max": 662.5
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 28.1,
+    "p95": 29.9,
+    "p99": 29.9,
+    "max": 29.9
+   },
+   "fpsFromP50": 24.1,
+   "renders": 18,
+   "fastRepaints": 478,
+   "droppedOver1p5": 2,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    12.9
+   ],
+   "painted": 62423,
+   "cameraMoved": 0.0759,
+   "memory": {
+    "rendererMb": 243,
+    "gpuProcessMb": 526,
+    "engineMb": 9
+   }
+  },
+  {
+   "run": "fix2-pan-uhd-30k-draw-run2",
+   "dir": "fix43gpu",
+   "ok": true,
+   "renderer": "gpu-map",
+   "uncapped": true,
+   "samples": 505,
+   "wallMs": 17616.6,
+   "frameMs": {
+    "n": 504,
+    "p50": 41.09999990463257,
+    "p95": 49.299999952316284,
+    "p99": 50.5,
+    "max": 694
+   },
+   "renderMs": {
+    "n": 18,
+    "p50": 27.7,
+    "p95": 32.599999999999994,
+    "p99": 32.599999999999994,
+    "max": 32.599999999999994
+   },
+   "fpsFromP50": 24.3,
+   "renders": 18,
+   "fastRepaints": 481,
+   "droppedOver1p5": 1,
+   "featuresHeld": 30000,
+   "gpuPointInstances": 60000,
+   "fullDrawMs": [
+    12.7
+   ],
+   "painted": 63794,
+   "cameraMoved": 0.0762,
+   "memory": {
+    "rendererMb": 245,
+    "gpuProcessMb": 528,
+    "engineMb": 9
+   }
+  }
+ ],
+ "failedBatch": [
+  {
+   "run": "stock-uhd-fgb-cold-run1.json",
+   "ok": false,
+   "error": "the view never posted ready"
+  },
+  {
+   "run": "stock-uhd-fgb-cold-run2.json",
+   "ok": false,
+   "error": "the view never posted ready"
+  },
+  {
+   "run": "stock-uhd-fgb-cold-run3.json",
+   "ok": false,
+   "error": "the view never posted ready"
+  }
+ ],
+ "note": "Cold open: shipped build (dist/web-stock, the 30k remote view window), gate = the view's first real render after the project arrived, with features in the layer. Pan: the view's own per-frame samples (frameMs = the view's frame cadence; renderMs = the app's own render work on frames that rebuilt the map; featuresHeld and gpuPointInstances from the same samples)."
+}
