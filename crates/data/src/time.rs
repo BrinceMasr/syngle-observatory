@@ -359,9 +359,9 @@ pub fn parse_input(v: &serde_json::Value) -> Option<f64> {
     let t = match v {
         serde_json::Value::Number(n) => {
             let x = n.as_f64()?;
-            // A whole number up to 9999 is a year, eight digits a compact date (20150301);
+            // A whole number from 1000 to 9999 is a year, eight digits a compact date (20150301);
             // anything else is milliseconds since 1970.
-            if x.fract() == 0.0 && x.abs() <= 9999.0 {
+            if x.fract() == 0.0 && (1000.0..=9999.0).contains(&x) {
                 Civil::date(x as i64, 1, 1).ms()
             } else if x.fract() == 0.0 && (10_000_101.0..=99_991_231.0).contains(&x) {
                 parse_text(&format!("{:04}-{:02}-{:02}", (x / 1e4) as i64, (x / 100.0) as i64 % 100, x as i64 % 100))?
@@ -530,6 +530,8 @@ mod tests {
         assert_eq!(parse_input(&serde_json::json!(1_425_168_000_000_i64)), Some(d("2015-03-01")));
         assert_eq!(parse_input(&serde_json::json!(1e300)), None);
         assert_eq!(parse_input(&serde_json::json!("20150301")), Some(d("2015-03-01")));
+        assert_eq!(parse_input(&serde_json::json!(0)), Some(0.0));
+        assert_eq!(parse_input(&serde_json::json!(500)), Some(500.0));
         assert_eq!(parse_input(&serde_json::json!(20_150_301)), Some(d("2015-03-01")));
         assert_eq!(parse_input(&serde_json::json!(20_151_301)), None);
         assert_eq!(parse_input(&serde_json::json!([1])), None);
