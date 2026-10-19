@@ -48,7 +48,9 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
         app.ui.right_open.push(right);
     }
     if let Some(right) = app.ui.right {
-        egui::Panel::right("right_pane").resizable(true).default_size(320.0).size_range(260.0..=560.0).frame(frame).show(ui, |ui| {
+        // The Web Data pane's searches and lists want room: it keeps its own width.
+        let (id, width) = if right == RightPane::WebData { ("right_pane_web", 440.0) } else { ("right_pane", 320.0) };
+        egui::Panel::right(id).resizable(true).default_size(width).size_range(260.0..=640.0).frame(frame).show(ui, |ui| {
             // The pane is as wide as the user made it. Content wider than that is clipped, never
             // reported to the panel: egui would keep the panel's edge where the content ends, off
             // the window, and give the map the room it no longer covers (#307).
@@ -107,6 +109,8 @@ fn right_title(pane: RightPane) -> (&'static str, &'static str) {
         RightPane::Directions => ("Directions", "ui.pane.directions"),
         RightPane::Bookmarks => ("Bookmarks", "ui.pane.bookmarks"),
         RightPane::Format => ("Format", "ui.pane.format"),
+        // Its tab says which service it shows (see `right_name`).
+        RightPane::WebData => ("Web Data", "ui.pane.webData"),
         // Its tab says whose panel it is (see `right_name`).
         RightPane::Plugin => ("Plugin", "ui.pane.plugin"),
     }
@@ -116,6 +120,7 @@ fn right_title(pane: RightPane) -> (&'static str, &'static str) {
 fn right_name(app: &RustGisApp, pane: RightPane) -> String {
     match pane {
         RightPane::Plugin => crate::pluginpanel::title(app),
+        RightPane::WebData => tl!(web_data_title(app)).to_string(),
         _ => tl!(right_title(pane).0).to_string(),
     }
 }
@@ -156,8 +161,46 @@ fn right_pane(app: &mut RustGisApp, ui: &mut Ui, right: RightPane, t: &Tokens) {
             RightPane::Bookmarks => crate::bookmarkpane::show(app, ui, t),
             RightPane::Format => crate::layoutview::format(app, ui, t),
             RightPane::Plugin => crate::pluginpanel::show(app, ui, t),
+            RightPane::WebData => web_data(app, ui),
         });
     });
+}
+
+/// The Web Data services shown in the Web Data pane, by the `ui.dialog` name that opens them, and
+/// their titles.
+const WEB_DATA: [(&str, &str); 6] = [
+    ("opendata", "Search Open Data"),
+    ("stac", "STAC Search"),
+    ("osm", "OpenStreetMap"),
+    ("boundaries", "Administrative Boundaries"),
+    ("overture", "Overture Maps"),
+    ("sourcecoop", "Source Cooperative"),
+];
+
+/// The Web Data service a `ui.dialog` name opens, if it is one.
+pub fn web_data_name(name: &str) -> Option<&'static str> {
+    WEB_DATA.iter().find(|(n, _)| *n == name).map(|(n, _)| *n)
+}
+
+/// The Web Data pane's title: its service's.
+fn web_data_title(app: &RustGisApp) -> &'static str {
+    match app.ui.web_data {
+        "opendata" => app.ui.opendata.title(),
+        n => WEB_DATA.iter().find(|(k, _)| *k == n).map(|(_, t)| *t).unwrap_or("Web Data"),
+    }
+}
+
+/// The Web Data pane: its service's search, choices and results.
+fn web_data(app: &mut RustGisApp, ui: &mut Ui) {
+    ui.spacing_mut().item_spacing = egui::vec2(8.0, 8.0);
+    match app.ui.web_data {
+        "stac" => crate::stacui::dialog(app, ui),
+        "osm" => crate::portalsui::osm(app, ui),
+        "boundaries" => crate::portalsui::boundaries(app, ui),
+        "overture" => crate::catalogsui::overture(app, ui),
+        "sourcecoop" => crate::catalogsui::sourcecoop(app, ui),
+        _ => crate::opendataui::dialog(app, ui),
+    }
 }
 
 /// The right side's header (#303): a tab for each pane open, in the order opened, the one in view

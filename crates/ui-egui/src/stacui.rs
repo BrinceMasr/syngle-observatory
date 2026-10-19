@@ -162,7 +162,7 @@ fn add_item_asset(app: &mut RustGisApp, item: &Item, key: Option<&str>) {
 pub fn open_link(app: &mut RustGisApp, url: &str) -> Result<(), String> {
     let url = url.trim();
     rustgis_engine::render::rustgis_tiles::address::check(url, None)?;
-    app.dialogs.open("stac", &app.session)?;
+    app.run("ui.dialog", serde_json::json!({"name": "stac"}))?;
     let slot = fetch(url);
     app.ui.stac.error = None;
     app.ui.stac.info = Some(i18n::fmt("Opening {url}…", &[("url", url)]));

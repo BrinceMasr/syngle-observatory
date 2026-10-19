@@ -19,7 +19,10 @@ pub fn commands() -> Vec<C> {
         ),
         C::new("boundaries.countries", "List geoBoundaries Countries", "Home › Add › Web Data", boundaries_countries).view(),
         C::new("portal.search", "Search Open Data", "Home › Add › Web Data", portal_search).view().params(
-            r#"{"query": text, "portal"?: "ckan" (data.gov's catalogue, the default, or any CKAN site) | "socrata" | "arcgis-hub", "url"?: "the portal: a CKAN site (https://open.canada.ca/data), a Socrata site (data.cityofnewyork.us) or an ArcGIS Hub site", "bbox"?: [west, south, east, north] | "view", "view"?: bool (true: where the map is), "limit"?: 1–50 (20)}"#,
+            r#"{"query"?: text (needed by ckan, socrata, arcgis-hub and huggingface), "portal"?: "ckan" (data.gov's catalogue, the default, or any CKAN site) | "socrata" | "arcgis-hub" | "arcgis-portal" (ArcGIS Online, or the portal at url) | "earthdata-gis" (NASA's) | "openaerialmap" | "usgs-dem" (3DEP elevation models) | "ign-lidar" (IGN's LiDAR HD tiles, France) | "geolens" | "huggingface" (a dataset's files: portal.files) | "ocean-data", "url"?: "the portal: a CKAN site (https://open.canada.ca/data), a Socrata site (data.cityofnewyork.us), an ArcGIS Hub site, an ArcGIS portal, a GeoLens server", "org"?: "an ArcGIS organisation's id: its public items only", "dataset"?: "usgs-dem's elevation model: 1 meter, 1/9 arc-second (about 3 m), 1/3 arc-second (about 10 m, the default), 1 arc-second (about 30 m), Alaska 5 meter", "bbox"?: [west, south, east, north] | "view", "view"?: bool (true: where the map is; openaerialmap, usgs-dem and ign-lidar search where the map is unless given a bbox), "limit"?: 1–50 (20)}"#,
+        ),
+        C::new("portal.files", "List a Dataset's Files", "Home › Add › Web Data", portal_files).view().params(
+            r#"{"dataset": "a Hugging Face dataset, owner/name (portal.search lists them)", "portal"?: "huggingface" (the default)}"#,
         ),
         C::new("portal.add", "Add Open Data", "Home › Add › Web Data", portal_add).params(
             r#"{"url": "a resource's address, as portal.search lists it", "use"?: "file" (read by address, the default) | "wms" | "wfs" | "arcgis" (a service), "layer"?: "a service's layer (default: its first)", "name"?: text, "portal"?: "the portal's address the resource came from (an address it gives may not reach into the local network)"}"#,
@@ -115,11 +118,15 @@ fn boundaries_countries(_s: &mut Session, _p: &Value) -> CmdResult {
 
 /// The portal and search a command names.
 pub fn portal_query(s: &Session, p: &Value) -> Result<(Portal, String, Option<[f64; 4]>, usize), String> {
-    let portal = Portal::new(ps(p, "portal"), ps(p, "url"))?;
-    let query = ps(p, "query").map(str::trim).filter(|q| !q.is_empty()).ok_or("query is required (such as parks)")?.to_string();
-    // Everywhere unless a place is asked for.
-    let place = p.get("bbox").is_some() || b(p, "view") == Some(true);
+    let portal = Portal::new(ps(p, "portal"), ps(p, "url"))?.with_filter(ps(p, "org").or_else(|| ps(p, "dataset")))?;
+    let query = ps(p, "query").map(str::trim).unwrap_or("").to_string();
+    if query.is_empty() && portal.needs_query() {
+        return Err("query is required (such as parks)".into());
+    }
+    // Everywhere unless a place is asked for (where the map is, for a search by place).
+    let place = p.get("bbox").is_some() || b(p, "view") == Some(true) || (portal.needs_place() && b(p, "view") != Some(false));
     let area = if place { Some(bbox(s, p)?) } else { None };
+    portal.check_area(area)?;
     let limit = super::f(p, "limit").map(|l| l.clamp(1.0, portal::MAX_RESULTS as f64) as usize).unwrap_or(20);
     Ok((portal, query, area, limit))
 }
@@ -134,14 +141,33 @@ pub fn dataset_json(d: &portal::Dataset) -> Value {
             Use::Service { kind, layer } => json!({"format": r.format, "url": r.url, "use": kind, "layer": layer}),
         })
         .collect();
-    json!({"id": d.id, "title": d.title, "description": d.description, "organization": d.organization, "page": d.page, "bbox": d.bbox, "resources": resources})
+    let mut v = json!({"id": d.id, "title": d.title, "description": d.description, "organization": d.organization, "page": d.page, "bbox": d.bbox, "resources": resources});
+    if d.listing.is_some() {
+        v["files"] = json!("portal.files lists them");
+    }
+    v
 }
 
 fn portal_search(s: &mut Session, p: &Value) -> CmdResult {
     let (portal, query, area, limit) = portal_query(s, p)?;
     let url = portal.search_url(&query, area, limit);
-    let found = portal.parse(&url, &fetch(&url)?, area)?;
+    let found = portal.parse(&url, &fetch(&url)?, area, &query)?;
     Ok(json!({"portal": portal.label(), "count": found.len(), "datasets": found.iter().map(dataset_json).collect::<Vec<_>>()}))
+}
+
+/// The listing address of a dataset a command names (Hugging Face's `owner/name`).
+pub fn files_query(p: &Value) -> Result<(Portal, String), String> {
+    let portal = Portal::new(Some(ps(p, "portal").unwrap_or("huggingface")), None)?;
+    let name = ps(p, "dataset").map(str::trim).filter(|d| !d.is_empty()).ok_or("dataset is required (owner/name)")?;
+    let url = portal.listing_of(name).ok_or_else(|| format!("'{name}': a Hugging Face dataset is owner/name"))?;
+    Ok((portal, url))
+}
+
+fn portal_files(_s: &mut Session, p: &Value) -> CmdResult {
+    let (portal, url) = files_query(p)?;
+    let files = portal.parse_listing(&url, &fetch(&url)?)?;
+    let list: Vec<Value> = files.iter().map(|r| json!({"path": r.format, "url": r.url})).collect();
+    Ok(json!({"count": list.len(), "files": list}))
 }
 
 /// Adds a portal's resource: a file by its address (read in place when it can be), a service's
@@ -182,13 +208,17 @@ fn portal_add(s: &mut Session, p: &Value) -> CmdResult {
     }
 }
 
-/// A service's first layer: its first with features, else its first.
+/// A service's first layer: an ArcGIS map or image service's whole map, else its first layer
+/// with features, else its first.
 fn first_layer(s: &mut Session, url: &str, kind: &str) -> Result<String, String> {
     let svc = super::service::layers(s, &json!({"url": url, "type": kind}))?;
     let layers = svc["layers"].as_array().cloned().unwrap_or_default();
+    let lower = url.trim_end_matches('/').to_ascii_lowercase();
+    let picture = kind == "arcgis" && (lower.ends_with("/mapserver") || lower.ends_with("/imageserver"));
+    let wanted = if picture { "tiles" } else { "features" };
     layers
         .iter()
-        .find(|l| l["offer"]["type"] == "features")
+        .find(|l| l["offer"]["type"] == wanted)
         .or_else(|| layers.first())
         .and_then(|l| l["name"].as_str())
         .map(str::to_string)
