@@ -649,6 +649,14 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
         if let Some(f) = &conn.failure {
             crate::failureui::show(ui, f, &t);
         }
+        // A folder or service that didn't load (no list drawn, so no Back there): Back here.
+        if conn.listing.is_none()
+            && (conn.error.is_some() || conn.failure.is_some())
+            && !app.ui.service_browse.back.is_empty()
+            && ui.button(tl!("Back")).clicked()
+        {
+            back = true;
+        }
         if let Some(v) = &conn.listing {
             let kind = v.get("kind").and_then(Value::as_str).unwrap_or("");
             let title = v.get("title").and_then(Value::as_str).unwrap_or("");
