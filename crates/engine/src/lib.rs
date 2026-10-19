@@ -697,11 +697,13 @@ impl Session {
                 // An edit may change the dates the time slider's window filters on: bound layers
                 // whose features or fields the command changed (features are shared with the
                 // snapshot until written) take the window again.
-                for m in &mut self.project.maps {
+                for (i, m) in self.project.maps.iter_mut().enumerate() {
                     let Some(window) = m.time.as_ref().map(rustgis_map::time::TimeSlider::window) else { continue };
-                    let before = snap.maps.iter().flat_map(|o| &o.layers);
+                    // Layer ids are a map's own: compared within the same map (any layer, when
+                    // maps came or went).
+                    let before = snap.maps.get(i).filter(|o| o.name == m.name).map(|o| o.layers.as_slice()).unwrap_or_default();
                     for l in m.layers.iter_mut().filter(|l| l.time.is_some()) {
-                        let same = before.clone().find(|o| o.id == l.id).is_some_and(|o| {
+                        let same = before.iter().find(|o| o.id == l.id).is_some_and(|o| {
                             o.dataset.features.shares(&l.dataset.features) && o.dataset.fields == l.dataset.fields && o.time.is_some()
                         });
                         let rustgis_map::Layer { time, dataset, .. } = l;

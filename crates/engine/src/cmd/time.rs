@@ -261,12 +261,9 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
     if steps.len() > MAX_FRAMES || steps.len() as f64 * w * h > 1.5e9 {
         return Err(format!("{} frames at {w:.0} × {h:.0} is too many; narrow from and to, or lower the size", steps.len()));
     }
-    let saved_size = s.view_size;
-    s.view_size = (w, h);
-    // The slider and the view size come back however the frames end (an error, or a panic the
-    // session catches).
+    // Each frame shows the view's extent, as Export Map does. The slider comes back however the
+    // frames end (an error, or a panic the session catches).
     let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frames(s, &steps, w, h, gif.then_some(speed))));
-    s.view_size = saved_size;
     s.map_mut().time = Some(saved);
     s.map_mut().apply_time();
     let bytes = made.map_err(|_| "exporting the time steps failed unexpectedly".to_string())??;
