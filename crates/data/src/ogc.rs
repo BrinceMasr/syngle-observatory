@@ -44,7 +44,10 @@ const MAX_TIME_VALUES: usize = 64;
 /// anything else, since it goes into tile addresses.
 pub fn checked_time(t: &str) -> Result<String, String> {
     let t = t.trim();
-    if !t.is_empty() && t.len() <= 40 && t.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b':' | b'.' | b'+')) {
+    // A date starts with a digit, so `.` and `..` (path segments, in a tile address) never pass.
+    let dated = t.as_bytes().first().is_some_and(u8::is_ascii_digit);
+    if (dated || t == "default") && t.len() <= 40 && t.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b':' | b'.' | b'+'))
+    {
         Ok(t.to_string())
     } else {
         Err(format!("'{}': a time is a date like 2024-06-01", t.chars().take(60).collect::<String>()))
@@ -1130,8 +1133,11 @@ fn arcgis(url: &str, v: &serde_json::Value) -> Result<Service, String> {
         .to_string();
     let full = v.get("fullExtent").or_else(|| v.get("extent")).and_then(arcgis_extent);
     let mut service = Service { kind: "ArcGIS".into(), title: title.clone(), ..Service::default() };
-    // A directory of services: its folders and the services RustGIS can add, each to open.
-    if (v.get("services").is_some() || v.get("folders").is_some()) && !lower.ends_with("server") {
+    // A directory of services: its folders and the services RustGIS can add, each to open. Known
+    // by its answer (services or folders, and no layers or capabilities of a service's own), not
+    // its address: a folder may be named like a service.
+    let service_answer = ["layers", "capabilities", "serviceDescription", "tileInfo"].iter().any(|k| v.get(k).is_some());
+    if (v.get("services").is_some() || v.get("folders").is_some()) && !service_answer {
         return Ok(arcgis_directory(&b, v));
     }
     // Feature layers (FeatureServer, and a MapServer's layers): queried as GeoJSON, so only from a
@@ -2155,7 +2161,8 @@ mod tests {
         // A default that isn't a time never reaches an address: the service's own `default`.
         assert_eq!(s.layers[2].time.as_ref().unwrap().default, "default");
         assert!(checked_time("2024-06-01").is_ok() && checked_time("2024-06-01T10:00:00Z").is_ok());
-        for bad in ["", "../x", "2024-06-01/../..", "a b", "x?y=1", &"9".repeat(50)] {
+        assert!(checked_time("default").is_ok());
+        for bad in ["", "..", ".", "../x", "2024-06-01/../..", "a b", "x?y=1", "latest", &"9".repeat(50)] {
             assert!(checked_time(bad).is_err(), "{bad}");
         }
     }

@@ -92,6 +92,12 @@ fn listing(app: &mut RustGisApp, url: &str, kind: &'static str) -> Look {
     }
 }
 
+/// Forgets the services' documents that failed, so they're asked for again: a panel reopened
+/// retries what a passing network error (or a busy server) refused.
+pub fn forget_failed(app: &mut RustGisApp) {
+    app.ui.web_services.docs.retain(|_, d| !matches!(d, Doc::Failed(_)));
+}
+
 /// Adds a service's layer now, or once its document is read.
 fn add_layer(app: &mut RustGisApp, url: &str, kind: &'static str, layer: &str, name: &str) {
     app.ui.web_services.adding.push((url.to_string(), kind, layer.to_string(), name.to_string()));
@@ -177,7 +183,7 @@ fn card<R>(ui: &mut egui::Ui, title: &str, meta: &str, buttons: impl FnOnce(&mut
 }
 
 /// The panel's last result and what's loading.
-fn status(app: &RustGisApp, ui: &mut egui::Ui, look: Option<&Look>) {
+fn status(app: &mut RustGisApp, ui: &mut egui::Ui, look: Option<&Look>) {
     let t = crate::theme::Tokens::get(ui.ctx());
     match look {
         Some(Look::Loading) => {
@@ -188,6 +194,10 @@ fn status(app: &RustGisApp, ui: &mut egui::Ui, look: Option<&Look>) {
         }
         Some(Look::Failed(e)) => {
             ui.colored_label(t.red, e);
+            // A busy server's refusal is often passing.
+            if ui.button(tl!("Retry")).clicked() {
+                forget_failed(app);
+            }
         }
         _ => {}
     }
@@ -345,6 +355,9 @@ pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
                         }
                         Look::Failed(e) => {
                             ui.label(RichText::new(e).small().weak());
+                            if ui.small_button(tl!("Retry")).clicked() {
+                                app.ui.web_services.docs.remove(folder.as_str());
+                            }
                         }
                     }
                 });
@@ -420,6 +433,9 @@ fn service_tree(app: &mut RustGisApp, ui: &mut egui::Ui, s: &Value) -> Option<(S
             }
             Look::Failed(e) => {
                 ui.label(RichText::new(e).small().weak());
+                if ui.small_button(tl!("Retry")).clicked() {
+                    app.ui.web_services.docs.remove(url.as_str());
+                }
             }
         });
     add

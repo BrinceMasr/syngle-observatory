@@ -311,12 +311,14 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
         .or_else(|| candidates().find(|(l, _)| l.name.eq_ignore_ascii_case(want) || l.title.eq_ignore_ascii_case(want)))
         .ok_or_else(|| format!("{url}: no layer '{want}' (service.layers lists them)"))?;
     // A time-enabled layer at the time asked for (its default otherwise), named with it.
-    let time = match (&layer.time, ps(p, "time").map(str::trim).filter(|t| !t.is_empty())) {
+    let asked = ps(p, "time").map(str::trim).filter(|t| !t.is_empty());
+    let time = match (&layer.time, asked) {
         (Some(_), Some(t)) => Some(rustgis_data::ogc::checked_time(t)?),
         (Some(t), None) => Some(t.default.clone()),
-        (None, _) => None,
+        (None, Some(_)) => return Err(format!("{}: the layer has no time to pick (leave time out)", layer.title)),
+        (None, None) => None,
     };
-    let title = match (&time, ps(p, "time")) {
+    let title = match (&time, asked) {
         (Some(t), Some(_)) => format!("{} {t}", layer.title),
         _ => layer.title.clone(),
     };

@@ -2640,6 +2640,8 @@ impl RustGisApp {
                     }
                     // Natural Earth is Source Cooperative's browser locked to its product; Source
                     // Cooperative opened after it starts from the products again.
+                    // A panel reopened asks again for what failed.
+                    webdataui::forget_failed(self);
                     if which == "naturalEarth" {
                         catalogsui::natural_earth(self);
                     } else if which == "sourcecoop" && self.ui.catalogs.locked {
