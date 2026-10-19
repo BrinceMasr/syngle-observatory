@@ -100,7 +100,7 @@ pub fn fields_of_the_world(app: &mut RustGisApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     if crate::widgets::dialog_button(ui, tl!("Add"), Some(t.accent), vec2(96.0, 28.0)).clicked() {
         app.dialogs.error = None;
-        let p = json!({"year": app.dialogs.a, "layer": app.dialogs.mode, "minScore": app.dialogs.size});
+        let p = json!({"year": app.dialogs.a, "draw": app.dialogs.mode, "minScore": app.dialogs.size});
         match app.run("fieldsOfTheWorld.add", p) {
             Ok(v) => {
                 let name = v.get("name").and_then(Value::as_str).unwrap_or("");

@@ -299,7 +299,7 @@ year at a time (2017 to 2025; 2nd Edition, CC BY 4.0). Each year is a PMTiles ar
 Cooperative read in place. Fields are drawn from zoom 9, filled and outlined by the model's score
 (0 to 100: red below 45, through orange and yellow, to green from 80); zoomed out, field density
 cells are drawn instead, coloured by the share of each cell covered by fields. **Lowest score**
-hides the fields scoring below it. `fieldsOfTheWorld.add` does the same (`"year"`, `"layer"`:
+hides the fields scoring below it. `fieldsOfTheWorld.add` does the same (`"year"`, `"draw"`:
 `both`, `fields` or `density`, `"minScore"`):
 
 ```sh

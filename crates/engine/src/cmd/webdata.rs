@@ -19,7 +19,7 @@ pub fn commands() -> Vec<C> {
             r#"{"service": "a service's id or title (nationalMap.services lists them), e.g. \"basemap/USGSTopo\"", "name"?: text}"#,
         ),
         C::new("fieldsOfTheWorld.add", "Add Fields of the World", "Home › Add › Web Data", fields_add).params(
-            r#"{"year"?: 2017–2025 (2025), "layer"?: "both"|"fields"|"density" (both: field density zoomed out, fields from zoom 9), "minScore"?: 0–100 (fields scoring below are hidden; 0)}"#,
+            r#"{"year"?: 2017–2025 (2025), "draw"?: "both"|"fields"|"density" (both: field density zoomed out, fields from zoom 9), "minScore"?: 0–100 (fields scoring below are hidden; 0)}"#,
         ),
     ]
 }
@@ -418,11 +418,11 @@ fn fields_add(s: &mut Session, p: &Value) -> CmdResult {
             .filter(|y| FIELDS_YEARS.contains(y))
             .ok_or_else(|| format!("year is {} to {}", FIELDS_YEARS.start(), FIELDS_YEARS.end()))?,
     };
-    let (density, fields) = match ps(p, "layer").unwrap_or("both") {
+    let (density, fields) = match ps(p, "draw").unwrap_or("both") {
         "both" => (true, true),
         "fields" => (false, true),
         "density" => (true, false),
-        other => return Err(format!("unknown layer '{other}' (both, fields or density)")),
+        other => return Err(format!("unknown draw '{other}' (both, fields or density)")),
     };
     let min_score = f(p, "minScore").unwrap_or(0.0).clamp(0.0, 100.0).round();
     let name = match (density, fields) {
