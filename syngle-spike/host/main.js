@@ -77,6 +77,8 @@ function startEngine() {
     if (!exe) return reject(new Error("--engine <path to syngle-spike-engine> is required"));
     const engineArgs = ["--root", args.root || path.resolve(__dirname, "..", ".."), "--data", args.data || path.resolve(__dirname, "..", "data")];
     if (args.port) engineArgs.push("--port", String(args.port));
+    if (args["engine-web"]) engineArgs.push("--web", String(args["engine-web"]));
+    if (args["engine-cache"]) engineArgs.push("--cache");
     if (args.preload) engineArgs.push("--preload", args.preload);
     const child = spawn(exe, engineArgs, { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
     result.engine = { exe, args: engineArgs, pid: child.pid };
@@ -200,14 +202,9 @@ async function loadProject(win, projectText) {
   const colour = layerColour(projectText);
   result.captureRect = rect;
   result.layerColour = colour;
-  // The baseline is taken once the app has painted its empty map, so a change means *data*.
-  for (let i = 0; i < 200; i++) {
-    const snap = await win.webContents.executeJavaScript("spike.snapshot()");
-    if (snap.frames && snap.frames.length > 0) break;
-    await sleep(10);
-  }
-  const baseline = await win.webContents.capturePage(rect);
-  const baselineColour = colourPixels(baseline, colour, 30);
+  // The project goes in as soon as the view is ready: any waiting before it is host overhead, not
+  // app cost. The colour count needs no baseline (it counts the layer's own colour), so the blank
+  // frame is only captured as evidence — after the send, where it costs the measurement nothing.
   const before = await win.webContents.executeJavaScript("spike.snapshot()");
   const framesBefore = before.frames ? before.frames.length : 0;
   const sent = await win.webContents.executeJavaScript(`spike.sendProject(${JSON.stringify(projectText)})`);
@@ -222,14 +219,13 @@ async function loadProject(win, projectText) {
       const count = colourPixels(shot, colour, 30);
       if (count.hits >= threshold) {
         started.firstData = Date.now();
-        detection = { attempts, colour, count, captureMs: started.firstData - sent.date, baseline: baselineColour };
+        detection = { attempts, colour, count, captureMs: started.firstData - sent.date };
         const base = path.resolve(args.out || "results/run.json").replace(/\.json$/, "");
         fs.writeFileSync(base + "-firstdata.png", shot.toPNG());
-        fs.writeFileSync(base + "-baseline.png", baseline.toPNG());
         break;
       }
       if (Date.now() - sent.date > 60000) {
-        detection = { attempts, colour, count, baseline: baselineColour, error: "no data drawn within 60 s" };
+        detection = { attempts, colour, count, error: "no data drawn within 60 s" };
         break;
       }
       await sleep(args.poll);
@@ -258,6 +254,20 @@ async function pan(win) {
   const y = Math.round(h / 2);
   const x0 = Math.round(w * 0.25);
   const x1 = Math.round(w * 0.75);
+  if (args["map-gpu"]) {
+    // The fork's GPU point renderer (View › Toggle GPU Rendering) is a `ui.*` command, so the
+    // embedding page may run it over the documented contract.
+    try {
+      result.mapGpuToggle = await win.webContents.executeJavaScript("spike.runUiCommand('ui.map.gpu')");
+      note("toggled the GPU map renderer: " + JSON.stringify(result.mapGpuToggle));
+      await sleep(500);
+    } catch (e) {
+      note("could not toggle the GPU map renderer: " + e.message);
+    }
+  }
+  // A big "read the window" lands just after the first frame: give it a moment before timing the
+  // drag, or the measurement is of the read, not of the pan.
+  await sleep(Number(args.settle || 1500));
   await win.webContents.executeJavaScript("spike.reset()");
   await sleep(200);
   const shotBefore = await win.webContents.capturePage();
@@ -277,6 +287,10 @@ async function pan(win) {
   started.panEnd = Date.now();
   await sleep(150);
   const shotAfter = await win.webContents.capturePage();
+  // How much of the frame is layer colour: the shipped build draws a 30k sample of a 1M dataset, the
+  // cap-lifted build draws all of it, and the two differ by an order of magnitude on screen.
+  const painted = colourPixels(shotAfter, result.layerColour || [224, 123, 57], 30);
+  started.panEndCaptured = Date.now();
   // The frame snapshot is taken the moment the drag stops, so the numbers are the drag's, not the
   // idle time after it.
   const snap = await win.webContents.executeJavaScript("spike.snapshot()");
@@ -317,6 +331,7 @@ async function pan(win) {
     backend: snap.backend,
     instrumentErrors: snap.errors,
     cameraMoved: bitmapDiff(shotBefore, shotAfter),
+    painted,
     projectPosts: posts,
     screenshot: Boolean(args.screenshot),
   };
@@ -379,7 +394,10 @@ app.whenReady().then(async () => {
       webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
     });
     started.windowCreated = Date.now();
-    const query = args.backend && args.backend !== "webgpu" ? `?backend=${args.backend}` : "";
+    const queryParts = [];
+    if (args.backend && args.backend !== "webgpu") queryParts.push(`backend=${args.backend}`);
+    if (args["project-mode"]) queryParts.push("project=1");
+    const query = queryParts.length ? `?${queryParts.join("&")}` : "";
     await win.loadURL(engine.base + "/host/" + query);
     started.pageLoaded = Date.now();
     const ready = await win.webContents.executeJavaScript("spike.waitReady(60000)");

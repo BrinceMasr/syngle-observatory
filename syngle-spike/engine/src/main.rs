@@ -39,6 +39,8 @@ struct Cfg {
     host: PathBuf,
     /// Where the generated datasets live.
     data: PathBuf,
+    /// Send cacheable headers for the view's hashed assets (`--cache`).
+    cache: bool,
 }
 
 /// What the gateway served, for the report: how many requests, how many bytes, how many of them
@@ -55,10 +57,14 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let opt = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
     let root = PathBuf::from(opt("--root").unwrap_or_else(|| ".".to_string()));
+    // `--cache` makes the view's content-hashed assets cacheable: the second launch reuses the
+    // fetched (and code-cached) WebAssembly instead of re-downloading 32 MB. Off by default, so the
+    // as-shipped cold-open numbers stay the pessimistic ones.
     let cfg = Arc::new(Cfg {
         web: opt("--web").map(PathBuf::from).unwrap_or_else(|| root.join("dist/web")),
         host: opt("--host").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/host/view")),
         data: opt("--data").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/data")),
+        cache: args.iter().any(|a| a == "--cache"),
     });
     let port_wanted: u16 = opt("--port").and_then(|p| p.parse().ok()).unwrap_or(0);
     let listener = match TcpListener::bind(("127.0.0.1", port_wanted)) {
@@ -72,16 +78,21 @@ fn main() {
     let serve_cfg = Arc::clone(&cfg);
     let counters = Arc::new(Counters::default());
     let serve_counters = Arc::clone(&counters);
+    // The project the view should open is also served as a document, so a host can point the view at
+    // `?project=<url>` and skip the postMessage handshake entirely.
+    let project = Arc::new(std::sync::Mutex::new(String::from("{}")));
+    let serve_project = Arc::clone(&project);
     std::thread::spawn(move || {
         for stream in listener.incoming() {
             match stream {
                 Ok(s) => {
                     let cfg = Arc::clone(&serve_cfg);
                     let counters = Arc::clone(&serve_counters);
+                    let project = Arc::clone(&serve_project);
                     // A thread a connection: the view opens several at once, and the engine's own
                     // native load keeps fetching from this same server while it runs.
                     std::thread::spawn(move || {
-                        let _ = handle(s, &cfg, &counters);
+                        let _ = handle(s, &cfg, &counters, &project);
                     });
                 }
                 Err(e) => log(&format!("accept: {e}")),
@@ -125,6 +136,11 @@ fn main() {
                 // Progress, not an answer: an id here would resolve the caller's promise early.
                 emit(&json!({"event":"opening","kind":kind,"target":target,"t":now_ms()}));
                 let out = open(&mut session, target, kind, name, zoom);
+                if let Some(text) = out.get("project").and_then(Value::as_str)
+                    && let Ok(mut shared) = project.lock()
+                {
+                    *shared = text.to_string();
+                }
                 emit(&json!({"event":"opened","id":id,"t":now_ms(),"result":out}));
             }
             "project" => {
@@ -220,7 +236,12 @@ struct Request {
     range: Option<ByteRange>,
 }
 
-fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters) -> std::io::Result<()> {
+fn handle(
+    mut stream: TcpStream,
+    cfg: &Cfg,
+    counters: &Counters,
+    project: &std::sync::Mutex<String>,
+) -> std::io::Result<()> {
     use std::sync::atomic::Ordering;
     stream.set_nodelay(true).ok();
     let mut reader = BufReader::new(stream.try_clone()?);
@@ -267,7 +288,7 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters) -> std::io::Res
     // What the APP asks for during a cold open, in order, is the evidence for the boundary: the
     // view fetches its own assets and the dataset, by range, from here.
     let t = Instant::now();
-    let (status, headers, body) = route(&req, cfg);
+    let (status, headers, body) = route(&req, cfg, project);
     let is_404 = status == 404;
     if is_404 {
         log(&format!("{} {} 404", req.method, req.target));
@@ -289,15 +310,21 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters) -> std::io::Res
 }
 
 /// Builds the whole response: (status, (head, content length), body).
-fn route(req: &Request, cfg: &Cfg) -> (u16, (String, u64), Vec<u8>) {
+fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, (String, u64), Vec<u8>) {
     let (path, forced_type) = match req.target.split('?').next().unwrap_or("/") {
         "/" | "/host/" | "/host/index.html" => ("host/index.html".to_string(), Some("text/html; charset=utf-8")),
-        "/health" => return (200, (head(200, "text/plain", 2, None), 2), b"ok".to_vec()),
-        "/spike/instrument.js" => return (200, (head(200, "text/javascript", INSTRUMENT.len() as u64, None), INSTRUMENT.len() as u64), INSTRUMENT.as_bytes().to_vec()),
+        "/health" => return (200, (head(200, "text/plain", 2, None, false), 2), b"ok".to_vec()),
+        // The project the view opens, as a document: `?project=<this>` needs no postMessage round trip.
+        "/project.json" => {
+            let text = project.lock().map(|p| p.clone()).unwrap_or_default();
+            let bytes = text.into_bytes();
+            return (200, (head(200, "application/json", bytes.len() as u64, None, false), bytes.len() as u64), bytes);
+        }
+        "/spike/instrument.js" => return (200, (head(200, "text/javascript", INSTRUMENT.len() as u64, None, false), INSTRUMENT.len() as u64), INSTRUMENT.as_bytes().to_vec()),
         other => {
             let decoded = percent_decode(other);
             if decoded.contains("..") {
-                return (404, (head(404, "text/plain", 0, None), 0), Vec::new());
+                return (404, (head(404, "text/plain", 0, None, false), 0), Vec::new());
             }
             let trimmed = decoded.trim_start_matches('/').to_string();
             let (name, ty) = match trimmed.split_once('/') {
@@ -326,7 +353,7 @@ fn route(req: &Request, cfg: &Cfg) -> (u16, (String, u64), Vec<u8>) {
         Ok(f) => f,
         Err(e) => {
             log(&format!("{}: {e}", file.display()));
-            return (404, (head(404, "text/plain", 0, None), 0), Vec::new());
+            return (404, (head(404, "text/plain", 0, None, false), 0), Vec::new());
         }
     };
     // The view's page, served with the instrument (nothing in the fork changes for the measurement)
@@ -343,8 +370,13 @@ fn route(req: &Request, cfg: &Cfg) -> (u16, (String, u64), Vec<u8>) {
             if req.target.contains("backend=webgl2") {
                 injected = injected.replace("/web/?embed", "/web/?embed&webgl");
             }
+            // `?project=1` on the host page makes the view fetch the project itself
+            // (`?project=<url>` is the fork's own flag), instead of the page posting it.
+            if req.target.contains("project=1") {
+                injected = injected.replace("/web/?embed", "/web/?embed&project=/project.json");
+            }
             let bytes = injected.into_bytes();
-            return (200, (head(200, ty, bytes.len() as u64, None), bytes.len() as u64), bytes);
+            return (200, (head(200, ty, bytes.len() as u64, None, false), bytes.len() as u64), bytes);
         }
     }
     let size = handle.metadata().map(|m| m.len()).unwrap_or(0);
@@ -357,11 +389,13 @@ fn route(req: &Request, cfg: &Cfg) -> (u16, (String, u64), Vec<u8>) {
         let body = read_slice(&mut handle, start, end);
         let n = body.len() as u64;
         let cr = format!("bytes {start}-{end}/{size}");
-        return (206, (head(206, ty, n, Some(&cr)), n), body);
+        let cacheable = cfg.cache && req.target.starts_with("/web/");
+        return (206, (head(206, ty, n, Some(&cr), cacheable), n), body);
     }
     let body = read_slice(&mut handle, 0, size.saturating_sub(1));
     let n = body.len() as u64;
-    (200, (head(200, ty, n, None), n), body)
+    let cacheable = cfg.cache && req.target.starts_with("/web/");
+    (200, (head(200, ty, n, None, cacheable), n), body)
 }
 
 fn read_slice(file: &mut std::fs::File, start: u64, end: u64) -> Vec<u8> {
@@ -384,7 +418,7 @@ fn read_slice(file: &mut std::fs::File, start: u64, end: u64) -> Vec<u8> {
     buf
 }
 
-fn head(status: u16, ty: &str, length: u64, content_range: Option<&str>) -> String {
+fn head(status: u16, ty: &str, length: u64, content_range: Option<&str>, cache: bool) -> String {
     let reason = match status {
         200 => "OK",
         206 => "Partial Content",
@@ -392,7 +426,8 @@ fn head(status: u16, ty: &str, length: u64, content_range: Option<&str>) -> Stri
         _ => "OK",
     };
     let mut h = format!(
-        "HTTP/1.1 {status} {reason}\r\nContent-Type: {ty}\r\nContent-Length: {length}\r\nAccept-Ranges: bytes\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Range, Content-Type\r\nAccess-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\nCache-Control: no-store\r\nConnection: close\r\n"
+        "HTTP/1.1 {status} {reason}\r\nContent-Type: {ty}\r\nContent-Length: {length}\r\nAccept-Ranges: bytes\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Range, Content-Type\r\nAccess-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\nCache-Control: {}\r\nConnection: close\r\n",
+        if cache { "public, max-age=31536000, immutable" } else { "no-store" }
     );
     if let Some(cr) = content_range {
         h.push_str(&format!("Content-Range: {cr}\r\n"));

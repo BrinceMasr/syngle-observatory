@@ -100,6 +100,33 @@
       });
     },
 
+    /// Runs one of the view's own commands (the `run` half of the embed contract) and resolves with
+    /// its result. Used for `ui.map.gpu`, the fork's GPU point renderer.
+    runUiCommand: function (command, params, timeoutMs) {
+      var id = "spike-" + Date.now();
+      var results = state.results;
+      frame.contentWindow.postMessage({ rustgis: "run", id: id, command: command, params: params || {} }, window.location.origin);
+      return new Promise(function (resolve, reject) {
+        var deadline = performance.now() + (timeoutMs || 30000);
+        var tick = setInterval(function () {
+          var hit = null;
+          for (var i = results.length - 1; i >= 0; i--) {
+            if (results[i].id === id) {
+              hit = results[i];
+              break;
+            }
+          }
+          if (hit) {
+            clearInterval(tick);
+            resolve(hit);
+          } else if (performance.now() > deadline) {
+            clearInterval(tick);
+            reject(new Error("no result for " + command));
+          }
+        }, 20);
+      });
+    },
+
     /// The view's own frame/draw counters (the injected instrument).
     snapshot: function () {
       try {
@@ -125,6 +152,28 @@
     /// backend the instrument saw the app use.
     info: async function () {
       var out = { href: window.location.href, ready: state.ready, posts: state.posts.length };
+      // The cold-open breakdown, from the view's own page: navigation, the WASM fetch (a resource
+      // entry with its start and end), and the first frame the app asked for. Same origin, so the
+      // parent may read the child's performance timeline directly.
+      try {
+        var w = frame.contentWindow;
+        out.timings = {
+          now: Math.round(w.performance.now()),
+          navigation: w.performance.getEntriesByType("navigation").map(function (e) {
+            return { startTime: Math.round(e.startTime), responseEnd: Math.round(e.responseEnd), domContentLoaded: Math.round(e.domContentLoadedEventEnd), loadEventEnd: Math.round(e.loadEventEnd), transferSize: e.transferSize, encodedBodySize: e.encodedBodySize };
+          }),
+          resources: w.performance.getEntriesByType("resource").map(function (e) {
+            return { name: String(e.name).split("/").pop(), startTime: Math.round(e.startTime), responseEnd: Math.round(e.responseEnd), duration: Math.round(e.duration), transferSize: e.transferSize, encodedBodySize: e.encodedBodySize, decodedBodySize: e.decodedBodySize };
+          }),
+          marks: w.performance.getEntriesByType("mark").map(function (e) {
+            return { name: e.name, startTime: Math.round(e.startTime) };
+          }),
+          firstFrame: w.__spike && w.__spike.frames.length ? Math.round(w.__spike.frames[0]) : null,
+          frameCount: w.__spike ? w.__spike.frames.length : null,
+        };
+      } catch (e) {
+        out.perfError = String(e);
+      }
       try {
         out.instrument = this.snapshot();
       } catch (e) {

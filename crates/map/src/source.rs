@@ -22,10 +22,15 @@ use serde::{Deserialize, Serialize};
 pub const STREAM_ABOVE: u64 = 100_000;
 
 /// The most features a view reads.
-pub const VIEW_LIMIT: usize = if cfg!(target_arch = "wasm32") { 100_000 } else { 250_000 };
+///
+/// Spike A (#43) build: raised from the shipped 100,000 / 250,000 so the "pan with 1M points" target
+/// can be measured with all 1,000,000 features drawn, instead of the window the shipped limits allow.
+/// This is the spike's only change to the fork's own crates; the shipped build was measured before it
+/// (branch `spike/43-engine-wasm`, the `dist/web-stock` artefact).
+pub const VIEW_LIMIT: usize = 1_000_000;
 
 /// The most features a view reads from a file by its web address (each one is fetched).
-pub const REMOTE_VIEW_LIMIT: usize = if cfg!(target_arch = "wasm32") { 30_000 } else { 60_000 };
+pub const REMOTE_VIEW_LIMIT: usize = 1_000_000;
 
 /// A streamed layer's source.
 #[derive(Clone, Default, Serialize, Deserialize)]

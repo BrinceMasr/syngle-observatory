@@ -91,6 +91,9 @@ async function runOne(index, warmup) {
   if (args["engine-open"]) argv.push("--engine-open", args["engine-open"]);
   else argv.push("--engine-open", "AUTO");
   if (args["engine-data"]) argv.push("--engine-data", String(args["engine-data"]));
+  if (args["engine-web"]) argv.push("--engine-web", String(args["engine-web"]));
+  if (args["engine-cache"]) argv.push("--engine-cache");
+  if (args["project-mode"]) argv.push("--project-mode");
   if (args["low-power"]) argv.push("--low-power");
   if (args["high-perf"]) argv.push("--high-perf");
   if (args.screenshot) argv.push("--screenshot", path.join(outdir, `${name}.png`));
