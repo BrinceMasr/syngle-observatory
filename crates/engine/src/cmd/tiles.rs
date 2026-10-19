@@ -41,6 +41,13 @@ pub const NETWORK: &[&str] = &[
     "nationalMap.add",
     "fieldsOfTheWorld.add",
     "portal.files",
+    "earthdata.collections",
+    "earthdata.granules",
+    "nldi.flowline",
+    "nldi.comid",
+    "nldi.basin",
+    "nldi.sources",
+    "nldi.navigate",
 ];
 
 pub fn commands() -> Vec<C> {
