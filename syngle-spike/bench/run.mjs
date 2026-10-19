@@ -91,15 +91,33 @@ async function runOne(index, warmup) {
   if (args["engine-open"]) argv.push("--engine-open", args["engine-open"]);
   else argv.push("--engine-open", "AUTO");
   if (args["engine-data"]) argv.push("--engine-data", String(args["engine-data"]));
-  if (args["engine-web"]) argv.push("--engine-web", String(args["engine-web"]));
+  // The engine spawns with the host's cwd, so a relative --engine-web would resolve there:
+  // give it the absolute path (this is what broke the first UHD FlatGeobuf stock batch).
+  if (args["engine-web"]) argv.push("--engine-web", path.resolve(root, String(args["engine-web"])));
   if (args["engine-cache"]) argv.push("--engine-cache");
   if (args["project-mode"]) argv.push("--project-mode");
+  if (args.uncapped) argv.push("--uncapped");
+  if (args["map-gpu"]) argv.push("--map-gpu");
+  // Always: every measurement needs the view's own frame samples and the feature-count gate.
+  argv.push("--spike");
+  if (args.draws) argv.push("--draws", String(args.draws));
+  if (args["settle-after"]) argv.push("--settle-after", String(args["settle-after"]));
   if (args["low-power"]) argv.push("--low-power");
   if (args["high-perf"]) argv.push("--high-perf");
   if (args.screenshot) argv.push("--screenshot", path.join(outdir, `${name}.png`));
   const spawnWall = Date.now();
   log(`\n=== ${name}: electron ${argv.join(" ")}`);
   const child = spawn(electron, argv, { cwd: hostDir, env: { ...process.env } });
+  // One stuck UI thread must not wedge the whole batch: kill the run after --run-timeout s.
+  const runTimeoutMs = Number(args["run-timeout"] || 240) * 1000;
+  const watchdog = setTimeout(() => {
+    log(`!! ${name}: timed out after ${runTimeoutMs / 1000} s; killing pid ${child.pid}`);
+    try {
+      spawnSync("taskkill", ["/F", "/PID", String(child.pid), "/T"], { encoding: "utf8" });
+    } catch (e) {
+      log(`!! ${name}: taskkill failed: ${e.message}`);
+    }
+  }, runTimeoutMs);
   const logStream = fs.createWriteStream(logFile);
   let bytes = "";
   child.stdout.on("data", (c) => {
@@ -110,6 +128,7 @@ async function runOne(index, warmup) {
   });
   child.stderr.on("data", (c) => logStream.write(c));
   const code = await new Promise((resolve) => child.on("exit", resolve));
+  clearTimeout(watchdog);
   logStream.end();
   let result = null;
   try {
@@ -165,13 +184,27 @@ const summary = {
     firstDataMs: median(measured.map((r) => r.result.coldOpen && r.result.coldOpen.firstDataMs)),
   },
   pan: {
-    fpsMedianMs: median(measured.map((r) => r.result.pan && r.result.pan.fpsFromMedianMs)),
-    medianFrameMs: median(measured.map((r) => r.result.pan && r.result.pan.medianFrameMs)),
-    p95FrameMs: median(measured.map((r) => r.result.pan && r.result.pan.p95FrameMs)),
-    p99FrameMs: median(measured.map((r) => r.result.pan && r.result.pan.p99FrameMs)),
-    droppedOver1p5: measured.map((r) => r.result.pan && r.result.pan.droppedOver1p5Period),
-    fpsPerRun: measured.map((r) => r.result.pan && r.result.pan.fpsFromMedianMs),
-    intervals: measured.map((r) => r.result.pan && r.result.pan.intervals),
+    renderer: measured.length ? measured[0].result.pan && measured[0].result.pan.renderer : null,
+    uncapped: measured.length ? Boolean(measured[0].result.pan && measured[0].result.pan.uncapped) : null,
+    fpsFromP50: median(measured.map((r) => r.result.pan && r.result.pan.fpsFromP50)),
+    frameP50Ms: median(measured.map((r) => r.result.pan && r.result.pan.frameMs && r.result.pan.frameMs.p50)),
+    frameP95Ms: median(measured.map((r) => r.result.pan && r.result.pan.frameMs && r.result.pan.frameMs.p95)),
+    frameP99Ms: median(measured.map((r) => r.result.pan && r.result.pan.frameMs && r.result.pan.frameMs.p99)),
+    renderP50Ms: median(measured.map((r) => r.result.pan && r.result.pan.renderMs && r.result.pan.renderMs.p50)),
+    renderP95Ms: median(measured.map((r) => r.result.pan && r.result.pan.renderMs && r.result.pan.renderMs.p95)),
+    renderP99Ms: median(measured.map((r) => r.result.pan && r.result.pan.renderMs && r.result.pan.renderMs.p99)),
+    renderFpsFromP50: median(measured.map((r) => r.result.pan && r.result.pan.renderFpsFromP50)),
+    renders: measured.map((r) => r.result.pan && r.result.pan.renders),
+    fastRepaints: measured.map((r) => r.result.pan && r.result.pan.fastRepaints),
+    featuresHeld: measured.map((r) => r.result.pan && r.result.pan.featuresHeld),
+    gpuPointInstances: measured.map((r) => r.result.pan && r.result.pan.gpuPointInstances),
+    droppedOver1p5: measured.map((r) => r.result.pan && r.result.pan.droppedOver1p5),
+    samples: measured.map((r) => r.result.pan && r.result.pan.samples),
+    rAfIntervals: measured.map((r) => r.result.pan && r.result.pan.rAfIntervals),
+    perRunFps: measured.map((r) => r.result.pan && r.result.pan.fpsFromP50),
+    perRunFrameP50: measured.map((r) => r.result.pan && r.result.pan.frameMs && r.result.pan.frameMs.p50),
+    perRunRenderP50: measured.map((r) => r.result.pan && r.result.pan.renderMs && r.result.pan.renderMs.p50),
+    fullDrawMs: measured.map((r) => r.result.fullDraw && r.result.fullDraw.ms),
   },
   memoryKb: {
     perRun: measured.map((r) => r.result.memory),

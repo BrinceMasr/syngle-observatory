@@ -8,7 +8,7 @@ use std::rc::Rc;
 use rustgis_ui_egui::{Inbox, RustGisApp, Services};
 
 use crate::parts::Notes;
-use wasm_bindgen::JsCast as _;
+use wasm_bindgen::{JsCast as _, JsValue};
 
 const DATA_EXTS: &[&str] = &[
     "geojson",
@@ -209,7 +209,18 @@ pub fn start() {
                     } else {
                         None
                     };
-                    Ok(Box::new(WebShell { app, inbox, notes, dirty, embed }))
+                    // Spike A (#43): the measurement host reads this object; only `?spike=1`
+                    // creates it, so the stock page carries no per-frame work.
+                    let spike = flag(&q, "spike").then(|| {
+                        let obj = js_sys::Object::new();
+                        let _ = js_sys::Reflect::set(&obj, &"frames".into(), &js_sys::Array::new());
+                        let _ = js_sys::Reflect::set(&obj, &"count".into(), &JsValue::from_f64(0.0));
+                        if let Some(w) = web_sys::window() {
+                            let _ = js_sys::Reflect::set(&w, &"__spikeApp".into(), &obj);
+                        }
+                        obj
+                    });
+                    Ok(Box::new(WebShell { app, inbox, notes, dirty, embed, spike }))
                 }),
             )
             .await;
@@ -267,6 +278,9 @@ struct WebShell {
     notes: Notes,
     dirty: Rc<Cell<bool>>,
     embed: Option<Embed>,
+    /// Spike A (#43): with `?spike=1`, the page's `window.__spikeApp`, which gets one sample of
+    /// the view's own frame state per frame (see [`WebShell::spike_sample`]). `None` otherwise.
+    spike: Option<js_sys::Object>,
 }
 
 /// The link to the page that embeds the app (`?embed`; see `embed.rs`).
@@ -365,6 +379,54 @@ impl Embed {
     }
 }
 
+impl WebShell {
+    /// Spike A (#43): appends one sample of the view's own frame state to `window.__spikeApp`
+    /// for the measurement host (`?spike=1`): the frame's timestamp, the app's real re-renders
+    /// and GPU uniform repaints, the last render's own time (ms), the features its visible layers
+    /// hold (and how many of those layers are streamed windows), the point markers the last GPU
+    /// scene submitted, and the camera. One small array per frame, out of the render cost.
+    fn spike_sample(&self) {
+        let Some(obj) = &self.spike else { return };
+        let Some(win) = web_sys::window() else { return };
+        let now = win.performance().map(|p| p.now()).unwrap_or(0.0);
+        let map = self.app.session.map();
+        let mut features = 0f64;
+        let mut visible = 0f64;
+        let mut windowed = 0f64;
+        for l in &map.layers {
+            if l.visible {
+                visible += 1.0;
+                features += l.dataset.features.len() as f64;
+                windowed += f64::from(u8::from(l.dataset.windowed));
+            }
+        }
+        let sample = [
+            now,
+            self.app.map.spike_renders as f64,
+            self.app.map.spike_fast as f64,
+            self.app.map.spike_render_ms,
+            features,
+            visible,
+            windowed,
+            self.app.map.spike_points as f64,
+            map.camera.res,
+            map.camera.center.x,
+            map.camera.center.y,
+        ];
+        let Ok(frames) = js_sys::Reflect::get(obj, &"frames".into()) else { return };
+        let Some(frames) = frames.dyn_ref::<js_sys::Array>() else { return };
+        if frames.length() >= 40_000 {
+            return;
+        }
+        let row = js_sys::Array::new();
+        for v in sample {
+            row.push(&JsValue::from_f64(v));
+        }
+        frames.push(&row);
+        let _ = js_sys::Reflect::set(obj, &"count".into(), &JsValue::from_f64(frames.length() as f64));
+    }
+}
+
 impl eframe::App for WebShell {
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // The GPU map backend draws inside egui's wgpu pass; hand over the render state.
@@ -396,6 +458,7 @@ impl eframe::App for WebShell {
         }
         self.app.logic(ctx);
         self.dirty.set(self.app.session.dirty);
+        self.spike_sample();
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

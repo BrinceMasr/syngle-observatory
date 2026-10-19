@@ -127,6 +127,63 @@
       });
     },
 
+    /// Spike A (#43): the view's own per-frame samples, from the app itself (`?spike=1`):
+    /// [t, real renders, GPU uniform repaints, last render ms, features held, visible layers,
+    /// windowed layers, GPU point instances, resolution, centre x, centre y]. `null` without
+    /// the flag: the stock page carries no samples.
+    appFrames: function () {
+      try {
+        var w = frame.contentWindow;
+        var app = w && w.__spikeApp;
+        if (!app || !app.frames) return null;
+        var out = [];
+        for (var i = 0; i < app.frames.length; i++) {
+          var r = app.frames[i];
+          out.push(Array.prototype.slice.call(r));
+        }
+        return out;
+      } catch (e) {
+        return null;
+      }
+    },
+
+    /// The newest sample as named fields, for gates and progress (cheap: one small array).
+    appState: function () {
+      try {
+        var w = frame.contentWindow;
+        var app = w && w.__spikeApp;
+        if (!app || !app.frames || app.frames.length === 0) return null;
+        var r = app.frames[app.frames.length - 1];
+        return {
+          count: app.frames.length,
+          t: r[0],
+          renders: r[1],
+          fast: r[2],
+          ms: r[3],
+          features: r[4],
+          visible: r[5],
+          windowed: r[6],
+          points: r[7],
+          res: r[8],
+          cx: r[9],
+          cy: r[10],
+        };
+      } catch (e) {
+        return null;
+      }
+    },
+
+    /// Drops the samples (the injection lets one drag be measured on its own).
+    resetApp: function () {
+      try {
+        var w = frame.contentWindow;
+        if (w && w.__spikeApp && w.__spikeApp.frames) w.__spikeApp.frames.length = 0;
+        return true;
+      } catch (e) {
+        return String(e);
+      }
+    },
+
     /// The view's own frame/draw counters (the injected instrument).
     snapshot: function () {
       try {

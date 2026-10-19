@@ -19,7 +19,7 @@ const fs = require("fs");
 const path = require("path");
 
 function parseArgs(argv) {
-  const out = { mode: "both", poll: 20, panMs: 10000, width: 1600, height: 1000, backend: "webgpu", gpu: "default", step: 8 };
+  const out = { mode: "both", poll: 20, panMs: 10000, width: 1600, height: 1000, backend: "webgpu", gpu: "default", step: 16 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith("--")) continue;
@@ -53,6 +53,11 @@ const rel = (at) => (at ? at - t0 : null);
 
 if (args["low-power"]) app.commandLine.appendSwitch("force_low_power_gpu");
 if (args["high-perf"]) app.commandLine.appendSwitch("force_high_performance_gpu");
+// Vsync off, so the view's frame cadence is its own cost rather than the display's 60 Hz.
+if (args.uncapped) {
+  app.commandLine.appendSwitch("disable-gpu-vsync");
+  app.commandLine.appendSwitch("disable-frame-rate-limit");
+}
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
@@ -193,53 +198,52 @@ function colourPixels(image, rgb, tolerance) {
   return { hits, total, ratio: total ? Number((hits / total).toFixed(5)) : 0 };
 }
 
-/// Sends the project and (when polling) waits for the first composited frame that shows the
-/// dataset, by counting the layer's own colour. Both the cold-open and the pan path use it: a pan
-/// without the data loaded measures an empty map.
+/// Sends the project and waits for the first frame the *view* reports as drawn: a real map
+/// render after the project arrived, with features in the layer. The loading splash cannot fire
+/// it (it draws no layer), and neither can an empty map. The colour count is still taken, but as
+/// evidence of what that frame shows, not as the gate.
 async function loadProject(win, projectText) {
   const [w, h] = win.getContentSize();
   const rect = { x: 20, y: 20, width: Math.max(100, w - 40), height: Math.max(100, h - 40) };
   const colour = layerColour(projectText);
   result.captureRect = rect;
   result.layerColour = colour;
-  // The project goes in as soon as the view is ready: any waiting before it is host overhead, not
-  // app cost. The colour count needs no baseline (it counts the layer's own colour), so the blank
-  // frame is only captured as evidence — after the send, where it costs the measurement nothing.
-  const before = await win.webContents.executeJavaScript("spike.snapshot()");
-  const framesBefore = before.frames ? before.frames.length : 0;
+  const before = await win.webContents.executeJavaScript("spike.appState()");
+  const rendersBefore = before ? before.renders : 0;
   const sent = await win.webContents.executeJavaScript(`spike.sendProject(${JSON.stringify(projectText)})`);
   started.projectSent = sent.date;
   let detection = null;
   if (args.poll > 0) {
     let attempts = 0;
-    // The RustGIS loading splash carries the same orange as the default point symbology (the logo's
-    // gear ring counts ~3,900 pixels). 15,000 sits well above that and well below the 22,848 a 30k
-    // window paints, so the test cannot fire on the loading screen.
-    const threshold = Number(args.colourHits || 8000);
     for (;;) {
       attempts++;
-      const shot = await win.webContents.capturePage(rect);
-      const count = colourPixels(shot, colour, 30);
-      if (args["capture-all"]) {
-        // Every poll, so the sequence of states can be looked at rather than inferred.
-        fs.writeFileSync(path.resolve(args.out || "results/run.json").replace(/\.json$/, `-poll${String(attempts).padStart(3, "0")}-${count.hits}.png`), shot.toPNG());
-      }
-      if (count.hits >= threshold) {
+      const st = await win.webContents.executeJavaScript("spike.appState()");
+      if (st && st.renders > rendersBefore && st.features > 0) {
         started.firstData = Date.now();
-        detection = { attempts, colour, count, captureMs: started.firstData - sent.date };
+        const shot = await win.webContents.capturePage(rect);
+        const count = colourPixels(shot, colour, 30);
+        detection = {
+          attempts,
+          colour,
+          count,
+          captureMs: started.firstData - sent.date,
+          features: st.features,
+          windowedLayers: st.windowed,
+          gpuPointInstances: st.points,
+          renders: st.renders - rendersBefore,
+        };
         const base = path.resolve(args.out || "results/run.json").replace(/\.json$/, "");
         fs.writeFileSync(base + "-firstdata.png", shot.toPNG());
         break;
       }
       if (Date.now() - sent.date > 60000) {
-        detection = { attempts, colour, count, error: "no data drawn within 60 s" };
+        detection = { attempts, colour, error: "the view never reported a drawn frame with features" };
         break;
       }
       await sleep(args.poll);
     }
   }
   const after = await win.webContents.executeJavaScript("spike.snapshot()");
-  const firstAfter = after.frames && after.frames.length > framesBefore ? after.frames[framesBefore] : null;
   result.firstData = detection;
   result.coldOpen = {
     engineReadyMs: rel(started.engineReady),
@@ -248,12 +252,105 @@ async function loadProject(win, projectText) {
     viewReadyMs: rel(started.viewReady),
     projectSentMs: rel(started.projectSent),
     firstDataMs: rel(started.firstData),
-    framesBeforeProject: framesBefore,
-    firstFrameAfterProjectMs: firstAfter,
+    samplesBeforeProject: before ? before.count : 0,
     frameDrawsAtFirstData: after.draws,
+    featuresAtFirstData: detection && detection.features,
     instrumentErrors: after.errors,
   };
-  note(`loaded: first data at ${result.coldOpen.firstDataMs} ms after ${detection && detection.attempts} polls (colour hits ${detection && detection.count && detection.count.hits})`);
+  note(`loaded: first data at ${result.coldOpen.firstDataMs} ms after ${detection && detection.attempts} polls (features ${detection && detection.features}, colour hits ${detection && detection.count && detection.count.hits})`);
+}
+
+/// Percentiles over the samples that are actual numbers (null when there are none).
+function percentiles(xs) {
+  const v = xs.filter((x) => typeof x === "number" && Number.isFinite(x)).sort((a, b) => a - b);
+  const at = (p) => (v.length ? v[Math.min(v.length - 1, Math.floor(p * v.length))] : null);
+  return { n: v.length, p50: at(0.5), p95: at(0.95), p99: at(0.99), max: v.length ? v[v.length - 1] : null };
+}
+
+/// What the view's own samples say about a drag: frame cadence (the view's frame loop, so on an
+/// uncapped run this is the real cost per frame), and the render work of every frame that rebuilt
+/// the map (the app's own fractional-ms measure). Held features and GPU point instances come from
+/// the same samples, so "1M drawn" is the view's number, not a guess.
+function panMetrics(rows) {
+  const out = { samples: rows ? rows.length : 0 };
+  if (!rows || rows.length < 3) return out;
+  const dt = [];
+  const renderMs = [];
+  let renders = 0;
+  let fast = 0;
+  let features = 0;
+  let visible = 0;
+  let windowed = 0;
+  let points = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (i > 0) {
+      const d = r[0] - rows[i - 1][0];
+      if (d > 0) dt.push(d);
+      if (r[1] > rows[i - 1][1]) {
+        renders += r[1] - rows[i - 1][1];
+        renderMs.push(r[3]);
+      }
+      if (r[2] > rows[i - 1][2]) fast += r[2] - rows[i - 1][2];
+    }
+    features = Math.max(features, r[4]);
+    visible = Math.max(visible, r[5]);
+    windowed = Math.max(windowed, r[6]);
+    points = Math.max(points, r[7]);
+  }
+  const frame = percentiles(dt);
+  const render = percentiles(renderMs);
+  out.wallMs = rows[rows.length - 1][0] - rows[0][0];
+  out.frameMs = frame;
+  out.fpsFromP50 = frame.p50 ? Number((1000 / frame.p50).toFixed(2)) : null;
+  out.fpsFromP95 = frame.p95 ? Number((1000 / frame.p95).toFixed(2)) : null;
+  out.renderMs = render;
+  out.renderFpsFromP50 = render.p50 ? Number((1000 / render.p50).toFixed(2)) : null;
+  out.renders = renders;
+  out.fastRepaints = fast;
+  out.featuresHeld = features;
+  out.visibleLayers = visible;
+  out.windowedLayers = windowed;
+  out.gpuPointInstances = points;
+  const period = frame.p50 || 16.7;
+  out.droppedOver1p5 = dt.filter((d) => d > period * 1.5).length;
+  return out;
+}
+
+/// One full re-render per wheel step, after the drag: what a *complete* draw of the layer costs
+/// with the renderer in use (for the CPU renderer this is the number the cached-texture drag
+/// hides; for the GPU renderer it is the scene rebuild, not the per-frame raster).
+async function fullDrawCost(win, count) {
+  if (!count) return null;
+  const [w, h] = win.getContentSize();
+  const ms = [];
+  let prev = await win.webContents.executeJavaScript("spike.appState()");
+  let rendersPrev = prev ? prev.renders : 0;
+  for (let i = 0; i < count; i++) {
+    win.webContents.sendInputEvent({ type: "mouseWheel", x: Math.round(w / 2), y: Math.round(h / 2), deltaX: 0, deltaY: -120, wheelTicksX: 0, wheelTicksY: 1, canScroll: false });
+    const deadline = Date.now() + 20000;
+    let got = null;
+    while (Date.now() < deadline) {
+      const st = await win.webContents.executeJavaScript("spike.appState()");
+      if (st && st.renders > rendersPrev) {
+        got = st;
+        break;
+      }
+      await sleep(10);
+    }
+    if (!got) {
+      note(`full draw ${i + 1}: no render within 20 s`);
+      break;
+    }
+    rendersPrev = got.renders;
+    ms.push(got.ms);
+    await sleep(120);
+  }
+  result.fullDraw = { count: ms.length, ms, ...percentiles(ms), fpsFromP50: null };
+  const p = percentiles(ms);
+  result.fullDraw.fpsFromP50 = p.p50 ? Number((1000 / p.p50).toFixed(2)) : null;
+  note(`full draw: ${ms.length} renders, ${JSON.stringify(ms)} ms`);
+  return result.fullDraw;
 }
 
 async function pan(win) {
@@ -267,7 +364,24 @@ async function pan(win) {
     try {
       result.mapGpuToggle = await win.webContents.executeJavaScript("spike.runUiCommand('ui.map.gpu')");
       note("toggled the GPU map renderer: " + JSON.stringify(result.mapGpuToggle));
-      await sleep(500);
+      // The toggle invalidates the frame, and the first GPU scene for a large layer tessellates
+      // and uploads every marker on the UI thread: wait until the view reports the scene built,
+      // or the drag would measure the build instead of the pan.
+      const gpuDeadline = Date.now() + Number(args["map-gpu-wait"] || 90000);
+      let gpuState = null;
+      for (;;) {
+        gpuState = await win.webContents.executeJavaScript("spike.appState()");
+        if (gpuState && gpuState.points > 0) {
+          note(`GPU scene ready: ${gpuState.points} point instances, ${gpuState.features} features`);
+          break;
+        }
+        if (Date.now() > gpuDeadline) {
+          note("the GPU scene never built: the drag below is not measuring the GPU path");
+          break;
+        }
+        await sleep(250);
+      }
+      result.gpuScene = gpuState && { points: gpuState.points, features: gpuState.features, ms: gpuState.ms, renders: gpuState.renders };
     } catch (e) {
       note("could not toggle the GPU map renderer: " + e.message);
     }
@@ -276,6 +390,7 @@ async function pan(win) {
   // drag, or the measurement is of the read, not of the pan.
   await sleep(Number(args.settle || 1500));
   await win.webContents.executeJavaScript("spike.reset()");
+  await win.webContents.executeJavaScript("spike.resetApp()");
   await sleep(200);
   const shotBefore = await win.webContents.capturePage();
   started.panStart = Date.now();
@@ -292,18 +407,17 @@ async function pan(win) {
   }
   win.webContents.sendInputEvent({ type: "mouseUp", x: x1, y, button: "middle", clickCount: 1 });
   started.panEnd = Date.now();
-  await sleep(150);
+  // The drag's own samples, taken the moment it stops (before any settle re-render can add to
+  // the window). Then a settled frame for the pixel evidence.
+  const app = await win.webContents.executeJavaScript("spike.appFrames()");
+  const snap = await win.webContents.executeJavaScript("spike.snapshot()");
+  const metrics = panMetrics(app);
+  await sleep(Number(args["settle-after"] || 1500));
   const shotAfter = await win.webContents.capturePage();
-  // How much of the frame is layer colour: the shipped build draws a 30k sample of a 1M dataset, the
-  // cap-lifted build draws all of it, and the two differ by an order of magnitude on screen.
   const painted = colourPixels(shotAfter, result.layerColour || [224, 123, 57], 30);
   started.panEndCaptured = Date.now();
-  // The frame snapshot is taken the moment the drag stops, so the numbers are the drag's, not the
-  // idle time after it.
-  const snap = await win.webContents.executeJavaScript("spike.snapshot()");
-  const frameBacklog = snap.frames.length;
-  // The view posts its project 600 ms after a change settles: waiting for that post is how the
-  // report learns how many features it is actually drawing (a source streams one window at a time).
+  // The view posts its project 600 ms after a change settles: that post is how the report learns
+  // what the layer holds (its features are streamed, so the project carries none of them).
   let settled = null;
   try {
     settled = await win.webContents.executeJavaScript("spike.waitForPost(undefined, 5000)");
@@ -311,38 +425,37 @@ async function pan(win) {
     note("no settle post after the pan: " + e.message);
   }
   const posts = await win.webContents.executeJavaScript("spike.state.posts.slice(-3)");
-  const driver = await win.webContents.executeJavaScript("({ sentAt: spike.state.sentAt, readyAt: spike.state.readyAt, pageT0: spike.state.pageT0, posts: spike.state.posts.length })");
-  result.panDriver = { ...driver, frameBacklog, settled };
+  result.panDriver = { frameBacklog: snap.frames ? snap.frames.length : 0, settled };
   const frames = snap.frames || [];
-  const deltas = [];
+  const rAf = [];
   for (let i = 1; i < frames.length; i++) {
     const d = frames[i] - frames[i - 1];
-    if (d > 0 && d < 2000) deltas.push(d);
+    if (d > 0 && d < 2000) rAf.push(d);
   }
-  deltas.sort((a, b) => a - b);
-  const pick = (p) => (deltas.length ? deltas[Math.min(deltas.length - 1, Math.floor(p * deltas.length))] : null);
-  const median = pick(0.5);
-  const period = median || 16.7;
   result.pan = {
     panMs: args.panMs,
-    frames: frames.length,
-    intervals: deltas.length,
-    medianFrameMs: median,
-    p95FrameMs: pick(0.95),
-    p99FrameMs: pick(0.99),
-    maxFrameMs: deltas.length ? deltas[deltas.length - 1] : null,
-    minFrameMs: deltas.length ? deltas[0] : null,
-    fpsFromMedianMs: median ? Number((1000 / median).toFixed(2)) : null,
-    droppedOver1p5Period: deltas.filter((d) => d > period * 1.5).length,
-    draws: snap.draws,
+    stepMs: args.step,
+    renderer: args["map-gpu"] ? "gpu-map" : "default-cpu",
+    uncapped: Boolean(args.uncapped),
     backend: snap.backend,
+    draws: snap.draws,
+    rAfIntervals: rAf.length,
+    // Frame cadence from the view's own loop, and the render work of every rebuilt frame.
+    ...metrics,
     instrumentErrors: snap.errors,
     cameraMoved: bitmapDiff(shotBefore, shotAfter),
     painted,
     projectPosts: posts,
     screenshot: Boolean(args.screenshot),
   };
-  note(`pan: ${result.pan.intervals} intervals, median ${median && median.toFixed(2)} ms (${result.pan.fpsFromMedianMs} fps), p95 ${result.pan.p95FrameMs && result.pan.p95FrameMs.toFixed(2)}`);
+  note(
+    `pan (${result.pan.renderer}${args.uncapped ? ", uncapped" : ""}): ${metrics.samples} view frames, ` +
+      `frame p50 ${metrics.frameMs && metrics.frameMs.p50 && metrics.frameMs.p50.toFixed(2)} ms ` +
+      `(${metrics.fpsFromP50} fps), p95 ${metrics.frameMs && metrics.frameMs.p95 && metrics.frameMs.p95.toFixed(2)}, ` +
+      `${metrics.renders} full renders, render p50 ${metrics.renderMs && metrics.renderMs.p50 && metrics.renderMs.p50.toFixed(1)} ms, ` +
+      `features ${metrics.featuresHeld}, gpu points ${metrics.gpuPointInstances}`
+  );
+  await fullDrawCost(win, Number(args.draws || 0));
 }
 
 async function memory(win, engine) {
@@ -403,6 +516,9 @@ app.whenReady().then(async () => {
     started.windowCreated = Date.now();
     const queryParts = [];
     if (args.backend && args.backend !== "webgpu") queryParts.push(`backend=${args.backend}`);
+    // The view's own per-frame samples (frame work, held features, drawn points). Off unless the
+    // runner asks for it, so the stock measurement path is unchanged.
+    if (args.spike) queryParts.push("spike");
     if (args["project-mode"]) queryParts.push("project=1");
     const query = queryParts.length ? `?${queryParts.join("&")}` : "";
     await win.loadURL(engine.base + "/host/" + query);

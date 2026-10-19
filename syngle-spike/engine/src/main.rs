@@ -367,13 +367,24 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
             if req.target.starts_with("/web") {
                 injected = injected.replace("</head>", "<script src=\"/spike/instrument.js\"></script></head>");
             }
+            // One replacement, so the flags compose: the host page's own query decides what
+            // the view's iframe address carries.
+            let mut embed = String::from("/web/?embed");
             if req.target.contains("backend=webgl2") {
-                injected = injected.replace("/web/?embed", "/web/?embed&webgl");
+                embed.push_str("&webgl");
             }
             // `?project=1` on the host page makes the view fetch the project itself
             // (`?project=<url>` is the fork's own flag), instead of the page posting it.
             if req.target.contains("project=1") {
-                injected = injected.replace("/web/?embed", "/web/?embed&project=/project.json");
+                embed.push_str("&project=/project.json");
+            }
+            // `?spike` turns on the view's own per-frame samples (the measurement host reads
+            // them); the stock page never asks for them.
+            if req.target.contains("spike") {
+                embed.push_str("&spike");
+            }
+            if embed.len() > "/web/?embed".len() {
+                injected = injected.replace("/web/?embed", &embed);
             }
             let bytes = injected.into_bytes();
             return (200, (head(200, ty, bytes.len() as u64, None, false), bytes.len() as u64), bytes);

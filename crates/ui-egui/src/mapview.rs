@@ -171,6 +171,13 @@ pub struct MapView {
     pub(crate) render_state: Option<egui_wgpu::RenderState>,
     /// The GPU map backend, for now gated on the RUSTGIS_GPU environment variable.
     pub gpu_enabled: bool,
+    /// Spike A (#43) instrumentation: real map re-renders, GPU uniform-only repaints, the last
+    /// render's time in fractional milliseconds, and the point markers the last GPU scene drew.
+    /// Maintained on every build; only the spike's host page reads them.
+    pub spike_renders: u64,
+    pub spike_fast: u64,
+    pub spike_render_ms: f64,
+    pub spike_points: usize,
     /// Rolling map-frame timestamps (for the status-bar FPS readout).
     frame_times: std::collections::VecDeque<f64>,
 }
@@ -229,6 +236,10 @@ impl Default for MapView {
             gpu_target_split: std::sync::Arc::new(std::sync::Mutex::new(None)),
             render_state: None,
             gpu_enabled: std::env::var_os("RUSTGIS_GPU").is_some(),
+            spike_renders: 0,
+            spike_fast: 0,
+            spike_render_ms: 0.0,
+            spike_points: 0,
             frame_times: std::collections::VecDeque::new(),
         }
     }
@@ -582,6 +593,8 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                 && let Some(r) = done.rendered
             {
                 app.map.render_ms = done.ms;
+                app.map.spike_render_ms = done.ms as f64;
+                app.map.spike_renders += 1;
                 match r {
                     rustgis_engine::render::RenderOutput::Cpu(r) => {
                         app.map.gpu_frame = None;
@@ -669,6 +682,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     {
         gf.set_camera(&rs.queue, &cam);
         fast_engaged = true;
+        app.map.spike_fast += 1;
     }
     let stale = app.map.key != Some(key);
     // While the flat map moves on the CPU its last frame is shifted and scaled, until that no
@@ -765,7 +779,9 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                 show_frame(app, ui.ctx(), r, &view, (w, h), key, time, globe_view);
             }
         }
-        app.map.render_ms = t0.elapsed().as_millis() as u64;
+        app.map.spike_render_ms = t0.elapsed().as_secs_f64() * 1000.0;
+        app.map.render_ms = app.map.spike_render_ms as u64;
+        app.map.spike_renders += 1;
         if let Some((_, _, p)) = motion {
             let k = (p / ppp) as f64 / if vw > w { 0.5 } else { 1.0 };
             app.map.motion_cost = (t0.elapsed().as_secs_f64() * 1000.0, k);
@@ -889,6 +905,16 @@ fn show_gpu_frame(app: &mut RustGisApp, scene: rustgis_engine::render::gpu_scene
         return false;
     };
     app.map.gpu_frame = Some(std::sync::Arc::new(bufs));
+    // Spike A (#43): how many point markers the scene really submits, which is what the GPU
+    // rasterises each frame. Counted before the scene is taken apart.
+    app.map.spike_points = scene
+        .cmds
+        .iter()
+        .map(|c| match c {
+            rustgis_engine::render::gpu_scene::DrawCmd::Points { instances, .. } => instances.len(),
+            _ => 0,
+        })
+        .sum();
     app.map.labels = scene.labels;
     app.map.labels.splice(0..0, scene.unplaced);
     app.map.label_lonlat.clear();

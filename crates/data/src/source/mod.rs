@@ -70,7 +70,11 @@ impl Family {
 pub const EXTENSIONS: &[&str] = &["gpkg", "parquet", "geoparquet", "fgb", "las", "laz"];
 
 /// The most features one read returns, whatever the request asks for.
-pub const MAX_LIMIT: usize = if cfg!(target_arch = "wasm32") { 500_000 } else { 2_000_000 };
+///
+/// Spike A (#43) build: raised from 500,000 on wasm so the "pan with 1M points" target can be
+/// measured with all 1,000,000 features really held by the browser view (the shipped 500,000 cap
+/// samples them instead). The shipped build keeps 500,000 and its 30,000 remote view window.
+pub const MAX_LIMIT: usize = if cfg!(target_arch = "wasm32") { 1_000_000 } else { 2_000_000 };
 
 /// Whether a file name is read through a provider.
 pub fn is_source_name(name: &str) -> bool {
