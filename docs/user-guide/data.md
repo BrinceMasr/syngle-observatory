@@ -438,12 +438,14 @@ Several **Home › Web Data** entries open the same search on one service, with 
 | Entry | What it finds | Added as |
 |---|---|---|
 | **ArcGIS Portal…** (`arcgis-portal`) | Public items on [ArcGIS Online](https://www.arcgis.com), or on the portal whose address is given: feature, map, image and vector tile services, and GeoJSON files | The service (Add From Service), or the file |
+| **Dynamical…** (`dynamical`) | Weather and climate datasets from [dynamical.org](https://dynamical.org) (NOAA GFS, GEFS and HRRR, ECMWF, DWD ICON…); **Add** opens the dataset's Zarr store in the pane to pick a variable and its time steps (a dataset published only as Icechunk says so) | A Zarr variable's map |
 | **Earthdata GIS…** (`earthdata-gis`) | NASA's [Earthdata GIS](https://gis.earthdata.nasa.gov/portal) portal: Earth science imagery, maps and features | The service |
 | **GeoLens…** (`geolens`) | A [GeoLens](https://getgeolens.com) server's vector datasets (`https://datasets.geolibre.app` by default) | Features, the first 1,000 |
 | **Hugging Face…** (`huggingface`) | Datasets on [Hugging Face](https://huggingface.co/datasets) by name, or one by `owner/name`; **Browse Files** (`portal.files`) lists its GeoTIFFs, GeoParquet, GeoJSON, FlatGeobuf, GeoPackage, PMTiles, LiDAR and other files (public, not gated) | The file |
 | **Ocean Data Platform…** (`ocean-data`) | [HUB Ocean](https://app.hubocean.earth)'s marine datasets, searched by words | Features, up to 10,000 |
 | **OpenAerialMap…** (`openaerialmap`) | Drone and aerial images on [OpenAerialMap](https://openaerialmap.org) where the map is, newest first | A COG, read in place |
 | **France › IGN LiDAR HD…** (`ign-lidar`) | [IGN](https://geoservices.ign.fr/lidarhd)'s 1 km LiDAR HD tiles where the map is (a view of at most 2 square degrees) | A COPC point cloud, read in place |
+| **United States › Tennessee GIS…** | Tennessee's own portal, [Tennessee GeoData](https://geodata.tn.gov): its public items, newest first, as it opens | The service, or the file |
 | **United States › US Federal GIS…**, **US State GIS…**, **US Local GIS…** | The public GIS portals of 24 federal agencies (by department), every state and the District of Columbia, and 146 counties and cities (by state): pick a group and a portal; an ArcGIS organisation's public items (`arcgis-portal` with `"org"`), or a Socrata site | The service, or the file |
 | **United States › USGS 3DEP DEM…** (`usgs-dem`) | USGS elevation models from [The National Map](https://apps.nationalmap.gov) where the map is: 1 m, 1/9, 1/3 (the default) or 1 arc-second, or Alaska's 5 m (`"dataset"`), each tile's newest current edition | A GeoTIFF, read in place |
 
