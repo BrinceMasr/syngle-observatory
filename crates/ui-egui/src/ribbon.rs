@@ -529,6 +529,7 @@ fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
     let svc = |id: &str| json!({"service": id});
     menu_item(ui, app, "", "ArcGIS Portal…", "ui.searchOpenData", svc("arcgis-portal"));
     menu_item(ui, app, "", "Boundaries…", "ui.dialog", json!({"name": "boundaries"}));
+    menu_item(ui, app, "", "Dynamical…", "ui.searchOpenData", svc("dynamical"));
     menu_item(ui, app, "", "Earthdata GIS…", "ui.searchOpenData", svc("earthdata-gis"));
     menu_item(ui, app, "", "GeoLens…", "ui.searchOpenData", svc("geolens"));
     menu_item(ui, app, "", "Hugging Face…", "ui.searchOpenData", svc("huggingface"));
@@ -546,6 +547,7 @@ fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
         menu_item(ui, app, "", "IGN LiDAR HD…", "ui.searchOpenData", svc("ign-lidar"));
     });
     submenu_row(ui, "", tl!("United States"), |ui| {
+        menu_item(ui, app, "", "Tennessee GIS…", "ui.searchOpenData", svc("tennessee"));
         menu_item(ui, app, "", "US Federal GIS…", "ui.searchOpenData", svc("us-federal"));
         menu_item(ui, app, "", "US Local GIS…", "ui.searchOpenData", svc("us-local"));
         menu_item(ui, app, "", "US State GIS…", "ui.searchOpenData", svc("us-state"));
