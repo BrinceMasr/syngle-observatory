@@ -128,7 +128,6 @@ pub fn run(args: &[String]) -> i32 {
             continue;
         };
         let id = msg.get("id").cloned().unwrap_or(Value::Null);
-        let id = msg.get("id").cloned().unwrap_or(Value::Null);
         match Command::parse(&msg) {
             Command::Ping => emit(&json!({"event":"pong","id":id,"t":now_ms()})),
             Command::Open { which, name, zoom } => {
@@ -251,9 +250,9 @@ fn open(session: &mut Session, target: &str, kind: &str, name: Option<&str>, zoo
     }
 }
 
-/// The working set is the host's to read (`Get-Process -Id <pid>`): the workspace forbids `unsafe`,
-/// and `K32GetProcessMemoryInfo` needs it, so the engine keeps no memory code at all.
-/// The `stats` reply carries what it does own: the layer count and the dataset's feature count.
+// The working set is the host's to read (`Get-Process -Id <pid>`): the workspace forbids `unsafe`,
+// and `K32GetProcessMemoryInfo` needs it, so the engine keeps no memory code at all. The `stats`
+// reply carries what it does own: the layer count and the dataset's feature count.
 
 fn emit(v: &Value) {
     let mut out = std::io::stdout().lock();
@@ -537,13 +536,10 @@ fn percent_decode(s: &str) -> String {
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
             let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok().and_then(|h| u8::from_str_radix(h, 16).ok());
-            match hex {
-                Some(b) => {
-                    out.push(b);
-                    i += 3;
-                    continue;
-                }
-                None => {}
+            if let Some(b) = hex {
+                out.push(b);
+                i += 3;
+                continue;
             }
         }
         out.push(bytes[i]);
