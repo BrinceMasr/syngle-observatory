@@ -248,11 +248,11 @@ pub fn field_span(ds: &Dataset, field: &str) -> Option<(f64, f64)> {
 }
 
 /// The fields of `ds` that hold dates, best first, with the share of values that read as one
-/// (at least 60%). Fields of whole numbers that read as years (which may be counts or heights)
-/// come after the others.
+/// (at least 60%). Text dates come first, then epoch times, then whole numbers that read as years
+/// (numbers may be counts, heights or ids).
 pub fn time_fields(ds: &Dataset) -> Vec<(String, f64)> {
     let n = ds.features.len();
-    let mut out: Vec<(String, f64, bool, usize)> = ds
+    let mut out: Vec<(String, f64, u8, usize)> = ds
         .fields
         .iter()
         .enumerate()
@@ -264,7 +264,12 @@ pub fn time_fields(ds: &Dataset) -> Vec<(String, f64)> {
             let mut distinct: Vec<String> = (0..n.min(500)).map(|r| ds.value(r, fi).to_string()).collect();
             distinct.sort();
             distinct.dedup();
-            Some((f.name.clone(), share, kind == time::Kind::Year, distinct.len()))
+            let rank = match kind {
+                time::Kind::Text => 0,
+                time::Kind::EpochMs | time::Kind::EpochS => 1,
+                time::Kind::Year => 2,
+            };
+            Some((f.name.clone(), share, rank, distinct.len()))
         })
         .collect();
     out.sort_by(|a, b| a.2.cmp(&b.2).then(b.1.total_cmp(&a.1)).then(b.3.cmp(&a.3)));

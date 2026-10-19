@@ -147,13 +147,17 @@ pub fn kind_of(v: &Value) -> Option<Kind> {
     }
 }
 
+/// Epoch times from 1900 to 2100, in seconds: a plausible span for data (larger numbers are
+/// more likely counts or ids).
+const EPOCH_S: std::ops::RangeInclusive<f64> = -2.21e9..=4.11e9;
+
 fn number_kind(x: f64) -> Option<Kind> {
     if !x.is_finite() {
         None
     } else if x.abs() >= 1e11 {
-        Some(Kind::EpochMs)
+        EPOCH_S.contains(&(x / 1000.0)).then_some(Kind::EpochMs)
     } else if x.abs() >= 1e8 {
-        Some(Kind::EpochS)
+        EPOCH_S.contains(&x).then_some(Kind::EpochS)
     } else if x.fract() == 0.0 && (1000.0..=9999.0).contains(&x) {
         Some(Kind::Year)
     } else {
@@ -460,6 +464,9 @@ mod tests {
         assert_eq!(kind_of(&Value::Int(1958)), Some(Kind::Year));
         assert_eq!(kind_of(&Value::Float(1958.5)), None);
         assert_eq!(kind_of(&Value::Int(42)), None);
+        // Numbers past 1900–2100 as epoch times are more likely counts or ids.
+        assert_eq!(kind_of(&Value::Int(9_000_000_000)), None);
+        assert_eq!(kind_of(&Value::Float(5e14)), None);
         assert_eq!(kind_of(&Value::Text("1958".into())), Some(Kind::Year));
         assert_eq!(kind_of(&Value::Text("1958-03-01".into())), Some(Kind::Text));
         let vals = [Value::Text("1958".into()), Value::Text("1960-01-01".into()), Value::Null, Value::Text("n/a".into())];
