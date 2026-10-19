@@ -1,0 +1,23 @@
+Syngle Observatory
+Copyright (c) 2026 Syngle (BrinceMasr) and the Syngle Observatory contributors.
+Licensed under the Apache License, Version 2.0 (LICENSE).
+
+Fork and modification notice
+
+Syngle Observatory is a hard fork of RustGIS (https://github.com/opengeos/RustGIS), Copyright the
+RustGIS contributors, licensed under the Apache License, Version 2.0. The fork is owned by Syngle,
+is changed freely and is never merged back; upstream is read-only.
+
+Files in this repository have been modified for the fork: the product name ("Syngle Observatory"),
+the application id (com.syngle.observatory), every user-visible string and the interface
+translations, the web page and its manifest, the packaging metadata for every platform, and the
+community, website, asset and service addresses of the upstream project (the fork has no website,
+asset host, plugin registry or download mirror, so commands that need one now require an explicit
+address). The upstream project's icon, logo and brand assets were not carried over. The two
+licence-relevant files, LICENSE (Apache-2.0, unchanged) and ATTRIBUTION.md (every third-party
+work, unmodified), are kept, and the upstream project is credited there and in the About box.
+
+Changes specific to the fork, beyond the rename: `rustgis-web` gains a `canvas-only` feature (the
+map view alone, no egui chrome; ADR 0010), and `crates/observatory-engine` is the native engine
+sidecar moved out of `syngle-spike/engine` (#43) into a fork crate with tests. See the fork's
+ticket and the Syngle-Ecosystem repository for the decisions.
