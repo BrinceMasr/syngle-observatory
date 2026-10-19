@@ -376,6 +376,7 @@ pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
             // A search reads every folder, then lists the services whose names match.
             let mut found = 0;
             let mut loading = false;
+            let mut failed = 0;
             for folder in &folders {
                 match listing(app, folder, "arcgis") {
                     Look::Ready(_, v) => {
@@ -389,8 +390,20 @@ pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
                         }
                     }
                     Look::Loading => loading = true,
-                    Look::Failed(_) => {}
+                    Look::Failed(_) => failed += 1,
                 }
+            }
+            if failed > 0 {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new(crate::i18n::fmt("{n} folders didn't load and aren't searched", &[("n", &failed.to_string())]))
+                            .small()
+                            .weak(),
+                    );
+                    if ui.small_button(tl!("Retry")).clicked() {
+                        forget_failed(app);
+                    }
+                });
             }
             if loading {
                 ui.horizontal(|ui| {

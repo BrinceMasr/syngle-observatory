@@ -411,6 +411,7 @@ fn own_style(spec: &Spec, source: &Value) -> Option<Value> {
         return None;
     }
     let Ok(Value::Array(mut layers)) = serde_json::from_str::<Value>(&spec.style_layers) else { return None };
+    // As many as `rustgis_map::tiles::checked_style_layers` lets a layer keep.
     layers.truncate(256);
     for l in &mut layers {
         if let Some(o) = l.as_object_mut() {

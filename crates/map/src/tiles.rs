@@ -139,6 +139,8 @@ pub struct TileLayer {
 
 /// The longest `style_layers` kept (JSON text).
 pub const MAX_STYLE_LAYERS: usize = 64 << 10;
+/// The most style layers kept (as many as the tiles crate draws of a layer's own style).
+pub const MAX_STYLE_LAYER_COUNT: usize = 256;
 
 /// Style layers given for vector tiles, checked: a JSON array of objects, not too long.
 pub fn checked_style_layers(text: &str) -> Result<String, String> {
@@ -146,6 +148,7 @@ pub fn checked_style_layers(text: &str) -> Result<String, String> {
         return Err(format!("style layers are at most {} KB", MAX_STYLE_LAYERS >> 10));
     }
     match serde_json::from_str::<serde_json::Value>(text) {
+        Ok(serde_json::Value::Array(a)) if a.len() > MAX_STYLE_LAYER_COUNT => Err(format!("at most {MAX_STYLE_LAYER_COUNT} style layers")),
         Ok(serde_json::Value::Array(a)) if a.iter().all(serde_json::Value::is_object) => Ok(text.to_string()),
         _ => Err("style layers are a JSON array of MapLibre style layers".into()),
     }
@@ -299,6 +302,15 @@ pub fn host_of(url: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn style_layers_are_checked() {
+        assert!(checked_style_layers(r#"[{"id": "a", "type": "fill"}]"#).is_ok());
+        assert!(checked_style_layers("{}").is_err());
+        assert!(checked_style_layers("[1]").is_err());
+        let many = format!("[{}]", vec!["{}"; MAX_STYLE_LAYER_COUNT + 1].join(","));
+        assert!(checked_style_layers(&many).is_err());
+    }
 
     #[test]
     fn guesses_kinds() {
