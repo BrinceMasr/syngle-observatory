@@ -106,7 +106,11 @@ impl GlobeDrape {
             // Coarsen the texture's sampling, not the camera's logical scale: changing that
             // scale makes point symbols and strokes grow when the texture is draped back.
             let view = View { width: w, height: h, pixels_per_point: p * res / render_res, camera: map.camera, sky: true };
-            let pictures = render::render_globe_drape(map, &view, &boxes, max_side);
+            // User layers draw live at the current camera. Including them in a ground image
+            // stretches markers and leaves duplicate polygon edges beneath the live shapes.
+            let mut background = map.clone();
+            background.layers.clear();
+            let pictures = render::render_globe_drape(&mut background, &view, &boxes, max_side);
             if pictures.is_empty() {
                 self.drape = None;
                 return false;
@@ -196,9 +200,17 @@ impl GlobeDrape {
         for mesh in self.meshes(rect, &g) {
             painter.add(Shape::mesh(mesh));
         }
-        if let Some(s) = sprites {
-            painter.image(s.over.id(), sprite_rect, full, Color32::WHITE);
-        }
+    }
+
+    /// Lighting belongs above the live user layers, and never needs a full-size CPU redraw.
+    pub fn paint_light(&self, painter: &Painter, rect: Rect, camera: &rustgis_engine::map::Camera) {
+        let Some(s) = &self.sprites else { return };
+        let g = Globe::new(camera, f64::from(rect.width()), f64::from(rect.height()));
+        let (cx, cy) = g.center();
+        let centre = rect.min + vec2(cx as f32, cy as f32);
+        let disc = g.disc_radius() as f32;
+        let sprite_rect = Rect::from_center_size(centre, vec2(2.0 * disc, 2.0 * g.disc_height() as f32) * GLOBE_GLOW);
+        painter.image(s.over.id(), sprite_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
     }
 
     /// The drape's meshes for the globe `g` in `rect`. A picture wholly behind the horizon has

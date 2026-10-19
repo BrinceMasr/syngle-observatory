@@ -346,6 +346,49 @@ struct Ctx<'a> {
 type SpriteKey = (Rgba, Rgba, u32, u32, Marker, u8, u8);
 
 impl Ctx<'_> {
+    /// The same clipped paths the CPU draws, expressed in logical screen coordinates for
+    /// tessellation. The presentation camera is affine; no marker or stroke is ground-warped.
+    fn globe_geometry(&self, geometry: &Geometry) -> Option<Geometry> {
+        let point = |c| self.screen(c).map(|(x, y)| Coord::new(x, -y));
+        let paths = |parts: &[Vec<Coord>], close: bool| {
+            let mut pb = PathBuilder::new();
+            for part in parts {
+                self.ring_path(&mut pb, part, close);
+            }
+            let mut runs = Vec::new();
+            let mut run = Vec::new();
+            if let Some(path) = pb.finish() {
+                for segment in path.segments() {
+                    match segment {
+                        tiny_skia::PathSegment::MoveTo(p) => {
+                            if !run.is_empty() {
+                                runs.push(std::mem::take(&mut run));
+                            }
+                            run.push(Coord::new(f64::from(p.x) / f64::from(self.ppp), -f64::from(p.y) / f64::from(self.ppp)));
+                        }
+                        tiny_skia::PathSegment::LineTo(p) => {
+                            run.push(Coord::new(f64::from(p.x) / f64::from(self.ppp), -f64::from(p.y) / f64::from(self.ppp)))
+                        }
+                        tiny_skia::PathSegment::Close if !run.is_empty() => {
+                            runs.push(std::mem::take(&mut run));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if !run.is_empty() {
+                runs.push(run);
+            }
+            runs
+        };
+        match geometry {
+            Geometry::Point(c) => point(*c).map(Geometry::Point),
+            Geometry::MultiPoint(points) => Some(Geometry::MultiPoint(points.iter().filter_map(|c| point(*c)).collect())),
+            Geometry::Line(parts) => Some(Geometry::Line(paths(parts, false))),
+            Geometry::Polygon(polys) => Some(Geometry::Polygon(polys.iter().map(|rings| paths(rings, true)).collect())),
+        }
+    }
+
     /// Logical screen position of a coordinate, `None` when it is behind the globe.
     fn screen(&self, c: Coord) -> Option<(f64, f64)> {
         match &self.globe {
@@ -428,13 +471,17 @@ impl Ctx<'_> {
         {
             out.extend(g.horizon_arc(last, first));
         }
-        for (i, v) in out.iter().enumerate() {
-            let (x, y) = self.vpx(g, *v);
-            if i == 0 { pb.move_to(x, y) } else { pb.line_to(x, y) }
-        }
-        if !out.is_empty() {
-            pb.close();
-        }
+        // Apply the flat renderer's device-pixel clipping and subpixel thinning after the
+        // spherical horizon clip. Walking distant coastline segments through the rasterizer
+        // on every navigation frame is expensive and can produce enormous stroke bounds.
+        let points: Vec<(f64, f64)> = out
+            .iter()
+            .map(|v| {
+                let (x, y) = self.vpx(g, *v);
+                (f64::from(x), f64::from(y))
+            })
+            .collect();
+        emit_run(pb, clip_ring(&points, &self.clip_box()).into_iter(), true);
     }
 
     /// A line on the globe, broken where it goes behind the horizon.
@@ -1066,6 +1113,56 @@ pub fn view_lonlat(map: &Map, view: &View) -> Extent {
 /// On high-density screens rasters are computed at logical-pixel resolution, for speed.
 pub fn render(map: &mut Map, view: &View) -> Option<Rendered> {
     render_with(map, view, false)
+}
+
+/// Whether globe imagery can be cached separately from the map's live layers. Blends and
+/// whole-map effects need the fully composed image and stay on the exact renderer.
+pub fn globe_layers_separable(map: &Map) -> bool {
+    map.projection.is_globe()
+        && map.view.effects.is_none()
+        && map.view.color_vision == rustgis_map::view::ColorVision::Normal
+        && map.layers.iter().all(|l| l.blend == rustgis_map::effects::Blend::Normal)
+        && map.tiles.iter().filter(|t| t.visible).all(|t| matches!(t.kind, rustgis_map::TileKind::Raster | rustgis_map::TileKind::Cog))
+}
+
+/// The globe backdrop and web tiles, without user layers. Only this image may be reprojected
+/// as ground imagery during navigation; screen-sized symbols must never be baked into it.
+/// Lighting is left out so the UI can shade once over the background and live layers.
+pub fn render_globe_background(map: &mut Map, view: &View) -> Option<Rendered> {
+    render_globe_part(map, view, FrameContent::Background)
+}
+
+/// Draws user layers at the current globe camera onto a transparent, native-resolution image.
+/// Point symbols retain their screen size; polygon edges use the actual geometry and horizon.
+pub fn render_globe_layers(map: &mut Map, view: &View) -> Option<Rendered> {
+    render_globe_part(map, view, FrameContent::Layers)
+}
+
+/// Live globe layers, projected and horizon-clipped before tessellation. GPU scenes use
+/// logical screen coordinates (x right, y up), with a unit-resolution camera centred at
+/// `(view.width / 2, -view.height / 2)`; symbols remain screen-sized.
+pub fn render_globe_layers_backend(map: &mut Map, view: &View, backend: Backend) -> Option<RenderOutput> {
+    if !globe_layers_separable(map) {
+        return None;
+    }
+    render_frame_part(map, view, false, backend, Labels::Own, FrameContent::Layers)
+}
+
+fn render_globe_part(map: &mut Map, view: &View, content: FrameContent) -> Option<Rendered> {
+    if !globe_layers_separable(map) {
+        return None;
+    }
+    match render_frame_part(map, view, false, Backend::Cpu, Labels::Own, content)? {
+        RenderOutput::Cpu(r) => Some(r),
+        RenderOutput::Gpu(_) => None,
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum FrameContent {
+    All,
+    Background,
+    Layers,
 }
 
 fn render_with(map: &mut Map, view: &View, full_res_rasters: bool) -> Option<Rendered> {
@@ -2097,7 +2194,19 @@ fn render_turned(map: &mut Map, view: &View, full_res_rasters: bool) -> Option<R
 
 /// Draws one north-up frame. `labels_to` says where its labels go: a turned or tilted view the
 /// frame stands in for places them itself (and draws their icons).
-fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Backend, mut labels_to: Labels<'_>) -> Option<RenderOutput> {
+fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Backend, labels_to: Labels<'_>) -> Option<RenderOutput> {
+    render_frame_part(map, view, full_res_rasters, backend, labels_to, FrameContent::All)
+}
+
+fn render_frame_part(
+    map: &mut Map,
+    view: &View,
+    full_res_rasters: bool,
+    backend: Backend,
+    mut labels_to: Labels<'_>,
+    content: FrameContent,
+) -> Option<RenderOutput> {
+    let background = content != FrameContent::Layers;
     let (w, h) = view.pixel_size();
     let mut pm = Pixmap::new(w, h)?;
     // Streamed layers read the view: in the background for the screen, in place for an export
@@ -2120,9 +2229,10 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         globe,
         sprites: Default::default(),
     };
-    // The Gpu backend draws flat, effect-free frames; anything else stays on the CPU pixmap.
+    // The GPU draws flat frames and live globe layers projected into screen coordinates.
+    // Complete globe compositions and effect-heavy frames retain the CPU path.
     let gpu = matches!(backend, Backend::Gpu)
-        && globe.is_none()
+        && (globe.is_none() || content == FrameContent::Layers)
         && map.view.effects.is_none()
         && map.view.color_vision == rustgis_map::view::ColorVision::Normal;
     // The effective backend: the Gpu arm at the end only runs when the frame is compatible.
@@ -2132,7 +2242,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
     let mut cmds: Vec<gpu_scene::DrawCmd> = Vec::new();
     // Map units per physical pixel: the decimation threshold scale (`Ctx::ring_path`'s 0.35 px
     // rule is applied in screen space) and the stroke shader's width scale.
-    let map_per_px = view.camera.res / view.pixels_per_point;
+    let map_per_px = if gpu && globe.is_some() { 1.0 } else { view.camera.res } / view.pixels_per_point;
     // On the globe nothing is culled by the flat extent: the horizon clips instead.
     let visible = |e: &Extent| match &globe {
         Some(g) => g.may_see(e),
@@ -2147,17 +2257,19 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
 
     // Basemap.
     let (water, land, outline, grat) = map.palette();
-    match &globe {
-        Some(g) => globe_backdrop(&mut pm, g, water, space(view, map), view.pixels_per_point as f32),
-        None if !gpu => pm.fill(tiny_skia::Color::from_rgba8(water.r(), water.g(), water.b(), 255)),
-        // The Gpu scene carries the water backdrop as its clear colour instead — an
-        // always-full-screen Image here would poison `has_images` and kill the camera
-        // fast path.
-        None => {}
+    if background {
+        match &globe {
+            Some(g) => globe_backdrop(&mut pm, g, water, space(view, map), view.pixels_per_point as f32),
+            None if !gpu => pm.fill(tiny_skia::Color::from_rgba8(water.r(), water.g(), water.b(), 255)),
+            // The Gpu scene carries the water backdrop as its clear colour instead — an
+            // always-full-screen Image here would poison `has_images` and kill the camera
+            // fast path.
+            None => {}
+        }
     }
     // Set when tiny-skia actually rasterizes into the accumulator.
     let mut cpu_dirty = false;
-    if land != water {
+    if background && land != water {
         let fill = paint(land, 1.0);
         let stroke = (outline.a() > 0).then(|| (paint(outline, 1.0), 0.6));
         let custom_world = custom.then(|| world_in(&flat, &key));
@@ -2187,7 +2299,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
             }
         }
     }
-    if map.graticule && grat.a() > 0 {
+    if background && map.graticule && grat.a() > 0 {
         let p = paint(grat, 1.0);
         let step = if view.camera.res > 8000.0 {
             30.0
@@ -2245,10 +2357,14 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         Some(g) => raster::Place::Globe(g),
         None => raster::Place::Flat(&flat, &key),
     };
-    let tile_out = tiles::draw(&mut pm, map, view, tile_place, !map.label_display.paused && map.label_lock.is_none());
+    let tile_out = if background {
+        tiles::draw(&mut pm, map, view, tile_place, !map.label_display.paused && map.label_lock.is_none())
+    } else {
+        tiles::TileOutput::default()
+    };
     // Hidden tile layers draw nothing: marking dirty anyway would emit an empty full-screen
     // Image command (a pointless upload, and it poisons the camera fast path's `has_images`).
-    cpu_dirty |= map.tiles.iter().any(|t| t.visible);
+    cpu_dirty |= background && map.tiles.iter().any(|t| t.visible);
 
     // Layers, bottom first.
     let mut label_candidates: Vec<(PlacedLabel, f32, (u32, usize))> = Vec::new();
@@ -2263,9 +2379,9 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
     let tokens = rustgis_map::graphics::TokenValues::of(map, scale);
     let n_layers = map.layers.len();
     // Masks: layers shown only inside another layer's polygons, or left of the swipe divider.
-    let masks = layer_masks(map, &ctx, w, h, &flat, &key);
+    let masks = if content != FrameContent::Background { layer_masks(map, &ctx, w, h, &flat, &key) } else { Vec::new() };
     // Bottom first; a higher depth priority draws later (on top) whatever the order.
-    let mut order: Vec<usize> = (0..n_layers).rev().collect();
+    let mut order: Vec<usize> = if content != FrameContent::Background { (0..n_layers).rev().collect() } else { Vec::new() };
     order.sort_by_key(|i| map.layers.get(*i).map_or(0, |l| l.priority));
     let clip = map.view.clip_distance.map(|d| (view.camera.center_lonlat(), d));
     // Each layer group's visibility, scale range and transparency apply to its children (#413).
@@ -2374,7 +2490,13 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         let mut gpu_done = false;
         if gpu_layer {
             flush_acc(&mut pm, &mut cmds, &mut cpu_dirty)?;
-            gpu_done = mesh::collect_layer(&mut cmds, layer, &geoms, &rows, &mesh_visible, ctx.wireframe, ctx.ppp, map_per_px).is_ok();
+            let screen: Vec<Option<Geometry>> =
+                if globe.is_some() { geoms.iter().map(|g| g.and_then(|g| ctx.globe_geometry(g))).collect() } else { Vec::new() };
+            let screen_refs: Vec<Option<&Geometry>> = screen.iter().map(Option::as_ref).collect();
+            let screen_cull = Extent::new(-view.width, -view.height * 2.0, view.width * 2.0, view.height);
+            let visible = |e: &Extent| if globe.is_some() { e.intersects(&screen_cull) } else { mesh_visible(e) };
+            let drawn = if globe.is_some() { &screen_refs } else { &geoms };
+            gpu_done = mesh::collect_layer(&mut cmds, layer, drawn, &rows, &visible, ctx.wireframe, ctx.ppp, map_per_px).is_ok();
         }
         // False for a layer drawn elsewhere: nothing goes into the picture for it.
         let mut drawn_here = true;
@@ -2451,7 +2573,11 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                 // Follow the layer's own backend: when it fell back to the CPU pixmap, the
                 // highlight must too — tessellated here, the layer's later-flushed Image would
                 // draw over it (the CPU path draws highlights over the layer).
-                if gpu_done && mesh::collect_highlight(&mut cmds, g, &layer.symbol(*row), ctx.ppp, map_per_px).is_ok() {
+                let screen = (gpu_done && globe.is_some()).then(|| ctx.globe_geometry(g)).flatten();
+                let selected = if globe.is_some() { screen.as_ref() } else { Some(*g) };
+                if gpu_done
+                    && selected.is_some_and(|g| mesh::collect_highlight(&mut cmds, g, &layer.symbol(*row), ctx.ppp, map_per_px).is_ok())
+                {
                     // highlight tessellated into the scene, right after its layer
                 } else {
                     ctx.highlight(&mut pm, g, &layer.symbol(*row), if layer.graphics { &[] } else { &layer.line_strokes });
@@ -2538,7 +2664,9 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
             }
         }
     }
-    if let Some(g) = &globe {
+    if content == FrameContent::All
+        && let Some(g) = &globe
+    {
         globe_shading(&mut pm, g, water, space(view, map), view.pixels_per_point as f32);
     }
     // Tile labels, after every layer's own.
@@ -2593,7 +2721,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         None => (view.width, view.height),
     };
     let placed = place_labels(label_candidates, fixed_labels, lw as f32, lh as f32, lock.is_some());
-    if display.locked && map.label_lock.is_none() && !matches!(labels_to, Labels::Tilted(..)) {
+    if content != FrameContent::Background && display.locked && map.label_lock.is_none() && !matches!(labels_to, Labels::Tilted(..)) {
         map.label_lock = Some(placed.keys);
     }
     let unplaced = if display.show_unplaced { placed.unplaced } else { Vec::new() };
@@ -2632,10 +2760,10 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
             // layer) costs more full-screen uploads than a plain CPU rasterization.
             let images = cmds.iter().filter(|c| matches!(c, gpu_scene::DrawCmd::Image { .. })).count();
             if images > 4 {
-                return render_frame(map, view, full_res_rasters, Backend::Cpu, labels_to);
+                return render_frame_part(map, view, full_res_rasters, Backend::Cpu, labels_to, content);
             }
             Some(RenderOutput::Gpu(gpu_scene::GpuScene {
-                clear: mesh::premul(water),
+                clear: if content == FrameContent::Layers { [0.0; 4] } else { mesh::premul(water) },
                 cmds,
                 labels,
                 unplaced,
@@ -3261,6 +3389,52 @@ mod tests {
         assert!(names(&def).iter().any(|n| n == "Taiwan"));
         assert!(!names(&chn).iter().any(|n| n == "Taiwan"));
         assert!(names(&chn).iter().any(|n| n == "China"));
+    }
+
+    #[test]
+    fn globe_background_and_live_layers_compose_like_an_exact_frame() {
+        let mut m = Map::new("Map");
+        m.projection = rustgis_map::Projection::Globe;
+        m.graticule = false;
+        m.label_display.locked = true;
+        let mut d = Dataset::new("Points", GeometryType::Point, vec![]);
+        for lon in [20.0, 23.0] {
+            d.push(Some(Geometry::Point(Coord::new(lon, 0.0))), vec![]);
+        }
+        let id = m.add_dataset(d);
+        let layer = m.layer_mut(id).unwrap();
+        layer.transparency = 40.0;
+        layer.renderer = rustgis_map::Renderer::Single(Symbol {
+            fill: Rgba::rgb(20, 240, 20),
+            stroke_width: 0.0,
+            size: 40.0,
+            ..Symbol::default_for(GeometryType::Point, 0)
+        });
+        for body in ["earth", "moon"] {
+            m.body = body.into();
+            for pitch in [0.0, 50.0] {
+                let view = View {
+                    width: 500.0,
+                    height: 400.0,
+                    pixels_per_point: 1.0,
+                    sky: true,
+                    camera: Camera { center: Coord::new(0.0, 0.0), res: 20_000.0, bearing: 20.0, pitch },
+                };
+                m.label_lock = None;
+                let mut background = render_globe_background(&mut m, &view).unwrap().pixmap;
+                assert!(m.label_lock.is_none(), "background drawing must not lock out user labels");
+                let layers = render_globe_layers(&mut m, &view).unwrap().pixmap;
+                assert!(layers.data().as_chunks::<4>().0.iter().any(|p| p[3] == 0), "an overlay must preserve transparency");
+                background.draw_pixmap(0, 0, layers.as_ref(), &PixmapPaint::default(), Transform::identity(), None);
+                let globe = Globe::new(&view.camera, view.width, view.height);
+                globe_shading(&mut background, &globe, m.palette().0, space(&view, &m), 1.0);
+                let exact = render(&mut m, &view).unwrap().pixmap;
+                let error = background.data().iter().zip(exact.data()).map(|(a, b)| a.abs_diff(*b)).max().unwrap_or(0);
+                assert!(error <= 3, "{body} pitch={pitch}: splitting the globe changed its colours by {error}");
+            }
+        }
+        m.layer_mut(id).unwrap().blend = rustgis_map::effects::Blend::Multiply;
+        assert!(!globe_layers_separable(&m), "backdrop-dependent blends need an exact composition");
     }
 
     #[test]

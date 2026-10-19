@@ -1,6 +1,7 @@
 //! Repeatable UI-thread pan/zoom benchmark with planetary tiles served from memory.
 //! GPU presentation/readback is excluded. Run with an optional maximum UI-frame cost:
 //! `cargo run -p rustgis-ui-egui --example planet_bench -- 50`.
+//! Add `--vectors` to keep the real World Atlas point, line and polygon layers.
 use rustgis_ui_egui::RustGisApp;
 use rustgis_ui_egui::rustgis_engine::{
     geom::{Coord, lonlat_to_merc},
@@ -24,6 +25,7 @@ fn settle(h: &mut egui_kittest::Harness<'_, RustGisApp>) -> Result<(), Box<dyn s
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let vectors = std::env::args().any(|arg| arg == "--vectors");
     let mut bytes = std::io::Cursor::new(Vec::new());
     image::RgbaImage::from_fn(256, 256, |x, y| image::Rgba([x as u8, y as u8, 90, 255])).write_to(&mut bytes, image::ImageFormat::Png)?;
     rustgis_tiles::cache::set_fetcher(move |_, done| done(Ok(bytes.get_ref().clone())));
@@ -43,7 +45,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.run("map.body", json!({"name": "moon"}))?;
             app.run("map.projection", json!({"type": projection}))?;
             app.run("ui.map.gpu", json!({"on": gpu}))?;
-            app.session.map_mut().layers.clear();
+            if !vectors {
+                app.session.map_mut().layers.clear();
+            }
             app.session.map_mut().camera.center = lonlat_to_merc(Coord::new(15.0, 25.0));
             app.session.map_mut().camera.res = 20_000.0;
             let mut h = egui_kittest::Harness::builder()
@@ -120,7 +124,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("         layer visibility: max {toggle_ms:.2} ms to the first updated frame");
         }
     }
-    if let Some(limit) = std::env::args().nth(1) {
+    if let Some(limit) = std::env::args().skip(1).find(|arg| arg != "--vectors") {
         let limit: f64 = limit.parse()?;
         if worst >= limit {
             return Err(format!("navigation stalls for {worst:.2} ms (limit {limit:.2})").into());

@@ -44,7 +44,11 @@ impl<K> Default for TiltSettle<K> {
 
 fn draw(mut map: Map, view: View, backend: Backend) -> Done {
     let t0 = web_time::Instant::now();
-    let rendered = render::render_backend(&mut map, &view, backend);
+    let rendered = if render::globe_layers_separable(&map) {
+        render::render_globe_background(&mut map, &view).map(RenderOutput::Cpu)
+    } else {
+        render::render_backend(&mut map, &view, backend)
+    };
     Done { rendered, view, map, ms: t0.elapsed().as_millis() as u64 }
 }
 

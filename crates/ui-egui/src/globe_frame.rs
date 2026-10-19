@@ -1,5 +1,6 @@
-//! Reproject the last full-resolution globe frame while the next one is drawing.
-//! Sampling its own screen grid avoids the moving Mercator drape's resolution reduction.
+//! Reproject a full-resolution globe background while its replacement draws.
+//! User layers must stay out of this image: markers are screen-sized, and warping their
+//! pixels stretches circles and introduces polygon seams. They draw live in `mapview`.
 
 use egui::{Color32, Mesh, Painter, Rect, TextureHandle, pos2};
 use rustgis_engine::geom::Coord;
@@ -14,7 +15,7 @@ pub(crate) struct GlobeFrame {
 }
 
 impl GlobeFrame {
-    /// Keep the image and its ground coordinates; projecting them later needs no map redraw.
+    /// Keep background imagery and its ground coordinates; `texture` must contain no user layers.
     pub fn new(texture: TextureHandle, view: &View) -> Self {
         let columns = ((view.width / 12.0).ceil() as usize).clamp(4, 128);
         let rows = ((view.height / 12.0).ceil() as usize).clamp(4, 128);

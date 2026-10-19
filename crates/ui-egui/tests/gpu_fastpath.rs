@@ -443,3 +443,106 @@ fn a_globe_keeps_native_wms_and_vector_detail_during_navigation_and_release() {
         check(&mut h, "settled");
     }
 }
+
+#[test]
+fn globe_vectors_keep_their_shapes_through_large_camera_changes() {
+    use rustgis_ui_egui::rustgis_engine::{
+        data::{GeometryType, io::read_geojson},
+        geom::{Coord, lonlat_to_merc},
+        map::{Camera, Projection, Renderer, Rgba, Symbol},
+        render::{View, render},
+    };
+    for gpu in [false, true] {
+        for kind in ["Point", "LineString", "Polygon"] {
+            let Some(mut h) = harness_at_density(2.0) else { return };
+            h.state_mut().run("ui.map.gpu", json!({"on":gpu})).expect("backend");
+            let m = h.state_mut().session.map_mut();
+            m.body = "moon".into();
+            m.layers.clear();
+            m.tiles.clear();
+            m.graticule = false;
+            m.projection = Projection::Globe;
+            m.camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 20_000.0, bearing: 0.0, pitch: 0.0 };
+            let coordinates = match kind {
+                "Point" => json!([20.0, 0.0]),
+                "LineString" => json!([[15.0, -5.0], [25.0, 5.0]]),
+                _ => json!([
+                    [[15.0, -5.0], [25.0, -5.0], [25.0, 5.0], [15.0, 5.0], [15.0, -5.0]],
+                    [[18.0, -2.0], [18.0, 2.0], [22.0, 2.0], [22.0, -2.0], [18.0, -2.0]]
+                ]),
+            };
+            let text = json!({"type":"Feature","properties":{},"geometry":{"type":kind,"coordinates":coordinates}}).to_string();
+            let (data, _) = read_geojson(&text, kind).expect("geometry");
+            let id = m.add_dataset(data);
+            m.layer_mut(id).expect("layer").renderer = Renderer::Single(Symbol {
+                fill: Rgba::rgb(20, 240, 20),
+                stroke: Rgba::rgb(20, 240, 20),
+                stroke_width: if kind == "Point" { 0.0 } else { 2.0 },
+                size: 24.0,
+                ..Symbol::default_for(GeometryType::Point, 0)
+            });
+            wait_for_frame(&mut h);
+            let rect = h.state().map.view_rect.expect("map").0;
+            let from = rect.center();
+            h.input_mut().events.push(egui::Event::PointerMoved(from));
+            h.input_mut().events.push(egui::Event::PointerButton {
+                pos: from,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: Default::default(),
+            });
+            h.step();
+            // Advance the camera in one frame, without letting a background result catch up.
+            // Reprojecting the previous point image stretches its circle into an ellipse;
+            // overlapping old and preview polygon images produce displaced edges and seams.
+            h.state_mut().session.map_mut().camera =
+                Camera { center: lonlat_to_merc(Coord::new(25.0, 10.0)), res: 10_000.0, bearing: 25.0, pitch: 35.0 };
+            h.step();
+            assert!(
+                h.output().shapes.iter().any(|s| matches!(s.shape, egui::Shape::Callback(_))),
+                "live globe geometry uses direct presentation"
+            );
+            let actual = h.render().expect("moving shapes");
+            let view = View {
+                width: f64::from(rect.width()),
+                height: f64::from(rect.height()),
+                pixels_per_point: 2.0,
+                camera: h.state().session.map().camera,
+                sky: true,
+            };
+            let reference = render(&mut h.state().session.map().clone(), &view).expect("reference");
+            let green = |r: u8, g: u8, b: u8| g > 80 && u16::from(g) > 2 * u16::from(r) && u16::from(g) > 2 * u16::from(b);
+            let (mut mismatch, mut expected_count) = (0, 0);
+            for y in 0..reference.pixmap.height() {
+                for x in 0..reference.pixmap.width() {
+                    let p = actual.get_pixel((rect.left() * 2.0).round() as u32 + x, (rect.top() * 2.0).round() as u32 + y);
+                    let q = reference.pixmap.pixel(x, y).expect("pixel");
+                    let expected = green(q.red(), q.green(), q.blue());
+                    expected_count += usize::from(expected);
+                    let present = green(p[0], p[1], p[2]);
+                    if present != expected {
+                        // MSAA and analytic rasterization can disagree at a one-pixel edge.
+                        let nearby = (y.saturating_sub(1)..=(y + 1).min(reference.pixmap.height() - 1)).any(|ny| {
+                            (x.saturating_sub(1)..=(x + 1).min(reference.pixmap.width() - 1)).any(|nx| {
+                                if present {
+                                    let p = reference.pixmap.pixel(nx, ny).expect("nearby reference");
+                                    green(p.red(), p.green(), p.blue())
+                                } else {
+                                    let p =
+                                        actual.get_pixel((rect.left() * 2.0).round() as u32 + nx, (rect.top() * 2.0).round() as u32 + ny);
+                                    green(p[0], p[1], p[2])
+                                }
+                            })
+                        });
+                        mismatch += usize::from(!nearby);
+                    }
+                }
+            }
+            assert!(expected_count > 100, "fixture must show its geometry");
+            assert!(
+                mismatch < expected_count / 20 + 20,
+                "GPU={gpu} {kind}: {mismatch} pixels differ from the actual shape ({expected_count} pixels)"
+            );
+        }
+    }
+}

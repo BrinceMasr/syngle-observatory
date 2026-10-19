@@ -70,13 +70,102 @@ pub struct Toast {
     pub id: u64,
 }
 
+enum GlobeLayerPicture {
+    Cpu(egui::TextureHandle),
+    Meshes(std::sync::Arc<crate::mapgpu::SceneBuffers>),
+}
+
+struct GlobeLayers {
+    key: Key,
+    picture: GlobeLayerPicture,
+    labels: Vec<PlacedLabel>,
+}
+
+/// Project live geometry at the current camera. Both map modes share egui's presentation
+/// pass; screen-space meshes avoid a large bitmap upload and never stretch marker circles.
+fn paint_globe_layers(app: &mut RustGisApp, ctx: &egui::Context, painter: &egui::Painter, rect: Rect, key: Key, view: &View) {
+    use rustgis_engine::render::{self, Backend, RenderOutput};
+    if app.session.map().layers.is_empty() {
+        app.map.globe_layers = None;
+        return;
+    }
+    if app.map.globe_layers.as_ref().is_none_or(|layers| layers.key != key) {
+        let mut live = None;
+        let mut cpu = None;
+        let output = if app.map.render_state.is_some() {
+            render::render_globe_layers_backend(app.session.map_mut(), view, Backend::Gpu)
+        } else {
+            None
+        };
+        if let Some(RenderOutput::Cpu(r)) = output {
+            cpu = Some(r);
+        } else if let Some(RenderOutput::Gpu(mut scene)) = output
+            && let Some(rs) = &app.map.render_state
+        {
+            let renderer = app.map.gpu_renderer.get_or_insert_with(|| std::sync::Arc::new(crate::mapgpu::GpuMapRenderer::new(rs)));
+            let camera = Camera { center: Coord::new(view.width / 2.0, -view.height / 2.0), res: 1.0, bearing: 0.0, pitch: 0.0 };
+            if let Some(buffers) = crate::mapgpu::SceneBuffers::from_scene(
+                &rs.device,
+                &rs.queue,
+                renderer,
+                &scene,
+                camera,
+                [view.width, view.height],
+                view.pixels_per_point as f32,
+            ) {
+                scene.labels.splice(0..0, scene.unplaced);
+                live = Some(GlobeLayers { key, picture: GlobeLayerPicture::Meshes(std::sync::Arc::new(buffers)), labels: scene.labels });
+            }
+        }
+        // Hosts without a presentation device, or a scene beyond its limits, draw the same
+        // geometry into a native-resolution overlay. This image is also never reprojected.
+        if live.is_none()
+            && let Some(mut r) = cpu.or_else(|| render::render_globe_layers(app.session.map_mut(), view))
+        {
+            let image = egui::ColorImage::from_rgba_premultiplied([r.pixmap.width() as usize, r.pixmap.height() as usize], r.pixmap.data());
+            let texture = match app.map.globe_layers.take().map(|old| old.picture) {
+                Some(GlobeLayerPicture::Cpu(mut texture)) => {
+                    texture.set(image, egui::TextureOptions::LINEAR);
+                    texture
+                }
+                _ => ctx.load_texture("globe_layers", image, egui::TextureOptions::LINEAR),
+            };
+            r.labels.splice(0..0, r.unplaced);
+            live = Some(GlobeLayers { key, picture: GlobeLayerPicture::Cpu(texture), labels: r.labels });
+        }
+        app.map.globe_layers = live;
+    }
+    if let Some(layers) = app.map.globe_layers.as_ref().filter(|layers| layers.key == key) {
+        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        match &layers.picture {
+            GlobeLayerPicture::Cpu(texture) => {
+                painter.image(texture.id(), rect, uv, Color32::WHITE);
+            }
+            GlobeLayerPicture::Meshes(buffers) => {
+                if let Some(renderer) = &app.map.gpu_renderer {
+                    painter.add(egui_wgpu::Callback::new_paint_callback(
+                        rect,
+                        crate::mapgpu::SceneCallback {
+                            renderer: renderer.clone(),
+                            buffers: buffers.clone(),
+                            target: app.map.gpu_target.clone(),
+                            uv,
+                        },
+                    ));
+                }
+            }
+        }
+    }
+}
+
 pub struct MapView {
     texture: Option<egui::TextureHandle>,
     key: Option<Key>,
     /// A preview is attempted once for each frame key, including when drawing fails.
     preview_attempt: Option<Key>,
-    /// The last sharp globe image, reprojected during navigation and background rendering.
+    /// Only globe background imagery is reprojected; user layers draw at the current camera.
     globe_frame: Option<crate::globe_frame::GlobeFrame>,
+    globe_layers: Option<GlobeLayers>,
     tex_camera: Camera,
     /// The size (points) of the view the texture was drawn for: larger than the map while it
     /// moves, so zooming out and panning have more of it to show.
@@ -184,6 +273,7 @@ impl Default for MapView {
             key: None,
             preview_attempt: None,
             globe_frame: None,
+            globe_layers: None,
             tex_camera: Camera::world(),
             tex_size: (0.0, 0.0),
             tex_rect: Rect::NOTHING,
@@ -272,6 +362,7 @@ impl MapView {
         self.key = None;
         self.preview_attempt = None;
         self.globe_frame = None;
+        self.globe_layers = None;
         self.gpu_frame = None;
         self.tilt_settle = Default::default();
     }
@@ -476,11 +567,12 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
     interact(app, ui, &resp, rect);
 
-    // During navigation the flat map's last frame is shifted and scaled. Globe frames instead
-    // reproject their ground coordinates while native-resolution replacements draw in the
-    // background; Mercator drapes fill newly exposed ground (see `globe_drape`).
+    // During navigation the flat map's last frame is shifted and scaled. Globe imagery
+    // reprojects while its replacement draws in the background; user layers always project
+    // their geometry at the current camera, retaining symbol sizes and polygon edges.
     let cam = app.session.map().camera;
     let globe_view = app.session.map().projection == Projection::Globe;
+    let globe_split = rustgis_engine::render::globe_layers_separable(app.session.map());
     let dragging = app.map.drag.is_some_and(|(_, k)| k == DragKind::Pan || k == DragKind::Turn);
     // A tilted map waits longer before its exact (slower) frame: its drape already shows it in
     // perspective, so a short pause in a gesture doesn't stop to draw it.
@@ -499,7 +591,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             || (app.map.gpu_turn_declined != Some(rev) && rustgis_engine::render::gpu_may_turn(app.session.map(), &turned_view)))
         && app.session.map().view.effects.is_none()
         && app.session.map().view.color_vision == rustgis_engine::map::view::ColorVision::Normal;
-    let mut draped = if globe_view && moving {
+    let mut draped = if globe_split && moving {
         let key = crate::globe_drape::DrapeKey { rev: app.session.revision, sources: rustgis_engine::map::source::generation() };
         let tiles = if fetches_tiles(app.session.map()) { rustgis_engine::render::rustgis_tiles::cache::generation() } else { 0 };
         app.map.drape.prepare(ui.ctx(), app.session.map_mut(), key, tiles, w, h, ppp, time)
@@ -507,6 +599,9 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         if !globe_view {
             app.map.drape.clear();
             app.map.globe_frame = None;
+        }
+        if !globe_split {
+            app.map.globe_layers = None;
         }
         false
     };
@@ -525,7 +620,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     };
     // Native globe workers always draw at full density. Only the synchronous fallback
     // (browser navigation or playback) needs a draft when no drape can cover the view.
-    let draft = globe_view && moving && !draped && (cfg!(target_arch = "wasm32") || app.ws.playing.is_some());
+    let draft = globe_split && moving && !draped && (cfg!(target_arch = "wasm32") || app.ws.playing.is_some());
     let render_ppp = if draft { (ppp * 0.6).max(0.5) } else { ppp };
     let key = Key {
         rev: app.session.revision,
@@ -574,7 +669,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     let tiled_flat = !globe_view && cam.bearing == 0.0 && cam.pitch == 0.0 && !app.session.map().tiles.is_empty();
     // Globe frames refresh at native resolution even during gestures. Their last completed
     // image is reprojected until the worker catches up, instead of going coarse until release.
-    let globe_refresh = globe_view && (!moving || !cfg!(target_arch = "wasm32"));
+    let globe_refresh = globe_split && (!moving || !cfg!(target_arch = "wasm32"));
     let settling = (globe_refresh || ((tilted || tiled_flat) && !moving)) && app.ws.playing.is_none();
     let mut tilt_draped = tilt_draped;
     // A view without globe-frame reprojection cannot use an old frame during a gesture.
@@ -625,7 +720,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         if !shown {
             let drape_key = crate::globe_drape::DrapeKey { rev: app.session.revision, sources: rustgis_engine::map::source::generation() };
             let tiles = if fetches_tiles(app.session.map()) { rustgis_engine::render::rustgis_tiles::cache::generation() } else { 0 };
-            if globe_view {
+            if globe_split {
                 app.map.gpu_frame = None;
                 draped = app.map.drape.prepare(ui.ctx(), app.session.map_mut(), drape_key, tiles, w, h, ppp, time);
             } else if tilted {
@@ -770,7 +865,12 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             }
             app.map.gpu_frame = None;
             let view = View { width: vw, height: vh, pixels_per_point: vppp as f64, camera: cam, sky: true };
-            if let Some(r) = rustgis_engine::render::render(app.session.map_mut(), &view) {
+            let rendered = if globe_split {
+                rustgis_engine::render::render_globe_background(app.session.map_mut(), &view)
+            } else {
+                rustgis_engine::render::render(app.session.map_mut(), &view)
+            };
+            if let Some(r) = rendered {
                 // Mid-motion the frame stands in for the real one, which follows once it settles.
                 let key = Key { draft: key.draft || motion.is_some(), ..key };
                 show_frame(app, ui.ctx(), r, &view, (w, h), key, time, globe_view);
@@ -836,6 +936,15 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         ));
     } else if let Some(tex) = app.map.texture.as_ref().filter(|_| !draped && !tilt_draped) {
         painter.image(tex.id(), tex_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
+    }
+    if globe_split {
+        paint_globe_layers(app, ui.ctx(), &painter, rect, key, &turned_view);
+        app.map.drape.paint_light(&painter, rect, &cam);
+        if let Some(layers) = app.map.globe_layers.as_ref().filter(|layers| layers.key == key) {
+            for l in &layers.labels {
+                draw_label(&painter, l, rect.min + vec2(l.x, l.y));
+            }
+        }
     }
     // Shooting stars, while space shows around the globe.
     let g = Globe::new(&cam, w, h);
@@ -948,7 +1057,7 @@ fn show_frame(
         Some(tex) => tex.set(img, egui::TextureOptions::LINEAR),
         None => app.map.texture = Some(ctx.load_texture("map", img, egui::TextureOptions::LINEAR)),
     }
-    app.map.globe_frame = if globe_view && !key.draft {
+    app.map.globe_frame = if globe_view && !key.draft && rustgis_engine::render::globe_layers_separable(app.session.map()) {
         app.map.texture.as_ref().map(|texture| crate::globe_frame::GlobeFrame::new(texture.clone(), view))
     } else {
         None
@@ -2613,10 +2722,13 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(2));
             h.step();
         }
-        assert!(!h.state().map.labels.is_empty(), "the sample has labels");
+        assert!(h.state().map.globe_layers.as_ref().is_some_and(|layers| !layers.labels.is_empty()), "the sample has live layer labels");
         h.state_mut().run("layer.visibility", json!({"layer": "Countries", "visible": false})).expect("hide countries");
         h.step();
-        assert!(h.state().map.labels.is_empty(), "the preview kept labels from the old visibility state");
+        assert!(
+            h.state().map.labels.is_empty() && h.state().map.globe_layers.as_ref().is_none_or(|layers| layers.labels.is_empty()),
+            "the preview kept labels from the old visibility state"
+        );
     }
 
     /// The GPU fast path moves the last frame's meshes only while they cover the view: zooming
