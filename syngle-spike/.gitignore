@@ -7,3 +7,4 @@ logs/
 bench/results/
 bench/*.log
 host/node_modules/
+sizes.json
