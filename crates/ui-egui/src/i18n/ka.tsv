@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	Zarr საცავი (ფორმატი 2 ან 3) ვებ მისამართით, კონსოლიდირებული მეტამონაცემებით, ან საქაღალდე ამ კომპიუტერში. ცვლადის რუკა იკითხება მისი სხვა განზომილებების არჩეული ნაბიჯებისთვის, მაგ. დროისთვის.
 About	შესახებ
 About plugins	დანამატების შესახებ
-About RustGIS	RustGIS-ის შესახებ
-About RustGIS.	RustGIS-ის შესახებ.
+About Syngle Observatory	Syngle Observatory-ის შესახებ
+About Syngle Observatory.	Syngle Observatory-ის შესახებ.
 Above	ზემოთ
 Above Left	ზემოთ მარცხნივ
 Above Right	ზემოთ მარჯვნივ
@@ -169,8 +169,8 @@ Agent input pipe closed.	აგენტის შეყვანის არ�
 Agent input queue is full or disconnected; stop the agent and try again.	აგენტის შეყვანის რიგი სავსეა ან გათიშულია; გააჩერეთ აგენტი და სცადეთ ხელახლა.
 Agent threads	აგენტის თემები
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	ამ კომპიუტერის დაკავშირებული აგენტები (Claude Code, Codex, Cursor და სხვები) აქ გახსნილ რუკაზე RustGIS-ის ხელსაწყოებით მუშაობენ: შეუძლიათ ფაილების გახსნა და შენახვა და ვების გამოყენება. სკრიპტები და მოდულების მართვა გამორთული რჩება.
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	ამ კომპიუტერის დაკავშირებული აგენტები (Claude Code, Codex, Cursor და სხვები) აქ გახსნილ რუკაზე RustGIS-ის ხელსაწყოებით მუშაობენ: შეუძლიათ ფაილების გახსნა და შენახვა და ვების გამოყენება. სკრიპტები და მოდულების მართვა გამორთული რჩება. არჩევანი გაშვებებს შორის ინახება.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	ამ კომპიუტერის დაკავშირებული აგენტები (Claude Code, Codex, Cursor და სხვები) აქ გახსნილ რუკაზე Syngle Observatory-ის ხელსაწყოებით მუშაობენ: შეუძლიათ ფაილების გახსნა და შენახვა და ვების გამოყენება. სკრიპტები და მოდულების მართვა გამორთული რჩება.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	ამ კომპიუტერის დაკავშირებული აგენტები (Claude Code, Codex, Cursor და სხვები) აქ გახსნილ რუკაზე Syngle Observatory-ის ხელსაწყოებით მუშაობენ: შეუძლიათ ფაილების გახსნა და შენახვა და ვების გამოყენება. სკრიპტები და მოდულების მართვა გამორთული რჩება. არჩევანი გაშვებებს შორის ინახება.
 Agents then run commands, change files and use the web on this computer without asking you.	აგენტები ამ კომპიუტერზე შეკითხვის გარეშე გაუშვებენ ბრძანებებს, შეცვლიან ფაილებს და გამოიყენებენ ვებს.
 Aggregation	აგრეგაცია
 AI	AI
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	მხოლოდ ველებს შორის მნიშვნელობების გარკვეული კომბინაციების დაშვება.
 Allow such actions for this conversation	ასეთი მოქმედებების დაშვება ამ საუბარში
 Allow this action?	დაგეშვათ ეს მოქმედება?
-Allow this agent's RustGIS action?	დავუშვათ ამ აგენტის RustGIS-ის მოქმედება?
+Allow this agent's Syngle Observatory action?	დავუშვათ ამ აგენტის Syngle Observatory-ის მოქმედება?
 Along Selected Line	მონიშნული ხაზის გასწვრივ
 Alternating bar	მონაცვლე ზოლი
 Altitude	სიმაღლე
 Always allow	ყოველთვის დაშვება
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3 ან S3-თან თავსებადი სერვისი (MinIO, Cloudflare R2, Wasabi…) მისი ბოლო წერტილით. გასაღებები ინახება RustGIS-ის დახურვამდე; დამახსოვრებული კავშირი ინახავს სახელს, ბოლო წერტილსა და რეგიონს, მაგრამ არასდროს საიდუმლო გასაღებს.
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3 ან S3-თან თავსებადი სერვისი (MinIO, Cloudflare R2, Wasabi…) მისი ბოლო წერტილით. გასაღებები ინახება Syngle Observatory-ის დახურვამდე; დამახსოვრებული კავშირი ინახავს სახელს, ბოლო წერტილსა და რეგიონს, მაგრამ არასდროს საიდუმლო გასაღებს.
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	ამ კომპიუტერის აგენტი ითხოვს:
 An AWS profile	AWS პროფილი
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	გამოყენები
 Area of use: within {r}° of {lon}°, {lat}°	გამოყენების არეალი: {lon}°, {lat}°-დან {r}°-ის ფარგლებში
 Area {area}   ·   Perimeter {perimeter}	ფართობი {area}   ·   პერიმეტრი {perimeter}
 Areas (name, land use, area)	არეები (სახელი, მიწის გამოყენება, ფართობი)
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	დასვით შეკითხვა თქვენი მონაცემების შესახებ ან აღწერეთ, რა უნდა გაკეთდეს რუკაზე. ასისტენტი RustGIS-ის ბრძანებებს თავად გაუშვებს; ყველა ცვლილების გაუქმება შესაძლებელია.
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	დასვით შეკითხვა თქვენი მონაცემების შესახებ ან აღწერეთ, რა უნდა გაკეთდეს რუკაზე. ასისტენტი Syngle Observatory-ის ბრძანებებს თავად გაუშვებს; ყველა ცვლილების გაუქმება შესაძლებელია.
 Ask about the map, or tell it what to do…	დასვით შეკითხვა რუკის შესახებ ან მიუთითეთ, რა გააკეთოს…
 Ask about your data, or tell the assistant what to do with the map.	დასვით შეკითხვა თქვენი მონაცემების შესახებ ან უთხარით ასისტენტს, რა გააკეთოს რუკაზე.
 Asking the catalog…	კატალოგთან მიმართვა…
@@ -479,7 +479,7 @@ Color Vision Simulator	ფერთა აღქმის სიმულატ�
 Colorbar	ფერთა ზოლი
 Colormap	ფერთა რუკა
 Colors from the raster's own color table.	ფერები რასტრის საკუთარი ფერთა ცხრილიდან.
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	ფერთა შკალები (RustGIS, QGIS, GDAL, GMT)
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	ფერთა შკალები (Syngle Observatory, QGIS, GDAL, GMT)
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	სვეტები სახელებით, როგორიცაა longitude/latitude, easting/northing ან geometry, ავტომატურად აირჩევა.
 Combinations from the box above, one per line	ზემოთ მოცემული ველიდან კომბინაციები, თითო ხაზზე ერთი
 Comma	მძიმე
@@ -631,7 +631,7 @@ Delete selected rows	მონიშნული სტრიქონები�
 Delete Style	სტილის წაშლა
 Delete Task	ამოცანის წაშლა
 Delete Task Step	ამოცანის საფეხურის წაშლა
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	RustGIS-ის მიერ დაინსტალირებული GeoLibre-ის გამშვების წაშლა. ნებისმიერ დროს შეგიძლიათ ხელახლა დააინსტალიროთ.
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	Syngle Observatory-ის მიერ დაინსტალირებული GeoLibre-ის გამშვების წაშლა. ნებისმიერ დროს შეგიძლიათ ხელახლა დააინსტალიროთ.
 Delete the layout {name}?	წაიშალოს განლაგება {name}?
 Delete the map {name}?	წაიშალოს რუკა {name}?
 Delete the selected features.	მონიშნული ობიექტების წაშლა.
@@ -770,7 +770,7 @@ Element	ელემენტი
 Element Properties	ელემენტის თვისებები
 Elevation	სიმაღლე
 Elevation profiles along lines, cross sections and more.	სიმაღლის პროფილები ხაზების გასწვრივ, განივი ჭრილები და სხვა.
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	RustGIS-ის შესაბამისი მოთხოვნები თქვენს ChatGPT გეგმას იყენებს. გამოყენების მართვა ChatGPT-ის პარამეტრებშია შესაძლებელი.
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Syngle Observatory-ის შესაბამისი მოთხოვნები თქვენს ChatGPT გეგმას იყენებს. გამოყენების მართვა ChatGPT-ის პარამეტრებშია შესაძლებელი.
 Ellipse	ელიფსი
 Embeddings	ემბედინგები
 Ember	ნაკვერჩხალი
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	ნებისმიერი ბრძა�
 Find Datasets	მონაცემთა ნაკრებების პოვნა
 Find Items	ელემენტების პოვნა
 Find Place	ადგილის პოვნა
-Find plugins in the RustGIS plugin registry.	დანამატების პოვნა RustGIS-ის დანამატების რეესტრში.
+Find plugins in the Syngle Observatory plugin registry.	დანამატების პოვნა Syngle Observatory-ის დანამატების რეესტრში.
 Find Similar	მსგავსის პოვნა
 Find Tools	ხელსაწყოების პოვნა
 Finding routes…	მარშრუტების ძიება…
@@ -932,7 +932,7 @@ Folder…	საქაღალდე…
 for a store that doesn't say	საცავისთვის, რომელიც ამას არ უთითებს
 Forest	ტყე
 Format	ფორმატი
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	მოიძებნა: {names}. აგენტი ამ რუკაზე მუშაობს RustGIS-ის ხელსაწყოებით და საკუთარით (ვები, სკრიპტები, ფაილები), საკუთარ საქაღალდეში, რომელიც ინახება აქ: დოკუმენტები › RustGIS › Agent work. ყოველი მოქმედების წინ გეკითხებათ.
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	მოიძებნა: {names}. აგენტი ამ რუკაზე მუშაობს Syngle Observatory-ის ხელსაწყოებით და საკუთარით (ვები, სკრიპტები, ფაილები), საკუთარ საქაღალდეში, რომელიც ინახება აქ: დოკუმენტები › Syngle Observatory › Agent work. ყოველი მოქმედების წინ გეკითხებათ.
 Frame rate	კადრების სიხშირე
 Frame rate, draw time, data size and memory.	კადრების სიხშირე, ხატვის დრო, მონაცემთა ზომა და მეხსიერება.
 Free the prepared geometry.	მომზადებული გეომეტრიის გათავისუფლება.
@@ -1091,7 +1091,7 @@ In memory	მეხსიერებაში
 In Progress	მიმდინარეობს
 in progress	მიმდინარეობს
 In project	პროექტში
-In RustGIS, it can:	RustGIS-ში მას შეუძლია:
+In Syngle Observatory, it can:	Syngle Observatory-ში მას შეუძლია:
 In use	გამოიყენება
 Indices	ინდექსები
 Infographics	ინფოგრაფიკები
@@ -1205,7 +1205,7 @@ Legend	ლეგენდა
 Legend label. Clear it to show the value again.	ლეგენდის წარწერა. გაასუფთავეთ, რომ კვლავ გამოჩნდეს მნიშვნელობა.
 Length {length} · gain {gain} m · loss {loss} m	სიგრძე {length} · მატება {gain} მ · კლება {loss} მ
 Let the assistant hand tasks to agents on this computer	ასისტენტს ამ კომპიუტერის აგენტებისთვის დავალებების გადაცემის ნება მიეცით
-Let your Agents Control RustGIS	მიეცით თქვენს აგენტებს RustGIS-ის მართვის საშუალება
+Let your Agents Control Syngle Observatory	მიეცით თქვენს აგენტებს Syngle Observatory-ის მართვის საშუალება
 Level	დონე
 Library	ბიბლიოთეკა
 Light and Shadow	სინათლე და ჩრდილი
@@ -1271,7 +1271,7 @@ Longitude (X)	გრძედი (X)
 Look for {name}, outlined on the ribbon.	მოძებნეთ {name}, ლენტზე კონტურით გამოყოფილი.
 Looking up the place…	ადგილის ძიება…
 Lower Priority	პრიორიტეტის დაწევა
-Made in RustGIS: samples, drawings and tool outputs	შექმნილია RustGIS-ში: ნიმუშები, ნახაზები და ხელსაწყოების შედეგები
+Made in Syngle Observatory: samples, drawings and tool outputs	შექმნილია Syngle Observatory-ში: ნიმუშები, ნახაზები და ხელსაწყოების შედეგები
 Magnifier	გამადიდებელი
 Major Lakes	მსხვილი ტბები
 Major Rivers	მსხვილი მდინარეები
@@ -1436,7 +1436,7 @@ No bookmarks yet	სანიშნეები ჯერ არ არის
 No bookmarks yet. New Bookmark saves the current view of the map.	სანიშნეები ჯერ არ არის. „ახალი სანიშნე“ რუკის მიმდინარე ხედს ინახავს.
 no command	ბრძანება არ არის
 No connections this session	ამ სესიაში კავშირები არ არის
-No datasets with data RustGIS can add	არ არის მონაცემთა ნაკრებები, რომლებსაც RustGIS დაამატებს
+No datasets with data Syngle Observatory can add	არ არის მონაცემთა ნაკრებები, რომლებსაც Syngle Observatory დაამატებს
 No edits since the project was saved	პროექტის შენახვის შემდეგ რედაქტირება არ ყოფილა
 no home folder	საწყისი საქაღალდე არ არის
 No layers match	შესაბამისი ფენები არ არის
@@ -1472,8 +1472,8 @@ North	ჩრდილოეთი
 North\nArrow	ჩრდილოეთის\nისარი
 North Polar Stereographic	ჩრდილოეთის პოლარული სტერეოგრაფიული
 not a picture	სურათი არ არის
-not a RustGIS layout	ეს RustGIS-ის განლაგება არ არის
-not a RustGIS project	არ არის RustGIS-ის პროექტი
+not a Syngle Observatory layout	ეს Syngle Observatory-ის განლაგება არ არის
+not a Syngle Observatory project	არ არის Syngle Observatory-ის პროექტი
 not needed	საჭირო არ არის
 Not sandboxed	იზოლაციის გარეშე
 Not saved yet	ჯერ არ არის შენახული
@@ -1515,8 +1515,8 @@ Opacity	გამჭვირვალობა
 Open	გახსნა
 Open a .rgis project	.rgis პროექტის გახსნა
 open a layout first	ჯერ გახსენით განლაგება
-Open a RustGIS or Jupyter notebook.	RustGIS-ის ან Jupyter-ის რვეულის გახსნა.
-Open a RustGIS project.	RustGIS-ის პროექტის გახსნა.
+Open a Syngle Observatory or Jupyter notebook.	Syngle Observatory-ის ან Jupyter-ის რვეულის გახსნა.
+Open a Syngle Observatory project.	Syngle Observatory-ის პროექტის გახსნა.
 Open an offline area to edit.	ოფლაინ არეალის გახსნა სარედაქტიროდ.
 Open browser again	ბრაუზერის ხელახლა გახსნა
 Open Custom Template	მორგებული შაბლონის გახსნა
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	ფენის ატრიბუტები
 Open the layer's table.	ფენის ცხრილის გახსნა.
 Open the plugin's panel.	მოდულის პანელის გახსნა.
 Open the Release Page	რელიზის გვერდის გახსნა
-Open the RustGIS user guide.	RustGIS-ის მომხმარებლის სახელმძღვანელოს გახსნა.
+Open the Syngle Observatory user guide.	Syngle Observatory-ის მომხმარებლის სახელმძღვანელოს გახსნა.
 Open the selected layer's table.	არჩეული ფენის ცხრილის გახსნა.
 Open the Symbology pane.	სიმბოლიზაციის პანელის გახსნა.
 Open the task's steps	ამოცანის საფეხურების გახსნა
@@ -1660,7 +1660,7 @@ Plugin registry	დანამატების რეესტრი
 Plugins	დანამატები
 Plugins are .rgplugin files. Install only plugins from people you trust.	დანამატები .rgplugin ფაილებია. დააყენეთ მხოლოდ იმ ადამიანების დანამატები, ვისაც ენდობით.
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	„იზოლაციის გარეშე“ მონიშნული დანამატები სამაგიეროდ მუშაობს როგორც პროგრამები თქვენს კომპიუტერზე და შეუძლია ყველაფერი, რაც თქვენ შეგიძლიათ.
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	დანამატები იზოლირებულ გარემოში მუშაობს: ისინი ვერ წვდებიან თქვენს ფაილებსა და ქსელს. პროექტს ცვლიან მხოლოდ RustGIS-ის საკუთარი ბრძანებებით, თქვენ მიერ მიღებული ნებართვების ფარგლებში.
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	დანამატები იზოლირებულ გარემოში მუშაობს: ისინი ვერ წვდებიან თქვენს ფაილებსა და ქსელს. პროექტს ცვლიან მხოლოდ Syngle Observatory-ის საკუთარი ბრძანებებით, თქვენ მიერ მიღებული ნებართვების ფარგლებში.
 PMTiles archive	PMTiles არქივი
 PNG frames (zip)	PNG კადრები (zip)
 PNG image	PNG სურათი
@@ -1882,26 +1882,26 @@ Run Tool	ხელსაწყოს გაშვება
 Run {name}	{name}-ის გაშვება
 Running the query for the map…	მოთხოვნის გაშვება რუკისთვის…
 Running…	მიმდინარეობს გაშვება…
-RustGIS	RustGIS
-RustGIS bookmarks	RustGIS-ის სანიშნეები
-RustGIS deep learning package	RustGIS-ის ღრმა სწავლების პაკეტი
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	წინა ჯერზე RustGIS სწორად არ დაიხურა, ამიტომ ის თქვენი საწყისი პროექტის ნაცვლად World Atlas-ით გაეშვა. როცა მზად იქნებით, გახსენით პროექტი მენიუდან „პროექტი“.
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS არის უფასო, ღია კოდის GIS, სუფთა Rust-ზე დაწერილი. ის მუშაობს დესკტოპზე და ბრაუზერში. ყოველი მოქმედება ბრძანებაა, რომლის გაშვებაც ბრძანებათა ხაზიდანაც შეიძლება.
-RustGIS layer file	RustGIS-ის ფენის ფაილი
-RustGIS layers, maps and projects	RustGIS-ის ფენები, რუკები და პროექტები
-RustGIS layout	RustGIS-ის განლაგება
-RustGIS maps and projects	RustGIS-ის რუკები და პროექტები
-RustGIS or Jupyter notebook	RustGIS-ის ან Jupyter-ის რვეული
-RustGIS plugin	RustGIS-ის დანამატი
-RustGIS presentation	RustGIS-ის პრეზენტაცია
-RustGIS project	RustGIS-ის პროექტი
-RustGIS project template	RustGIS-ის პროექტის შაბლონი
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	RustGIS-ს ბოლოს შიდა შეცდომა შეექმნა. დეტალები იხილეთ აქ: {path}; გთხოვთ, დაურთოთ ისინი შეცდომის შეტყობინებას.
-RustGIS report or report template	RustGIS-ის ანგარიში ან ანგარიშის შაბლონი
-RustGIS styles	RustGIS-ის სტილები
-RustGIS task	RustGIS-ის ამოცანა
-RustGIS {latest} is available.	ხელმისაწვდომია RustGIS {latest}.
-RustGIS {version} is the latest version.	RustGIS {version} უახლესი ვერსიაა.
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Syngle Observatory-ის სანიშნეები
+Syngle Observatory deep learning package	Syngle Observatory-ის ღრმა სწავლების პაკეტი
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	წინა ჯერზე Syngle Observatory სწორად არ დაიხურა, ამიტომ ის თქვენი საწყისი პროექტის ნაცვლად World Atlas-ით გაეშვა. როცა მზად იქნებით, გახსენით პროექტი მენიუდან „პროექტი“.
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory არის უფასო, ღია კოდის GIS, სუფთა Rust-ზე დაწერილი. ის მუშაობს დესკტოპზე და ბრაუზერში. ყოველი მოქმედება ბრძანებაა, რომლის გაშვებაც ბრძანებათა ხაზიდანაც შეიძლება.
+Syngle Observatory layer file	Syngle Observatory-ის ფენის ფაილი
+Syngle Observatory layers, maps and projects	Syngle Observatory-ის ფენები, რუკები და პროექტები
+Syngle Observatory layout	Syngle Observatory-ის განლაგება
+Syngle Observatory maps and projects	Syngle Observatory-ის რუკები და პროექტები
+Syngle Observatory or Jupyter notebook	Syngle Observatory-ის ან Jupyter-ის რვეული
+Syngle Observatory plugin	Syngle Observatory-ის დანამატი
+Syngle Observatory presentation	Syngle Observatory-ის პრეზენტაცია
+Syngle Observatory project	Syngle Observatory-ის პროექტი
+Syngle Observatory project template	Syngle Observatory-ის პროექტის შაბლონი
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Syngle Observatory-ს ბოლოს შიდა შეცდომა შეექმნა. დეტალები იხილეთ აქ: {path}; გთხოვთ, დაურთოთ ისინი შეცდომის შეტყობინებას.
+Syngle Observatory report or report template	Syngle Observatory-ის ანგარიში ან ანგარიშის შაბლონი
+Syngle Observatory styles	Syngle Observatory-ის სტილები
+Syngle Observatory task	Syngle Observatory-ის ამოცანა
+Syngle Observatory {latest} is available.	ხელმისაწვდომია Syngle Observatory {latest}.
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} უახლესი ვერსიაა.
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	S3 ბაკეტები
 S3 Connections	S3 კავშირები
 S3…	S3…
 Sample data (Natural Earth)	სანიმუშო მონაცემები (Natural Earth)
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	სანიმუშო მონაცემები © Natural Earth (საჯარო დომენი). RustGIS ლიცენზირებულია Apache-2.0-ით.
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	სანიმუშო მონაცემები © Natural Earth (საჯარო დომენი). Syngle Observatory ლიცენზირებულია Apache-2.0-ით.
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	სანიმუშო მონაცემები: Natural Earth (საჯარო დომენი). ლიცენზია: Apache-2.0.
 Saturation	ნაჯერობა
 Save	შენახვა
@@ -1994,7 +1994,7 @@ Sections	სექციები
 See and set the camera's position and scale.	კამერის პოზიციისა და მასშტაბის ნახვა და დაყენება.
 See the map as people with colour vision deficiencies do.	რუკის ნახვა ისე, როგორც ფერთა აღქმის დარღვევის მქონე ადამიანები ხედავენ.
 See the tools you've run.	თქვენ მიერ გაშვებული ხელსაწყოების ნახვა.
-See whether a newer RustGIS has been released.	შემოწმება, გამოვიდა თუ არა RustGIS-ის უფრო ახალი ვერსია.
+See whether a newer Syngle Observatory has been released.	შემოწმება, გამოვიდა თუ არა Syngle Observatory-ის უფრო ახალი ვერსია.
 SELECT	SELECT
 Select	მონიშვნა
 Select (click)	მონიშვნა (დაწკაპუნებით)
@@ -2121,7 +2121,7 @@ Sign out	გასვლა
 Sign-in cancelled.	შესვლა გაუქმდა.
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	შესვლის ლოდინის დრო ამოიწურა. დაიწყეთ თავიდან და მიეცით ბრაუზერს ამ კომპიუტერის უკუკავშირის მისამართზე წვდომა.
 signed in	შესულია
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	ამ კომპიუტერზე გამოსვლა შესრულდა, მაგრამ OpenAI-მ ეს არ დაადასტურა. RustGIS-ის გათიშვა ChatGPT-ის პარამეტრებში შეგიძლიათ.
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	ამ კომპიუტერზე გამოსვლა შესრულდა, მაგრამ OpenAI-მ ეს არ დაადასტურა. Syngle Observatory-ის გათიშვა ChatGPT-ის პარამეტრებში შეგიძლიათ.
 Signing in with ChatGPT works in the desktop app.	ChatGPT-ით შესვლა მუშაობს სამუშაო მაგიდის აპში.
 Signing the asset (Planetary Computer)…	რესურსის ხელმოწერა (Planetary Computer)…
 Simplify	გამარტივება
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	გასაღები ინახე�
 The layer's file couldn't be read: {error}	ფენის ფაილის წაკითხვა ვერ მოხერხდა: {error}
 the layout export failed unexpectedly	განლაგების ექსპორტი მოულოდნელად ჩავარდა
 The link doesn't say its STAC API: Find Items searches {api}	ბმული არ მიუთითებს თავის STAC API-ს: „ელემენტების პოვნა“ ეძებს {api}-ში
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	დანამატების სია დასათვალიერებლად. დატოვეთ ცარიელი RustGIS-ის დანამატების რეესტრისთვის.
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	დანამატების სია დასათვალიერებლად. დატოვეთ ცარიელი Syngle Observatory-ის დანამატების რეესტრისთვის.
 the map has no layers	რუკას ფენები არ აქვს
 The map is drawn in this coordinate system; layers are projected on the fly.	რუკა ამ კოორდინატთა სისტემაშია დახატული; ფენები პროექცირდება ფრენისას.
 The map view as it is now	რუკის ხედი ახლა როგორიც არის
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	Shapefile-ის ფაილებ�
 The sign-in expired or was revoked. Sign in again.	შესვლის ვადა ამოიწურა ან წვდომა გაუქმდა. ხელახლა შედით.
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	შესვლის მონაცემები ინახება აპის პარამეტრების საქაღალდეში, მხოლოდ თქვენი მომხმარებლის ანგარიშისთვის, და არასოდეს პროექტის ფაილში.
 The start-up project {path} didn't open: {error}	საწყისი პროექტი {path} ვერ გაიხსნა: {error}
-The start-up project {path} isn't a RustGIS project file.	საწყისი პროექტი {path} არ არის RustGIS-ის პროექტის ფაილი.
+The start-up project {path} isn't a Syngle Observatory project file.	საწყისი პროექტი {path} არ არის Syngle Observatory-ის პროექტის ფაილი.
 The step's layer {name} isn't in the map.	საფეხურის ფენა {name} რუკაზე არ არის.
 The store has no variables with two or more dimensions.	საცავში არ არის ორი ან მეტი განზომილების ცვლადები.
 the store is gone	საცავი აღარ არსებობს
@@ -2365,7 +2365,7 @@ This map has no layers yet.	ამ რუკას ჯერ ფენები 
 This map's thumbnail, from an image.	ამ რუკის მინიატურა სურათიდან.
 This map's thumbnail, from the view.	ამ რუკის მინიატურა ხედიდან.
 This plugin can:	ამ დანამატს შეუძლია:
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	ეს დანამატი მუშაობს როგორც პროგრამა თქვენს კომპიუტერზე, RustGIS-ის იზოლირებული გარემოს გარეთ. მას შეუძლია ყველაფერი, რაც თქვენ შეგიძლიათ: თქვენი ფაილების წაკითხვა და შეცვლა, ქსელის გამოყენება და სხვა პროგრამების გაშვება. დააინსტალირეთ მხოლოდ მაშინ, თუ მის ავტორს ენდობით.
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	ეს დანამატი მუშაობს როგორც პროგრამა თქვენს კომპიუტერზე, Syngle Observatory-ის იზოლირებული გარემოს გარეთ. მას შეუძლია ყველაფერი, რაც თქვენ შეგიძლიათ: თქვენი ფაილების წაკითხვა და შეცვლა, ქსელის გამოყენება და სხვა პროგრამების გაშვება. დააინსტალირეთ მხოლოდ მაშინ, თუ მის ავტორს ენდობით.
 This request has no one-time allow option.	ამ მოთხოვნას ერთჯერადი დაშვების ვარიანტი არ აქვს.
 This request uses an unsupported capability. Check the parameter and change the request.	ეს მოთხოვნა მხარდაუჭერელ შესაძლებლობას იყენებს. შეამოწმეთ პარამეტრი და შეცვალეთ მოთხოვნა.
 This step names no tool to show.	ეს საფეხური საჩვენებელ ხელსაწყოს არ ასახელებს.
@@ -2439,7 +2439,7 @@ Uninstall Plugin	დანამატის წაშლა
 Uninstalled {id}.	{id} წაიშალა.
 Unique Values	უნიკალური მნიშვნელობები
 Units	ერთეულები
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	GeoLibre-ის ხელსაწყოების გამოტვირთვა და RustGIS-ის გაშვებისას მათი ჩატვირთვის შეწყვეტა.
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	GeoLibre-ის ხელსაწყოების გამოტვირთვა და Syngle Observatory-ის გაშვებისას მათი ჩატვირთვის შეწყვეტა.
 Unsupervised classes (k-means)	უკონტროლო კლასები (k-means)
 Unsupervised classes (k-means).	უკონტროლო კლასები (k-means).
 Up	ზემოთ
@@ -2515,13 +2515,13 @@ Web Tool	ვებ ხელსაწყო
 Website	ვებსაიტი
 Weekly usage	კვირის გამოყენება
 Weights	წონები
-Welcome to RustGIS	მოგესალმებით RustGIS-ში
+Welcome to Syngle Observatory	მოგესალმებით Syngle Observatory-ში
 West	დასავლეთი
 WFS	WFS
 WGS 84 / Globe	WGS 84 / გლობუსი
 WGS 84 / Web Mercator	WGS 84 / ვებ მერკატორი
-What RustGIS opens with: the World Atlas sample or a blank map.	რას გახსნის RustGIS გაშვებისას: World Atlas-ის ნიმუშს ან ცარიელ რუკას.
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	რას გახსნის RustGIS გაშვებისას: World Atlas-ის ნიმუშს, ცარიელ რუკას, თქვენ მიერ არჩეულ პროექტს ან ბოლოს გახსნილ ან შენახულ პროექტს.
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	რას გახსნის Syngle Observatory გაშვებისას: World Atlas-ის ნიმუშს ან ცარიელ რუკას.
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	რას გახსნის Syngle Observatory გაშვებისას: World Atlas-ის ნიმუშს, ცარიელ რუკას, თქვენ მიერ არჩეულ პროექტს ან ბოლოს გახსნილ ან შენახულ პროექტს.
 What to do, where to find it and why	რა გავაკეთოთ, სად ვიპოვოთ და რატომ
 What's near a point	რა არის წერტილის ახლოს
 WHERE	WHERE

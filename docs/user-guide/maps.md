@@ -128,7 +128,6 @@ rustgis-cli run --sample --cmd 'map.route={"from":"Brandenburg Gate, Berlin","to
 
 ## Basemaps
 
-![A MapLibre style from OpenFreeMap drawn over Paris, with the Basemap gallery listing the built-in basemaps and the web tile layer](https://assets.rustgis.app/images/tiles.webp)
 
 **Home › Add › Basemap** offers five built-in basemaps drawn from a world outline (Paper, Midnight,
 Ocean, Atlas, Blank), which need no network, and web tile layers over them:
@@ -148,7 +147,7 @@ Ocean, Atlas, Blank), which need no network, and web tile layers over them:
   window); in the web app added with Add Data and held in memory for the session (a project keeps
   the layer, and asks for the file again).
 - **Map styles**: a MapLibre style document (`style.json`), with its vector and raster sources.
-  RustGIS draws background, fill, line, circle and raster layers, point labels with their icons
+  Syngle Observatory draws background, fill, line, circle and raster layers, point labels with their icons
   from the style's sprite (SDF icons in their `icon-color`), and fill patterns; it evaluates the
   style's expressions and zoom functions. Line labels and shields along roads, line patterns,
   hillshade and 3D extrusion are not drawn (extrusions draw flat). A label shows the lines of
@@ -162,7 +161,7 @@ Positron, Dark, Fiord) and USGS Imagery. Choosing one replaces the other web bas
 that already shows then takes it off). For many
 more (OpenStreetMap, Esri, NASA and others), follow **Install the Basemaps plugin** under them,
 which opens the Plugin Manager at the
-[Basemaps plugin](https://plugins.rustgis.app/catalog/basemaps/); it adds a tab of public
+[Basemaps plugin](https://plugins.example.org/catalog/basemaps/); it adds a tab of public
 basemaps. Add any other with **Add Tile Layer…** at the bottom of the Basemap gallery.
 The gallery lists the map's tile layers: show or hide them, change their opacity and order, or
 remove them. The Layers pane lists them too, under the map's layers and above the basemap: tick
@@ -205,7 +204,7 @@ taking other bodies' basemaps off) and `map.bodies`.
 
 The world outline and the World Atlas sample's countries come in two worldviews: Natural
 Earth's default borders, and China's (Natural Earth's China point of view: Taiwan, Aksai Chin
-and South Tibet are part of China). RustGIS picks China's when the system's time zone is
+and South Tibet are part of China). Syngle Observatory picks China's when the system's time zone is
 mainland China's (such as `Asia/Shanghai`) or its first locale is `zh-CN`; nothing is looked up
 over the network. Choose one in **Settings › Language › Worldview**, set `RUSTGIS_WORLDVIEW`
 (`default` or `china`), or pass `--worldview` to `rustgis-cli`. An untouched sample project
@@ -218,9 +217,9 @@ projection, and clicking the coordinate system in the status bar opens the **Coo
 System** dialog, which also takes a projected EPSG code (such as `3035`, `32633` for UTM zone
 33N or `2056` for Switzerland) or an ESRI code, the one `.prj` files and ArcGIS name (such as
 `ESRI:102033` for South America Albers Equal Area Conic, or `ESRI:54030` for World Robinson). A
-code whose projection method or datum grid RustGIS can't use (Polyconic such as `5880`, Cassini,
+code whose projection method or datum grid Syngle Observatory can't use (Polyconic such as `5880`, Cassini,
 oblique Mercator, or a NAD27 code that needs a grid) is refused with the reason, rather than drawn
-in another projection. Of Esri's projected systems, RustGIS knows the 1,983 it draws within a
+in another projection. Of Esri's projected systems, Syngle Observatory knows the 1,983 it draws within a
 metre of PROJ; the rest, such as World Miller (`ESRI:54003`), are refused as unknown codes. The
 presets:
 
@@ -254,12 +253,11 @@ their hemisphere poleward of 30°, regional ones their region, transverse Mercat
 and scale, and the choice is saved with the map (`map.projection` from the command line). A
 raster already in the map's coordinate system draws without being reprojected. To open every new
 session in a projection, set it in **Settings › Start-up › Projection**. Robinson, Equal
-Earth, Natural Earth, Winkel Tripel and Eckert IV are computed by RustGIS itself on a sphere,
+Earth, Natural Earth, Winkel Tripel and Eckert IV are computed by Syngle Observatory itself on a sphere,
 so EPSG:8857 (Equal Earth) works too.
 
 ## Globe
 
-![The World Atlas on the 3D globe, with the View tab open](https://assets.rustgis.app/images/globe.webp)
 
 **View › Globe** shows the map as a 3D globe seen from space instead of the flat Web Mercator
 map, and back again. Drag to spin the globe, right-drag or Ctrl+drag to turn and tilt it (as
@@ -280,7 +278,6 @@ suits a light page (on the Midnight basemap the space stays dark).
 
 ## View effects
 
-![Dark mode over Europe on the Midnight basemap, with the View tab open](https://assets.rustgis.app/images/dark.webp)
 
 The View tab adds effects drawn over the map: **Illumination** (day and night shading for a time,
 with twilight), **Weather** (haze, fog, rain, snow), **Visual Effect** (vignette, edges, the stars around the globe), **Camera

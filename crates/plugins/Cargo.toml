@@ -3,7 +3,7 @@ name = "rustgis-plugins"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L3: plugins as sandboxed WebAssembly modules (commands and geoprocessing tools), their packages and the plugin registry"
+description = "Syngle Observatory L3: plugins as sandboxed WebAssembly modules (commands and geoprocessing tools), their packages and the plugin registry"
 
 [lints]
 workspace = true

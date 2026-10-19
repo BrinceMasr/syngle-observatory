@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	統合メタデータを持つ Zarr ストア (フォーマット 2 または 3) の Web アドレス、またはこのコンピューター上のフォルダー。変数のマップは、時間など他の次元で選んだステップについて読み込まれます。
 About	バージョン情報
 About plugins	プラグインについて
-About RustGIS	RustGIS について
-About RustGIS.	RustGIS について。
+About Syngle Observatory	Syngle Observatory について
+About Syngle Observatory.	Syngle Observatory について。
 Above	上
 Above Left	左上
 Above Right	右上
@@ -169,8 +169,8 @@ Agent input pipe closed.	エージェントの入力パイプが閉じられま�
 Agent input queue is full or disconnected; stop the agent and try again.	エージェントの入力キューがいっぱいか、切断されています。エージェントを停止してもう一度お試しください。
 Agent threads	エージェントのスレッド
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	接続したこのコンピューターのエージェント (Claude Code、Codex、Cursor など) は、RustGIS のツールでここで開いている地図を操作し、ファイルを開いて保存したり Web を使ったりできます。スクリプトとプラグイン管理はオフのままです。
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	接続したこのコンピューターのエージェント (Claude Code、Codex、Cursor など) は、RustGIS のツールでここで開いている地図を操作し、ファイルを開いて保存したり Web を使ったりできます。スクリプトとプラグイン管理はオフのままです。この選択は次回の起動時にも引き継がれます。
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	接続したこのコンピューターのエージェント (Claude Code、Codex、Cursor など) は、Syngle Observatory のツールでここで開いている地図を操作し、ファイルを開いて保存したり Web を使ったりできます。スクリプトとプラグイン管理はオフのままです。
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	接続したこのコンピューターのエージェント (Claude Code、Codex、Cursor など) は、Syngle Observatory のツールでここで開いている地図を操作し、ファイルを開いて保存したり Web を使ったりできます。スクリプトとプラグイン管理はオフのままです。この選択は次回の起動時にも引き継がれます。
 Agents then run commands, change files and use the web on this computer without asking you.	エージェントは確認なしで、このコンピューター上でコマンドを実行し、ファイルを変更し、Web を使用します。
 Aggregation	集約
 AI	AI
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	フィールド間で特定の値の組み合わせのみを許可します。
 Allow such actions for this conversation	この会話ではこの種の操作を許可する
 Allow this action?	この操作を許可しますか？
-Allow this agent's RustGIS action?	このエージェントの RustGIS 操作を許可しますか？
+Allow this agent's Syngle Observatory action?	このエージェントの Syngle Observatory 操作を許可しますか？
 Along Selected Line	選択したラインに沿って
 Alternating bar	交互バー
 Altitude	高度
 Always allow	常に許可
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3、またはエンドポイントで指定する S3 互換サービス (MinIO、Cloudflare R2、Wasabi…)。キーは RustGIS を閉じるまで保持されます。記憶した接続には名前、エンドポイント、リージョンが保存され、シークレットは保存されません。
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3、またはエンドポイントで指定する S3 互換サービス (MinIO、Cloudflare R2、Wasabi…)。キーは Syngle Observatory を閉じるまで保持されます。記憶した接続には名前、エンドポイント、リージョンが保存され、シークレットは保存されません。
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	このコンピューターのエージェントが次の操作を求めています:
 An AWS profile	AWS プロファイル
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	使用範囲: {lon}° の経�
 Area of use: within {r}° of {lon}°, {lat}°	使用範囲: {lon}°, {lat}° から {r}° 以内
 Area {area}   ·   Perimeter {perimeter}	面積 {area}   ·   周長 {perimeter}
 Areas (name, land use, area)	エリア (名前、土地利用、面積)
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	データについて質問するか、マップで行いたいことを説明してください。アシスタントが RustGIS のコマンドを代わりに実行します。変更はすべて元に戻せます。
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	データについて質問するか、マップで行いたいことを説明してください。アシスタントが Syngle Observatory のコマンドを代わりに実行します。変更はすべて元に戻せます。
 Ask about the map, or tell it what to do…	マップについて質問するか、操作を指示してください…
 Ask about your data, or tell the assistant what to do with the map.	データについて質問するか、マップで行うことをアシスタントに指示してください。
 Asking the catalog…	カタログに問い合わせています…
@@ -479,7 +479,7 @@ Color Vision Simulator	色覚シミュレーター
 Colorbar	カラーバー
 Colormap	カラーマップ
 Colors from the raster's own color table.	ラスター自身のカラー テーブルの色。
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	カラー ランプ (RustGIS、QGIS、GDAL、GMT)
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	カラー ランプ (Syngle Observatory、QGIS、GDAL、GMT)
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	longitude/latitude、easting/northing、geometry のような名前の列は自動的に選択されます。
 Combinations from the box above, one per line	上のボックスの値の組み合わせ (1 行に 1 つ)
 Comma	カンマ
@@ -631,7 +631,7 @@ Delete selected rows	選択した行を削除
 Delete Style	スタイルの削除
 Delete Task	タスクの削除
 Delete Task Step	タスク ステップの削除
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	RustGIS がインストールした GeoLibre ランナーを削除します。いつでも再インストールできます。
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	Syngle Observatory がインストールした GeoLibre ランナーを削除します。いつでも再インストールできます。
 Delete the layout {name}?	レイアウト {name} を削除しますか?
 Delete the map {name}?	マップ {name} を削除しますか?
 Delete the selected features.	選択したフィーチャを削除します。
@@ -770,7 +770,7 @@ Element	エレメント
 Element Properties	エレメントのプロパティ
 Elevation	標高
 Elevation profiles along lines, cross sections and more.	ラインに沿った標高プロファイル、断面など。
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	RustGIS の対象となるリクエストには ChatGPT プランが使われます。使用量は ChatGPT の設定で管理できます。
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Syngle Observatory の対象となるリクエストには ChatGPT プランが使われます。使用量は ChatGPT の設定で管理できます。
 Ellipse	楕円
 Embeddings	埋め込み
 Ember	残り火
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	名前で任意のコマンドを検索しま
 Find Datasets	データセットを検索
 Find Items	アイテムを検索
 Find Place	場所の検索
-Find plugins in the RustGIS plugin registry.	RustGIS プラグイン レジストリでプラグインを探します。
+Find plugins in the Syngle Observatory plugin registry.	Syngle Observatory プラグイン レジストリでプラグインを探します。
 Find Similar	類似の検索
 Find Tools	ツールの検索
 Finding routes…	ルートを検索しています…
@@ -932,7 +932,7 @@ Folder…	フォルダー…
 for a store that doesn't say	指定のないストアの場合
 Forest	森林
 Format	形式
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	見つかったエージェント: {names}。エージェントは RustGIS のツールと自身のツール (Web、スクリプト、ファイル) を使ってこの地図を操作し、専用フォルダー (ドキュメント › RustGIS › Agent work に保存) で作業します。操作のたびに確認を求めます。
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	見つかったエージェント: {names}。エージェントは Syngle Observatory のツールと自身のツール (Web、スクリプト、ファイル) を使ってこの地図を操作し、専用フォルダー (ドキュメント › Syngle Observatory › Agent work に保存) で作業します。操作のたびに確認を求めます。
 Frame rate	フレーム レート
 Frame rate, draw time, data size and memory.	フレーム レート、描画時間、データ サイズ、メモリ。
 Free the prepared geometry.	準備したジオメトリを解放します。
@@ -1091,7 +1091,7 @@ In memory	メモリ内
 In Progress	進行中
 in progress	進行中
 In project	プロジェクト内
-In RustGIS, it can:	RustGIS 内でできること:
+In Syngle Observatory, it can:	Syngle Observatory 内でできること:
 In use	使用中
 Indices	指数
 Infographics	インフォグラフィックス
@@ -1205,7 +1205,7 @@ Legend	凡例
 Legend label. Clear it to show the value again.	凡例ラベル。クリアすると値が再び表示されます。
 Length {length} · gain {gain} m · loss {loss} m	長さ {length} · 上昇 {gain} m · 下降 {loss} m
 Let the assistant hand tasks to agents on this computer	このコンピューターのエージェントにアシスタントがタスクを任せられるようにする
-Let your Agents Control RustGIS	エージェントに RustGIS を操作させる
+Let your Agents Control Syngle Observatory	エージェントに Syngle Observatory を操作させる
 Level	レベル
 Library	ライブラリ
 Light and Shadow	光と影
@@ -1271,7 +1271,7 @@ Longitude (X)	経度（X）
 Look for {name}, outlined on the ribbon.	リボン上で枠で囲まれた {name} を探してください。
 Looking up the place…	場所を検索しています…
 Lower Priority	優先度を下げる
-Made in RustGIS: samples, drawings and tool outputs	RustGIS で作成: サンプル、描画、ツールの出力
+Made in Syngle Observatory: samples, drawings and tool outputs	Syngle Observatory で作成: サンプル、描画、ツールの出力
 Magnifier	拡大鏡
 Major Lakes	主要な湖沼
 Major Rivers	主要な河川
@@ -1436,7 +1436,7 @@ No bookmarks yet	ブックマークはまだありません
 No bookmarks yet. New Bookmark saves the current view of the map.	ブックマークはまだありません。[新しいブックマーク] でマップの現在のビューを保存できます。
 no command	コマンドがありません
 No connections this session	このセッションの接続はありません
-No datasets with data RustGIS can add	RustGIS が追加できるデータを含むデータセットはありません
+No datasets with data Syngle Observatory can add	Syngle Observatory が追加できるデータを含むデータセットはありません
 No edits since the project was saved	プロジェクトの保存後の編集はありません
 no home folder	ホーム フォルダーがありません
 No layers match	一致するレイヤーはありません
@@ -1472,8 +1472,8 @@ North	北
 North\nArrow	方位\n記号
 North Polar Stereographic	北極ステレオ図法
 not a picture	画像ではありません
-not a RustGIS layout	RustGIS レイアウトではありません
-not a RustGIS project	RustGIS プロジェクトではありません
+not a Syngle Observatory layout	Syngle Observatory レイアウトではありません
+not a Syngle Observatory project	Syngle Observatory プロジェクトではありません
 not needed	不要
 Not sandboxed	サンドボックス外
 Not saved yet	未保存
@@ -1515,8 +1515,8 @@ Opacity	不透明度
 Open	開く
 Open a .rgis project	.rgis プロジェクトを開く
 open a layout first	先にレイアウトを開いてください
-Open a RustGIS or Jupyter notebook.	RustGIS または Jupyter のノートブックを開きます。
-Open a RustGIS project.	RustGIS プロジェクトを開きます。
+Open a Syngle Observatory or Jupyter notebook.	Syngle Observatory または Jupyter のノートブックを開きます。
+Open a Syngle Observatory project.	Syngle Observatory プロジェクトを開きます。
 Open an offline area to edit.	編集するオフライン エリアを開きます。
 Open browser again	ブラウザーを再度開く
 Open Custom Template	カスタム テンプレートを開く
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	レイヤーの属性テーブルを開きま�
 Open the layer's table.	レイヤーのテーブルを開きます。
 Open the plugin's panel.	プラグインのパネルを開きます。
 Open the Release Page	リリース ページを開く
-Open the RustGIS user guide.	RustGIS ユーザー ガイドを開きます。
+Open the Syngle Observatory user guide.	Syngle Observatory ユーザー ガイドを開きます。
 Open the selected layer's table.	選択したレイヤーのテーブルを開きます。
 Open the Symbology pane.	シンボル ウィンドウを開きます。
 Open the task's steps	タスクのステップを開く
@@ -1660,7 +1660,7 @@ Plugin registry	プラグイン レジストリ
 Plugins	プラグイン
 Plugins are .rgplugin files. Install only plugins from people you trust.	プラグインは .rgplugin ファイルです。信頼できる相手のプラグインのみインストールしてください。
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	「サンドボックス外」と表示されたプラグインは、コンピューター上のプログラムとして実行され、あなたができることは何でもできます。
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	プラグインはサンドボックス内で実行されます。ファイルやネットワークにはアクセスできず、プロジェクトの変更は、許可した権限の範囲内で RustGIS 自身のコマンドを通じてのみ行います。
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	プラグインはサンドボックス内で実行されます。ファイルやネットワークにはアクセスできず、プロジェクトの変更は、許可した権限の範囲内で Syngle Observatory 自身のコマンドを通じてのみ行います。
 PMTiles archive	PMTiles アーカイブ
 PNG frames (zip)	PNG フレーム (zip)
 PNG image	PNG 画像
@@ -1882,26 +1882,26 @@ Run Tool	ツールの実行
 Run {name}	{name} を実行
 Running the query for the map…	マップ用のクエリを実行しています…
 Running…	実行中…
-RustGIS	RustGIS
-RustGIS bookmarks	RustGIS ブックマーク
-RustGIS deep learning package	RustGIS ディープ ラーニング パッケージ
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	前回 RustGIS が正しく終了しなかったため、起動時のプロジェクトの代わりに World Atlas で起動しました。準備ができたら、プロジェクト メニューからプロジェクトを開いてください。
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS は純粋な Rust で書かれた無料のオープンソース GIS です。デスクトップとブラウザーで動作し、すべての操作はコマンドであり、コマンド ラインからも実行できます。
-RustGIS layer file	RustGIS レイヤー ファイル
-RustGIS layers, maps and projects	RustGIS のレイヤー、マップ、プロジェクト
-RustGIS layout	RustGIS レイアウト
-RustGIS maps and projects	RustGIS のマップとプロジェクト
-RustGIS or Jupyter notebook	RustGIS または Jupyter のノートブック
-RustGIS plugin	RustGIS プラグイン
-RustGIS presentation	RustGIS プレゼンテーション
-RustGIS project	RustGIS プロジェクト
-RustGIS project template	RustGIS プロジェクト テンプレート
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	前回、RustGIS で内部エラーが発生しました。詳細は {path} にあります。バグ報告に添付してください。
-RustGIS report or report template	RustGIS レポートまたはレポート テンプレート
-RustGIS styles	RustGIS スタイル
-RustGIS task	RustGIS タスク
-RustGIS {latest} is available.	RustGIS {latest} が利用できます。
-RustGIS {version} is the latest version.	RustGIS {version} が最新バージョンです。
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Syngle Observatory ブックマーク
+Syngle Observatory deep learning package	Syngle Observatory ディープ ラーニング パッケージ
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	前回 Syngle Observatory が正しく終了しなかったため、起動時のプロジェクトの代わりに World Atlas で起動しました。準備ができたら、プロジェクト メニューからプロジェクトを開いてください。
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory は純粋な Rust で書かれた無料のオープンソース GIS です。デスクトップとブラウザーで動作し、すべての操作はコマンドであり、コマンド ラインからも実行できます。
+Syngle Observatory layer file	Syngle Observatory レイヤー ファイル
+Syngle Observatory layers, maps and projects	Syngle Observatory のレイヤー、マップ、プロジェクト
+Syngle Observatory layout	Syngle Observatory レイアウト
+Syngle Observatory maps and projects	Syngle Observatory のマップとプロジェクト
+Syngle Observatory or Jupyter notebook	Syngle Observatory または Jupyter のノートブック
+Syngle Observatory plugin	Syngle Observatory プラグイン
+Syngle Observatory presentation	Syngle Observatory プレゼンテーション
+Syngle Observatory project	Syngle Observatory プロジェクト
+Syngle Observatory project template	Syngle Observatory プロジェクト テンプレート
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	前回、Syngle Observatory で内部エラーが発生しました。詳細は {path} にあります。バグ報告に添付してください。
+Syngle Observatory report or report template	Syngle Observatory レポートまたはレポート テンプレート
+Syngle Observatory styles	Syngle Observatory スタイル
+Syngle Observatory task	Syngle Observatory タスク
+Syngle Observatory {latest} is available.	Syngle Observatory {latest} が利用できます。
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} が最新バージョンです。
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	S3 バケット
 S3 Connections	S3 接続
 S3…	S3…
 Sample data (Natural Earth)	サンプル データ（Natural Earth）
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	サンプル データ © Natural Earth（パブリック ドメイン）。RustGIS は Apache-2.0 ライセンスで提供されています。
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	サンプル データ © Natural Earth（パブリック ドメイン）。Syngle Observatory は Apache-2.0 ライセンスで提供されています。
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	サンプル データ：Natural Earth（パブリック ドメイン）。Apache-2.0 ライセンス。
 Saturation	彩度
 Save	保存
@@ -1994,7 +1994,7 @@ Sections	セクション
 See and set the camera's position and scale.	カメラの位置と縮尺を表示、設定します。
 See the map as people with colour vision deficiencies do.	色覚特性を持つ人の見え方でマップを表示します。
 See the tools you've run.	実行したツールを表示します。
-See whether a newer RustGIS has been released.	新しい RustGIS がリリースされているか確認します。
+See whether a newer Syngle Observatory has been released.	新しい Syngle Observatory がリリースされているか確認します。
 SELECT	SELECT
 Select	選択
 Select (click)	選択（クリック）
@@ -2121,7 +2121,7 @@ Sign out	サインアウト
 Sign-in cancelled.	サインインをキャンセルしました。
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	サインインがタイムアウトしました。最初からやり直し、ブラウザーがこのコンピューターのループバックアドレスに接続できるようにしてください。
 signed in	サインイン済み
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	このコンピューターではサインアウトしましたが、OpenAI による確認は取れませんでした。ChatGPT の設定で RustGIS の接続を解除できます。
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	このコンピューターではサインアウトしましたが、OpenAI による確認は取れませんでした。ChatGPT の設定で Syngle Observatory の接続を解除できます。
 Signing in with ChatGPT works in the desktop app.	ChatGPT でのサインインはデスクトップアプリで使えます。
 Signing the asset (Planetary Computer)…	アセットに署名しています (Planetary Computer)…
 Simplify	単純化
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	キーはこのセッションの間だ�
 The layer's file couldn't be read: {error}	レイヤーのファイルを読み込めませんでした: {error}
 the layout export failed unexpectedly	レイアウトのエクスポートが予期せず失敗しました
 The link doesn't say its STAC API: Find Items searches {api}	リンクに STAC API が示されていません: [アイテムを検索] は {api} を検索します
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	参照するプラグインの一覧です。空欄にすると RustGIS プラグイン レジストリを使用します。
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	参照するプラグインの一覧です。空欄にすると Syngle Observatory プラグイン レジストリを使用します。
 the map has no layers	マップにレイヤーがありません
 The map is drawn in this coordinate system; layers are projected on the fly.	マップはこの座標系で描画され、レイヤーはその場で投影されます。
 The map view as it is now	現在のマップ ビュー
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	Shapefile のファイルは 1 つの
 The sign-in expired or was revoked. Sign in again.	サインインの有効期限が切れたか、取り消されました。再度サインインしてください。
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	サインイン情報はアプリの設定フォルダーに、あなたのユーザーアカウント専用で保存され、プロジェクトファイルには保存されません。
 The start-up project {path} didn't open: {error}	起動時のプロジェクト {path} を開けませんでした: {error}
-The start-up project {path} isn't a RustGIS project file.	起動時のプロジェクト {path} は RustGIS のプロジェクト ファイルではありません。
+The start-up project {path} isn't a Syngle Observatory project file.	起動時のプロジェクト {path} は Syngle Observatory のプロジェクト ファイルではありません。
 The step's layer {name} isn't in the map.	ステップのレイヤー {name} がマップにありません。
 The store has no variables with two or more dimensions.	ストアに 2 次元以上の変数がありません。
 the store is gone	ストアがなくなりました
@@ -2365,7 +2365,7 @@ This map has no layers yet.	このマップにはまだレイヤーがありま�
 This map's thumbnail, from an image.	画像から作成するこのマップのサムネイル。
 This map's thumbnail, from the view.	ビューから作成するこのマップのサムネイル。
 This plugin can:	このプラグインでできること:
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	このプラグインは RustGIS のサンドボックスの外で、コンピューター上のプログラムとして実行されます。ファイルの読み取りや変更、ネットワークの使用、他のプログラムの実行など、あなたができることは何でもできます。作者を信頼できる場合にのみインストールしてください。
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	このプラグインは Syngle Observatory のサンドボックスの外で、コンピューター上のプログラムとして実行されます。ファイルの読み取りや変更、ネットワークの使用、他のプログラムの実行など、あなたができることは何でもできます。作者を信頼できる場合にのみインストールしてください。
 This request has no one-time allow option.	この要求には「今回のみ許可」のオプションがありません。
 This request uses an unsupported capability. Check the parameter and change the request.	このリクエストは未対応の機能を使用しています。パラメーターを確認してリクエストを変更してください。
 This step names no tool to show.	このステップには表示するツールが指定されていません。
@@ -2439,7 +2439,7 @@ Uninstall Plugin	プラグインのアンインストール
 Uninstalled {id}.	{id} をアンインストールしました。
 Unique Values	個別値
 Units	単位
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	GeoLibre ツールをアンロードし、RustGIS の起動時に読み込まないようにします。
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	GeoLibre ツールをアンロードし、Syngle Observatory の起動時に読み込まないようにします。
 Unsupervised classes (k-means)	教師なし分類 (k-means)
 Unsupervised classes (k-means).	教師なし分類 (k-means)。
 Up	上へ
@@ -2515,13 +2515,13 @@ Web Tool	Web ツール
 Website	ウェブサイト
 Weekly usage	週間使用量
 Weights	重み
-Welcome to RustGIS	RustGIS へようこそ
+Welcome to Syngle Observatory	Syngle Observatory へようこそ
 West	西
 WFS	WFS
 WGS 84 / Globe	WGS 84 / 地球儀
 WGS 84 / Web Mercator	WGS 84 / Web Mercator
-What RustGIS opens with: the World Atlas sample or a blank map.	RustGIS の起動時に開くもの: World Atlas サンプルまたは空白のマップ。
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	RustGIS の起動時に開くもの: World Atlas サンプル、空白のマップ、選択したプロジェクト、または最後に開いたか保存したプロジェクト。
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	Syngle Observatory の起動時に開くもの: World Atlas サンプルまたは空白のマップ。
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Syngle Observatory の起動時に開くもの: World Atlas サンプル、空白のマップ、選択したプロジェクト、または最後に開いたか保存したプロジェクト。
 What to do, where to find it and why	何をするか、どこにあるか、その理由
 What's near a point	ポイントの近くにあるもの
 WHERE	WHERE

@@ -23,7 +23,6 @@ gdp_md IS NULL
 
 ## Geoprocessing tools
 
-![The Analyze tab's tool gallery and the Tools pane with Buffer open; 300 km dissolved buffers around African cities](https://assets.rustgis.app/images/buffer-history.webp)
 
 Open a tool from the **Analyze** tab's gallery, **Analyze › Tools** (the Tools pane,
 which searches every tool) or Command Search. Fill in its parameters and click **Run**: the
@@ -80,27 +79,27 @@ Whitebox and GeoLibre for terrain analysis (slope, aspect, hillshade, curvature)
 interpolation and vector work. They run on the map's layers and add their outputs as new
 layers.
 
-The suite is an optional download, so RustGIS itself stays small: the **GeoLibre runner**, a
+The suite is an optional download, so Syngle Observatory itself stays small: the **GeoLibre runner**, a
 single `geolibre` program (about 20 MB to download). In the Tools pane, click
-**Install GeoLibre tools** under *GeoLibre tools*: RustGIS downloads the latest runner for your
+**Install GeoLibre tools** under *GeoLibre tools*: Syngle Observatory downloads the latest runner for your
 platform from the [geolibre-rust releases](https://github.com/opengeos/geolibre-rust/releases/latest),
 checks it against its published SHA-256 checksum (which catches a corrupted download; the
 release itself is trusted as when you download it by hand) and installs it in its data folder
-(`~/.local/share/rustgis/geolibre` on Linux, `~/Library/Application Support/RustGIS/geolibre`
-on macOS, `%LOCALAPPDATA%\RustGIS\geolibre` on Windows). From the command line,
+(`~/.local/share/rustgis/geolibre` on Linux, `~/Library/Application Support/Syngle Observatory/geolibre`
+on macOS, `%LOCALAPPDATA%\Syngle Observatory\geolibre` on Windows). From the command line,
 `gp.installGeolibre` does the same.
 
 To remove it, click **Uninstall** beside *GeoLibre* at the top of the Tools pane, then
-**Confirm uninstall** (`gp.uninstallGeolibre` from the command line): RustGIS deletes its
+**Confirm uninstall** (`gp.uninstallGeolibre` from the command line): Syngle Observatory deletes its
 `geolibre` data folder. A runner you located yourself, or one on your `PATH`, is not deleted;
-RustGIS goes on using it. You can install the tools again at any time. In the browser,
-**Remove** unloads the tools and stops loading them when RustGIS starts.
+Syngle Observatory goes on using it. You can install the tools again at any time. In the browser,
+**Remove** unloads the tools and stops loading them when Syngle Observatory starts.
 
 To install it yourself instead, download the archive for your platform
 (`geolibre-<version>-<platform>.tar.gz`, or `.zip` on Windows), unpack it anywhere, and click
-**Locate…** to pick the `geolibre` program; RustGIS remembers it.
+**Locate…** to pick the `geolibre` program; Syngle Observatory remembers it.
 
-RustGIS also finds the runner without asking when it is next to the RustGIS program (or in a
+Syngle Observatory also finds the runner without asking when it is next to the Syngle Observatory program (or in a
 `geolibre` folder beside it), on your `PATH`, or named by the `RUSTGIS_GEOLIBRE` environment
 variable (the command line uses these). The tools then appear under **GeoLibre** in the Tools
 pane and the Browser's toolboxes, grouped by the category and subcategory the runner gives
@@ -117,14 +116,14 @@ them by category only. Find Tools searches them.
   a file not open as a layer can be added too: type its path below the list and press Enter.
 - Raster outputs are kept inside the project, so they save and reopen with it. Text and table
   reports appear in the tool's messages.
-- LiDAR and other inputs RustGIS doesn't open as layers take a file path, read like Add Data
+- LiDAR and other inputs Syngle Observatory doesn't open as layers take a file path, read like Add Data
   reads one. Outputs are written to a fresh scratch folder and loaded from there.
-- Each run is a separate `geolibre` process, so a tool that fails can't take RustGIS down.
+- Each run is a separate `geolibre` process, so a tool that fails can't take Syngle Observatory down.
 - From the command line: `gp.run={"tool":"geolibre:slope","params":{"input":"dem"}}`;
   `gp.tools` lists every tool's parameters, `gp.geolibre` shows the runner in use and
   `gp.setGeolibre={"path":"…"}` picks one.
 
-In the web app, click **Load GeoLibre tools** in the Tools pane instead. RustGIS
+In the web app, click **Load GeoLibre tools** in the Tools pane instead. Syngle Observatory
 loads geolibre-rust's WebAssembly runner (the `geolibre-wasm` package, from jsDelivr, about
 25 MB the first time, then from the browser's cache) and the tools run in the page, in an
 in-memory folder: nothing is uploaded. The web app remembers this and loads them again on your
@@ -132,7 +131,7 @@ next visit. The runner's code comes from jsDelivr, pinned to one geolibre-wasm r
 same trust as installing that package. Tools that read files by path (LiDAR files, for instance) need the desktop app,
 since a web page has no file system.
 
-In the desktop app and on the command line, RustGIS waits while a tool runs, so a long run on
+In the desktop app and on the command line, Syngle Observatory waits while a tool runs, so a long run on
 a large raster or point cloud keeps the window busy until it finishes. In the web app the run
 is started in the background and the result is added when it ends, but the tool itself runs
 in the page, so the page is busy while it computes.

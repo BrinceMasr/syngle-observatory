@@ -1,10 +1,9 @@
 # AI Assistant
 
-![The AI Assistant pane: asked for the five most populous African countries, it read the Countries table, selected them and zoomed to them](https://assets.rustgis.app/images/assistant.webp)
 
 **Analyze › AI Assistant** (also View › Windows, or Command Search) opens a chat pane. Ask a
 question about your data or say what to do with the map, and the assistant answers by running
-RustGIS commands and geoprocessing tools for you:
+Syngle Observatory commands and geoprocessing tools for you:
 
 - "Which 5 countries have the largest GDP?" reads the Countries table and answers.
 - "Label the cities with their names, and zoom to Tokyo."
@@ -47,19 +46,19 @@ skip steps.
 With a ChatGPT plan you can use the assistant without an API key, through OpenAI's
 [Sign in with ChatGPT for open-source apps](https://developers.openai.com/siwc/token-sharing-open-source).
 Choose **ChatGPT (sign in)** and click **Continue with ChatGPT**: your browser opens OpenAI's
-sign-in page, where you approve RustGIS using your plan (the first time, OpenAI registers RustGIS
+sign-in page, where you approve Syngle Observatory using your plan (the first time, OpenAI registers Syngle Observatory
 as an app of your account; you can rename it there). Afterwards the settings show the account's
 email, **Using ChatGPT plan**, and a **Weekly usage** link to
 [your ChatGPT usage settings](https://chatgpt.com/settings/usage?tab=overview), where you can see and limit
-what RustGIS uses or disconnect it. **Sign out** clears local tokens and attempts to revoke the
-remote session. If OpenAI does not confirm revocation, RustGIS says so; disconnect RustGIS in
+what Syngle Observatory uses or disconnect it. **Sign out** clears local tokens and attempts to revoke the
+remote session. If OpenAI does not confirm revocation, Syngle Observatory says so; disconnect Syngle Observatory in
 ChatGPT settings to ensure that remote access ends. The registration remains for signing in again.
 The account picker retains separate registrations, even when their emails match. **Use another
 account** adds a registration; choose an existing one to reuse its issued client ID. From the command line:
 
 ```sh
 rustgis-cli ask --login                 # continue with ChatGPT in the browser
-rustgis-cli ask --login --another-account  # or register RustGIS for another account
+rustgis-cli ask --login --another-account  # or register Syngle Observatory for another account
 rustgis-cli ask --sample --provider chatgpt "Zoom to Tokyo"
 rustgis-cli ask --accounts              # list saved registrations
 rustgis-cli ask --account oaiapp_...      # select one by its issued client id
@@ -82,12 +81,12 @@ Plus has a five-hour usage limit shared across apps using the plan. Team/Busines
 and Edu workspace policy may block plan usage. Eligibility and model catalogs depend on the
 selected account and workspace.
 
-Weekly usage opens ChatGPT's settings page. RustGIS does not show a live percentage: there is
+Weekly usage opens ChatGPT's settings page. Syngle Observatory does not show a live percentage: there is
 no documented usage endpoint, and the tested live responses supplied no rate-limit headers.
 
 ## Tool output limits
 
-The assistant can `search_docs` and `read_doc` to look up RustGIS features and commands.
+The assistant can `search_docs` and `read_doc` to look up Syngle Observatory features and commands.
 Each tool result defaults to an estimated **10,000 tokens**, following
 [Codex's default output budget](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/handlers/shell_spec.rs).
 A result is capped at an absolute **24,000 tokens**. Like
@@ -117,7 +116,7 @@ Skills are instructions for a kind of task. The assistant sees only each skill's
 line on when to use it, and reads its instructions on demand, so skills cost little until used.
 Loaded instructions share the configured tool-output budget; oversized results are explicitly
 marked as truncated. Split long skills or raise that limit (up to its existing ceiling) when
-complete instructions do not fit. RustGIS comes with these:
+complete instructions do not fit. Syngle Observatory comes with these:
 
 | Skill | For |
 | --- | --- |
@@ -200,10 +199,10 @@ rename phase can leave earlier skills installed; the error names those completed
 ## Agents on this computer
 
 On the desktop, the assistant can hand a task to a coding agent you already have, such as Claude
-Code, Codex, Gemini CLI, GitHub Copilot CLI, Cursor, OpenCode or goose. RustGIS talks to it through the
+Code, Codex, Gemini CLI, GitHub Copilot CLI, Cursor, OpenCode or goose. Syngle Observatory talks to it through the
 [Agent Client Protocol](https://agentclientprotocol.com) (ACP), as code editors do. The agent
-works on the map open here through RustGIS's tools, and with its own: calling a web API RustGIS
-doesn't have, running a script, writing files. It suits tasks RustGIS's own tools can't do.
+works on the map open here through Syngle Observatory's tools, and with its own: calling a web API Syngle Observatory
+doesn't have, running a script, writing files. It suits tasks Syngle Observatory's own tools can't do.
 
 It is off until you turn it on: in the settings, tick **Let the assistant hand tasks to agents on
 this computer**. The settings list the agents found. Starting a task or sending a follow-up waits for your approval in the assistant, unless automatic approval is enabled. Then ask, for example: "Have Claude Code
@@ -222,7 +221,7 @@ fetch the USGS stream gauges in Texas and add them to the map."
   **Decline** in its window. **Allow** never becomes a persistent approval: if no once-only
   option exists, use the explicitly labelled **Always allow** or decline. **Approve agents' actions without asking** lets them through
   instead. Turn it on only if you trust the agent with your computer.
-- **RustGIS checks its own tools.** File, network, plugin-command and project-replacement
+- **Syngle Observatory checks its own tools.** File, network, plugin-command and project-replacement
   requests from a local agent wait for a separate **Allow** or **Decline** in its window.
   Approval applies only to that exact MCP message and that agent's run; a batch is approved or
   declined as a whole. The agent's `--yes` and the general relay checkbox cannot bypass this
@@ -231,38 +230,38 @@ fetch the USGS stream gauges in Texas and add them to the map."
   **Approve agents' actions without asking** explicitly bypasses this queue for these local
   agents and allows subsequent delegations without confirmation; turn it on only if you trust
   the agent and its inputs. It also selects the agent's own full-access mode where available.
-- **Its work is kept.** Each task gets a folder in `Documents/RustGIS/Agent work`, and what the
+- **Its work is kept.** Each task gets a folder in `Documents/Syngle Observatory/Agent work`, and what the
   agent adds to the map comes from there. The assistant's reply names the folder.
 - **On the map, it has its thread's permission only.** It reaches the map through the MCP relay
-  with a token of its own, which RustGIS revokes when the thread ends. **Stop** in its window, or
+  with a token of its own, which Syngle Observatory revokes when the thread ends. **Stop** in its window, or
   **×** in the list, revokes its token immediately and terminates its live process tree on a
   background thread. A reaped leader's old process ID is never signalled.
 - **No console windows.** On Windows, agents start without a terminal window; their window in
-  RustGIS shows what they do.
+  Syngle Observatory shows what they do.
 - **Signing in is the agent's.** The agent uses its own account and sign-in. If it isn't
   signed in, sign in with it once (for example, `codex login`).
 - **Claude Code and Codex need Node.js.** They speak ACP through an adapter
   (`@agentclientprotocol/claude-agent-acp`, `@agentclientprotocol/codex-acp`), which `npx`
-  downloads from npm the first time, at the version RustGIS names. Agents with ACP built in
+  downloads from npm the first time, at the version Syngle Observatory names. Agents with ACP built in
   need nothing more. The web app doesn't offer agents.
 
 ## Privacy
 
-Requests go from RustGIS straight to the provider you chose, with your key. They carry your
+Requests go from Syngle Observatory straight to the provider you chose, with your key. They carry your
 messages, the map's layer names, fields and extent, and any rows the assistant reads to answer
 you; nothing goes anywhere else. A key typed in the settings is used for the session only unless
 you tick **Remember the key on this computer**, which saves it unencrypted in the app's
 preferences (in the browser's storage on the web); keys from the environment are never saved.
 A ChatGPT sign-in is kept in `chatgpt-auth.json` in the app's settings folder (owner-only on
 macOS and Linux; on Windows, protected like the rest of your user profile), never in the
-preferences or a project file, and its tokens are never logged; RustGIS renews them as they expire.
+preferences or a project file, and its tokens are never logged; Syngle Observatory renews them as they expire.
 The ChatGPT provider's address is fixed, so only the OpenAI API receives them. Renewals are
-serialized across RustGIS processes (a refresh token can be used only once).
+serialized across Syngle Observatory processes (a refresh token can be used only once).
 Plain HTTP is only used for servers on your computer or local network.
 
 In the web app, the browser calls the provider directly. Anthropic, OpenAI, Gemini and
 OpenRouter accept that; a local Ollama server must allow the page's origin
-(`OLLAMA_ORIGINS=https://web.rustgis.app ollama serve`).
+(`OLLAMA_ORIGINS=https://github.com/BrinceMasr/syngle-observatory ollama serve`).
 
 ## Retries and long conversations
 
@@ -283,7 +282,7 @@ without an explicit retryable provider error stop without
 replay. Stop cancels a pending retry.
 
 Summary requests have a total input bound, retaining the newest history if older text must be
-omitted. If the provider rejects a summary as too long, RustGIS halves that bound and tries again,
+omitted. If the provider rejects a summary as too long, Syngle Observatory halves that bound and tries again,
 down to 1,024 bytes; further failure stops and preserves the original conversation. This learned
 bound lasts for the conversation. A cut, refused or failed summary never replaces history.
 The summariser treats retrieved text as data, not instructions. Internal summary markers in user messages are escaped in model

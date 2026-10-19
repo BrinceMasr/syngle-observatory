@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	通过网址指定的 Zarr 存储（格式 2 或 3，需含合并元数据），或本机上的文件夹。变量的地图按其他维度（如时间）中所选的步长读取。
 About	关于
 About plugins	关于插件
-About RustGIS	关于 RustGIS
-About RustGIS.	关于 RustGIS。
+About Syngle Observatory	关于 Syngle Observatory
+About Syngle Observatory.	关于 Syngle Observatory。
 Above	上方
 Above Left	左上方
 Above Right	右上方
@@ -169,8 +169,8 @@ Agent input pipe closed.	智能体输入管道已关闭。
 Agent input queue is full or disconnected; stop the agent and try again.	智能体输入队列已满或已断开；请停止该智能体后重试。
 Agent threads	智能体线程
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	已连接的本机智能体（Claude Code、Codex、Cursor 等）使用 RustGIS 的工具处理此处打开的地图：它们可以打开和保存文件并使用网络。脚本和插件管理保持关闭。
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	已连接的本机智能体（Claude Code、Codex、Cursor 等）使用 RustGIS 的工具处理此处打开的地图：它们可以打开和保存文件并使用网络。脚本和插件管理保持关闭。该选择在重新启动后仍会保留。
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	已连接的本机智能体（Claude Code、Codex、Cursor 等）使用 Syngle Observatory 的工具处理此处打开的地图：它们可以打开和保存文件并使用网络。脚本和插件管理保持关闭。
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	已连接的本机智能体（Claude Code、Codex、Cursor 等）使用 Syngle Observatory 的工具处理此处打开的地图：它们可以打开和保存文件并使用网络。脚本和插件管理保持关闭。该选择在重新启动后仍会保留。
 Agents then run commands, change files and use the web on this computer without asking you.	智能体将不经询问就在这台电脑上运行命令、更改文件并使用网络。
 Aggregation	聚合
 AI	AI
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	仅允许字段间的特定值组合。
 Allow such actions for this conversation	在本次对话中允许此类操作
 Allow this action?	允许此操作？
-Allow this agent's RustGIS action?	允许此智能体的 RustGIS 操作？
+Allow this agent's Syngle Observatory action?	允许此智能体的 Syngle Observatory 操作？
 Along Selected Line	沿所选线
 Alternating bar	交替条
 Altitude	高度角
 Always allow	始终允许
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3，或通过端点指定的 S3 兼容服务（MinIO、Cloudflare R2、Wasabi…）。密钥保留到 RustGIS 关闭为止；记住的连接只保存其名称、端点和区域，从不保存私密密钥。
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3，或通过端点指定的 S3 兼容服务（MinIO、Cloudflare R2、Wasabi…）。密钥保留到 Syngle Observatory 关闭为止；记住的连接只保存其名称、端点和区域，从不保存私密密钥。
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	这台电脑上的一个智能体请求：
 An AWS profile	AWS 配置文件
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	使用范围: 距 {lon}° 经�
 Area of use: within {r}° of {lon}°, {lat}°	使用范围: 距 {lon}°, {lat}° {r}° 以内
 Area {area}   ·   Perimeter {perimeter}	面积 {area}   ·   周长 {perimeter}
 Areas (name, land use, area)	区域（名称、土地利用、面积）
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	提出有关数据的问题，或描述要对地图进行的操作。助手会为您运行 RustGIS 命令；每项更改都可以撤销。
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	提出有关数据的问题，或描述要对地图进行的操作。助手会为您运行 Syngle Observatory 命令；每项更改都可以撤销。
 Ask about the map, or tell it what to do…	询问有关地图的问题，或告诉它要做什么…
 Ask about your data, or tell the assistant what to do with the map.	询问有关数据的问题，或告诉助手要对地图做什么。
 Asking the catalog…	正在查询目录…
@@ -479,7 +479,7 @@ Color Vision Simulator	色觉模拟器
 Colorbar	色带图例
 Colormap	色彩映射表
 Colors from the raster's own color table.	使用栅格自带颜色表中的颜色。
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	色带（RustGIS、QGIS、GDAL、GMT）
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	色带（Syngle Observatory、QGIS、GDAL、GMT）
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	名为 longitude/latitude、easting/northing 或 geometry 等的列会自动选中。
 Combinations from the box above, one per line	上方框中的组合，每行一个
 Comma	逗号
@@ -631,7 +631,7 @@ Delete selected rows	删除所选行
 Delete Style	删除样式
 Delete Task	删除任务
 Delete Task Step	删除任务步骤
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	删除 RustGIS 安装的 GeoLibre 运行器。可随时重新安装。
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	删除 Syngle Observatory 安装的 GeoLibre 运行器。可随时重新安装。
 Delete the layout {name}?	删除布局 {name}?
 Delete the map {name}?	删除地图 {name}?
 Delete the selected features.	删除所选要素。
@@ -770,7 +770,7 @@ Element	元素
 Element Properties	元素属性
 Elevation	高程
 Elevation profiles along lines, cross sections and more.	沿线高程剖面、横截面等。
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	RustGIS 中符合条件的请求会使用你的 ChatGPT 套餐。你可以在 ChatGPT 设置中管理用量。
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Syngle Observatory 中符合条件的请求会使用你的 ChatGPT 套餐。你可以在 ChatGPT 设置中管理用量。
 Ellipse	椭圆
 Embeddings	嵌入向量
 Ember	余烬
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	按名称查找任意命令（Ctrl+K）。
 Find Datasets	查找数据集
 Find Items	查找项目
 Find Place	查找地点
-Find plugins in the RustGIS plugin registry.	在 RustGIS 插件库中查找插件。
+Find plugins in the Syngle Observatory plugin registry.	在 Syngle Observatory 插件库中查找插件。
 Find Similar	查找相似
 Find Tools	查找工具
 Finding routes…	正在查找路线…
@@ -932,7 +932,7 @@ Folder…	文件夹…
 for a store that doesn't say	用于未注明的存储
 Forest	森林
 Format	格式
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	已找到：{names}。智能体通过 RustGIS 的工具和它自己的工具（网络、脚本、文件）处理这张地图，在它自己的文件夹中工作，该文件夹保存在 文档 › RustGIS › Agent work 中。每次操作前都会征求你的同意。
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	已找到：{names}。智能体通过 Syngle Observatory 的工具和它自己的工具（网络、脚本、文件）处理这张地图，在它自己的文件夹中工作，该文件夹保存在 文档 › Syngle Observatory › Agent work 中。每次操作前都会征求你的同意。
 Frame rate	帧率
 Frame rate, draw time, data size and memory.	帧率、绘制时间、数据大小和内存。
 Free the prepared geometry.	释放已准备的几何。
@@ -1091,7 +1091,7 @@ In memory	内存中
 In Progress	进行中
 in progress	进行中
 In project	在工程中
-In RustGIS, it can:	在 RustGIS 中，它可以：
+In Syngle Observatory, it can:	在 Syngle Observatory 中，它可以：
 In use	正在使用
 Indices	指数
 Infographics	信息图
@@ -1205,7 +1205,7 @@ Legend	图例
 Legend label. Clear it to show the value again.	图例标签。清除后将重新显示值。
 Length {length} · gain {gain} m · loss {loss} m	长度 {length} · 上升 {gain} m · 下降 {loss} m
 Let the assistant hand tasks to agents on this computer	允许助手把任务交给这台电脑上的智能体
-Let your Agents Control RustGIS	让你的智能体控制 RustGIS
+Let your Agents Control Syngle Observatory	让你的智能体控制 Syngle Observatory
 Level	级别
 Library	资源库
 Light and Shadow	光照和阴影
@@ -1271,7 +1271,7 @@ Longitude (X)	经度（X）
 Look for {name}, outlined on the ribbon.	在功能区上查找带轮廓突出显示的 {name}。
 Looking up the place…	正在查找地点…
 Lower Priority	降低优先级
-Made in RustGIS: samples, drawings and tool outputs	在 RustGIS 中创建：示例、绘图和工具输出
+Made in Syngle Observatory: samples, drawings and tool outputs	在 Syngle Observatory 中创建：示例、绘图和工具输出
 Magnifier	放大镜
 Major Lakes	主要湖泊
 Major Rivers	主要河流
@@ -1436,7 +1436,7 @@ No bookmarks yet	暂无书签
 No bookmarks yet. New Bookmark saves the current view of the map.	尚无书签。“新建书签”可保存地图的当前视图。
 no command	没有命令
 No connections this session	本次会话没有连接
-No datasets with data RustGIS can add	没有包含 RustGIS 可添加数据的数据集
+No datasets with data Syngle Observatory can add	没有包含 Syngle Observatory 可添加数据的数据集
 No edits since the project was saved	自工程保存以来没有编辑
 no home folder	没有主文件夹
 No layers match	没有匹配的图层
@@ -1472,8 +1472,8 @@ North	北
 North\nArrow	指北\n针
 North Polar Stereographic	北极球面投影
 not a picture	不是图片
-not a RustGIS layout	不是 RustGIS 布局
-not a RustGIS project	不是 RustGIS 工程
+not a Syngle Observatory layout	不是 Syngle Observatory 布局
+not a Syngle Observatory project	不是 Syngle Observatory 工程
 not needed	无需填写
 Not sandboxed	未沙箱隔离
 Not saved yet	尚未保存
@@ -1515,8 +1515,8 @@ Opacity	不透明度
 Open	打开
 Open a .rgis project	打开 .rgis 工程
 open a layout first	请先打开布局
-Open a RustGIS or Jupyter notebook.	打开 RustGIS 或 Jupyter 笔记本。
-Open a RustGIS project.	打开 RustGIS 工程。
+Open a Syngle Observatory or Jupyter notebook.	打开 Syngle Observatory 或 Jupyter 笔记本。
+Open a Syngle Observatory project.	打开 Syngle Observatory 工程。
 Open an offline area to edit.	打开要编辑的离线区域。
 Open browser again	重新打开浏览器
 Open Custom Template	打开自定义模板
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	打开图层的属性表。
 Open the layer's table.	打开图层的表。
 Open the plugin's panel.	打开插件的面板。
 Open the Release Page	打开发布页面
-Open the RustGIS user guide.	打开 RustGIS 用户指南。
+Open the Syngle Observatory user guide.	打开 Syngle Observatory 用户指南。
 Open the selected layer's table.	打开所选图层的表。
 Open the Symbology pane.	打开符号系统窗格。
 Open the task's steps	打开任务的步骤
@@ -1660,7 +1660,7 @@ Plugin registry	插件库
 Plugins	插件
 Plugins are .rgplugin files. Install only plugins from people you trust.	插件是 .rgplugin 文件。请只安装来自您信任的人的插件。
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	标为“未沙箱隔离”的插件则作为程序在您的计算机上运行，能做您能做的任何事。
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	插件在沙箱中运行：它们无法访问您的文件或网络，只能在您接受的权限范围内通过 RustGIS 自身的命令更改工程。
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	插件在沙箱中运行：它们无法访问您的文件或网络，只能在您接受的权限范围内通过 Syngle Observatory 自身的命令更改工程。
 PMTiles archive	PMTiles 归档
 PNG frames (zip)	PNG 帧（zip）
 PNG image	PNG 图像
@@ -1882,26 +1882,26 @@ Run Tool	运行工具
 Run {name}	运行 {name}
 Running the query for the map…	正在为地图运行查询…
 Running…	正在运行…
-RustGIS	RustGIS
-RustGIS bookmarks	RustGIS 书签
-RustGIS deep learning package	RustGIS 深度学习包
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	RustGIS 上次未正常关闭，因此本次以 World Atlas 启动，而不是你的启动工程。准备好后，请从“工程”菜单打开该工程。
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS 是一款用纯 Rust 编写的免费开源 GIS。它可在桌面和浏览器中运行，并且每个操作都是一条命令，也可以在命令行中运行。
-RustGIS layer file	RustGIS 图层文件
-RustGIS layers, maps and projects	RustGIS 图层、地图和工程
-RustGIS layout	RustGIS 布局
-RustGIS maps and projects	RustGIS 地图和工程
-RustGIS or Jupyter notebook	RustGIS 或 Jupyter 笔记本
-RustGIS plugin	RustGIS 插件
-RustGIS presentation	RustGIS 演示文稿
-RustGIS project	RustGIS 工程
-RustGIS project template	RustGIS 工程模板
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	RustGIS 上次运行时发生内部错误。详细信息在 {path} 中，请将其附加到错误报告。
-RustGIS report or report template	RustGIS 报表或报表模板
-RustGIS styles	RustGIS 样式
-RustGIS task	RustGIS 任务
-RustGIS {latest} is available.	RustGIS {latest} 已发布。
-RustGIS {version} is the latest version.	RustGIS {version} 是最新版本。
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Syngle Observatory 书签
+Syngle Observatory deep learning package	Syngle Observatory 深度学习包
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	Syngle Observatory 上次未正常关闭，因此本次以 World Atlas 启动，而不是你的启动工程。准备好后，请从“工程”菜单打开该工程。
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory 是一款用纯 Rust 编写的免费开源 GIS。它可在桌面和浏览器中运行，并且每个操作都是一条命令，也可以在命令行中运行。
+Syngle Observatory layer file	Syngle Observatory 图层文件
+Syngle Observatory layers, maps and projects	Syngle Observatory 图层、地图和工程
+Syngle Observatory layout	Syngle Observatory 布局
+Syngle Observatory maps and projects	Syngle Observatory 地图和工程
+Syngle Observatory or Jupyter notebook	Syngle Observatory 或 Jupyter 笔记本
+Syngle Observatory plugin	Syngle Observatory 插件
+Syngle Observatory presentation	Syngle Observatory 演示文稿
+Syngle Observatory project	Syngle Observatory 工程
+Syngle Observatory project template	Syngle Observatory 工程模板
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Syngle Observatory 上次运行时发生内部错误。详细信息在 {path} 中，请将其附加到错误报告。
+Syngle Observatory report or report template	Syngle Observatory 报表或报表模板
+Syngle Observatory styles	Syngle Observatory 样式
+Syngle Observatory task	Syngle Observatory 任务
+Syngle Observatory {latest} is available.	Syngle Observatory {latest} 已发布。
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} 是最新版本。
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	S3 存储桶
 S3 Connections	S3 连接
 S3…	S3…
 Sample data (Natural Earth)	示例数据（Natural Earth）
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	示例数据 © Natural Earth（公有领域）。RustGIS 采用 Apache-2.0 许可证。
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	示例数据 © Natural Earth（公有领域）。Syngle Observatory 采用 Apache-2.0 许可证。
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	示例数据：Natural Earth（公有领域）。采用 Apache-2.0 许可证。
 Saturation	饱和度
 Save	保存
@@ -1994,7 +1994,7 @@ Sections	节
 See and set the camera's position and scale.	查看并设置相机的位置和比例。
 See the map as people with colour vision deficiencies do.	以色觉缺陷人士的视角查看地图。
 See the tools you've run.	查看已运行的工具。
-See whether a newer RustGIS has been released.	检查是否发布了更新的 RustGIS。
+See whether a newer Syngle Observatory has been released.	检查是否发布了更新的 Syngle Observatory。
 SELECT	SELECT
 Select	选择
 Select (click)	选择（单击）
@@ -2121,7 +2121,7 @@ Sign out	退出登录
 Sign-in cancelled.	登录已取消。
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	登录超时。请重新开始，并允许浏览器访问此计算机的回环地址。
 signed in	已登录
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	已在此电脑上退出，但 OpenAI 未确认。你可以在 ChatGPT 设置中断开 RustGIS。
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	已在此电脑上退出，但 OpenAI 未确认。你可以在 ChatGPT 设置中断开 Syngle Observatory。
 Signing in with ChatGPT works in the desktop app.	使用 ChatGPT 登录仅适用于桌面应用。
 Signing the asset (Planetary Computer)…	正在为资产签名（Planetary Computer）…
 Simplify	简化
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	密钥仅在本次会话中保留。
 The layer's file couldn't be read: {error}	无法读取图层的文件：{error}
 the layout export failed unexpectedly	布局导出意外失败
 The link doesn't say its STAC API: Find Items searches {api}	该链接未注明其 STAC API：“查找项目”将搜索 {api}
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	要浏览的插件列表。留空则使用 RustGIS 插件库。
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	要浏览的插件列表。留空则使用 Syngle Observatory 插件库。
 the map has no layers	地图中没有图层
 The map is drawn in this coordinate system; layers are projected on the fly.	地图以此坐标系绘制；图层将实时投影。
 The map view as it is now	当前的地图视图
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	Shapefile 的各个文件将打包为
 The sign-in expired or was revoked. Sign in again.	登录已过期或被撤销。请重新登录。
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	登录信息保存在应用的设置文件夹中，仅供您的用户账户使用，绝不会写入项目文件。
 The start-up project {path} didn't open: {error}	无法打开启动工程 {path}：{error}
-The start-up project {path} isn't a RustGIS project file.	启动工程 {path} 不是 RustGIS 工程文件。
+The start-up project {path} isn't a Syngle Observatory project file.	启动工程 {path} 不是 Syngle Observatory 工程文件。
 The step's layer {name} isn't in the map.	此步骤的图层 {name} 不在地图中。
 The store has no variables with two or more dimensions.	该存储中没有二维或更多维的变量。
 the store is gone	该存储已不存在
@@ -2365,7 +2365,7 @@ This map has no layers yet.	此地图中还没有图层。
 This map's thumbnail, from an image.	此地图的缩略图，来自图像。
 This map's thumbnail, from the view.	此地图的缩略图，来自视图。
 This plugin can:	此插件可以：
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	此插件作为程序在您的计算机上运行，位于 RustGIS 沙箱之外。它能做您能做的任何事：读取和更改您的文件、使用网络以及运行其他程序。请仅在信任其作者时安装。
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	此插件作为程序在您的计算机上运行，位于 Syngle Observatory 沙箱之外。它能做您能做的任何事：读取和更改您的文件、使用网络以及运行其他程序。请仅在信任其作者时安装。
 This request has no one-time allow option.	此请求没有“仅允许一次”选项。
 This request uses an unsupported capability. Check the parameter and change the request.	此请求使用了不受支持的功能。请检查参数并修改请求。
 This step names no tool to show.	此步骤未指定要显示的工具。
@@ -2439,7 +2439,7 @@ Uninstall Plugin	卸载插件
 Uninstalled {id}.	已卸载 {id}。
 Unique Values	唯一值
 Units	单位
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	卸载 GeoLibre 工具，并在 RustGIS 启动时不再加载。
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	卸载 GeoLibre 工具，并在 Syngle Observatory 启动时不再加载。
 Unsupervised classes (k-means)	非监督分类（k-means）
 Unsupervised classes (k-means).	非监督分类（k-means）。
 Up	上一级
@@ -2515,13 +2515,13 @@ Web Tool	Web 工具
 Website	网站
 Weekly usage	每周用量
 Weights	权重
-Welcome to RustGIS	欢迎使用 RustGIS
+Welcome to Syngle Observatory	欢迎使用 Syngle Observatory
 West	西
 WFS	WFS
 WGS 84 / Globe	WGS 84 / 地球仪
 WGS 84 / Web Mercator	WGS 84 / Web Mercator
-What RustGIS opens with: the World Atlas sample or a blank map.	RustGIS 启动时打开的内容：World Atlas 示例或空白地图。
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	RustGIS 启动时打开的内容：World Atlas 示例、空白地图、你选择的工程，或上次打开或保存的工程。
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	Syngle Observatory 启动时打开的内容：World Atlas 示例或空白地图。
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Syngle Observatory 启动时打开的内容：World Atlas 示例、空白地图、你选择的工程，或上次打开或保存的工程。
 What to do, where to find it and why	做什么、在哪里找到以及原因
 What's near a point	某点附近有什么
 WHERE	WHERE

@@ -47,13 +47,13 @@ BEGIN
   BEGIN
     BLOCK "040904B0"
     BEGIN
-      VALUE "CompanyName", "The RustGIS contributors"
-      VALUE "FileDescription", "RustGIS"
+      VALUE "CompanyName", "Syngle"
+      VALUE "FileDescription", "Syngle Observatory"
       VALUE "FileVersion", "{version}"
       VALUE "InternalName", "rustgis"
-      VALUE "LegalCopyright", "Copyright the RustGIS contributors. Apache-2.0."
+      VALUE "LegalCopyright", "Copyright the upstream RustGIS contributors and Syngle. Apache-2.0."
       VALUE "OriginalFilename", "rustgis.exe"
-      VALUE "ProductName", "RustGIS"
+      VALUE "ProductName", "Syngle Observatory"
       VALUE "ProductVersion", "{version}"
     END
   END

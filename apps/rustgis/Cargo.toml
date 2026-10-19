@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 publish = false
 default-run = "rustgis"
-description = "RustGIS desktop app"
+description = "Syngle Observatory desktop app"
 
 [lints]
 workspace = true

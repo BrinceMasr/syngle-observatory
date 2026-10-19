@@ -1,4 +1,4 @@
-//! RustGIS in the browser.
+//! Syngle Observatory in the browser.
 //!
 //! Runs the same [`rustgis_ui_egui::RustGisApp`] as the desktop app through eframe's web runner
 //! (WebGPU where available, WebGL2 otherwise). Build with `trunk build --release` from this

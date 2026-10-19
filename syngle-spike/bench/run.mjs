@@ -32,7 +32,7 @@ function parse(argv) {
 }
 
 const args = parse(process.argv.slice(2));
-const engineExe = args.engine || path.join(root, "target", "release", "syngle-spike-engine.exe");
+const engineExe = args.engine || path.join(root, "target", "release", "syngle-observatory-engine.exe");
 const tag = args.tag || `${args.mode}-${args.backend}-${args.gpu}`;
 const electron = args.electron || path.join(hostDir, "node_modules", "electron", "dist", "electron.exe");
 const outdir = path.resolve(args.outdir);

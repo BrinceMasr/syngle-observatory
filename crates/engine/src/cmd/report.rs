@@ -550,7 +550,7 @@ pub fn report_file(s: &Session, i: usize, template: bool) -> Result<Vec<u8>, Str
 
 fn open(s: &mut Session, p: &Value) -> CmdResult {
     let text = super::items::read_text(p)?;
-    let mut r: Report = serde_json::from_str(&text).map_err(|e| format!("not a RustGIS report: {e}"))?;
+    let mut r: Report = serde_json::from_str(&text).map_err(|e| format!("not a Syngle Observatory report: {e}"))?;
     r.clamp();
     if let Some(n) = ps(p, "layer") {
         r.layer = find_layer(s, n).ok_or_else(|| format!("no layer named '{n}'"))?.name.clone();

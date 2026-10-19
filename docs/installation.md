@@ -2,44 +2,44 @@
 
 ## Install with an agent
 
-Point your agent at the [RustGIS skill](https://github.com/opengeos/RustGIS/blob/main/skills/rustgis/SKILL.md)
-and ask it to install RustGIS. The skill picks the platform, installs the app and `rustgis-cli`,
+Point your agent at the [Syngle Observatory skill](https://github.com/BrinceMasr/syngle-observatory/blob/main/skills/rustgis/SKILL.md)
+and ask it to install Syngle Observatory. The skill picks the platform, installs the app and `rustgis-cli`,
 checks the release checksum, and registers the MCP server. The same skill is how an agent manages
 the desktop app that is already open.
 
 ## Microsoft Store
 
-On Windows 10 and 11, the easiest way to install RustGIS is from the Microsoft Store, which
+On Windows 10 and 11, the easiest way to install Syngle Observatory is from the Microsoft Store, which
 signs the app and keeps it up to date:
 
 [![Get it from Microsoft](https://get.microsoft.com/images/en-us%20dark.svg){ width="200" }](https://apps.microsoft.com/detail/9ppjw8h561lq?mode=direct)
 
 ## Download
 
-Each [GitHub release](https://github.com/opengeos/RustGIS/releases/latest) carries ready-to-run
+Each [GitHub release](https://github.com/BrinceMasr/syngle-observatory/releases/latest) carries ready-to-run
 builds of the desktop app and `rustgis-cli`. The same files, grouped by platform, are mirrored at
-**[downloads.rustgis.app](https://downloads.rustgis.app)**:
+**[the fork releases](https://github.com/BrinceMasr/syngle-observatory/releases)**:
 
 | Platform | File |
 | --- | --- |
-| Windows x64 (installer, no admin rights) | `RustGIS-<version>-windows-x86_64-setup.exe` |
-| Windows x64 (installer for all users) | `RustGIS-<version>-windows-x86_64.msi` |
-| Windows x64 (no install) | `RustGIS-<version>-windows-x86_64-portable.zip` (unzip and run `rustgis.exe`) |
-| Windows x64 (Microsoft Store package) | `RustGIS-<version>-windows-x86_64.msix` |
-| macOS Apple Silicon | `RustGIS-<version>-macos-aarch64.dmg` |
-| macOS Intel | `RustGIS-<version>-macos-x86_64.dmg` |
+| Windows x64 (installer, no admin rights) | `Syngle Observatory-<version>-windows-x86_64-setup.exe` |
+| Windows x64 (installer for all users) | `Syngle Observatory-<version>-windows-x86_64.msi` |
+| Windows x64 (no install) | `Syngle Observatory-<version>-windows-x86_64-portable.zip` (unzip and run `rustgis.exe`) |
+| Windows x64 (Microsoft Store package) | `Syngle Observatory-<version>-windows-x86_64.msix` |
+| macOS Apple Silicon | `Syngle Observatory-<version>-macos-aarch64.dmg` |
+| macOS Intel | `Syngle Observatory-<version>-macos-x86_64.dmg` |
 | Linux x64 / arm64 (Debian, Ubuntu) | `rustgis_<version>_amd64.deb` / `rustgis_<version>_arm64.deb` |
 | Linux x64 / arm64 (Fedora, RHEL, openSUSE) | `rustgis-<version>-1.x86_64.rpm` / `rustgis-<version>-1.aarch64.rpm` |
-| Linux x64 / arm64 (any distribution, no install) | `RustGIS-<version>-linux-x86_64.AppImage` / `RustGIS-<version>-linux-aarch64.AppImage` |
-| Linux x64 / arm64 (other) | `RustGIS-<version>-linux-x86_64.tar.gz` / `RustGIS-<version>-linux-aarch64.tar.gz` |
+| Linux x64 / arm64 (any distribution, no install) | `Syngle Observatory-<version>-linux-x86_64.AppImage` / `Syngle Observatory-<version>-linux-aarch64.AppImage` |
+| Linux x64 / arm64 (other) | `Syngle Observatory-<version>-linux-x86_64.tar.gz` / `Syngle Observatory-<version>-linux-aarch64.tar.gz` |
 
 On macOS the command line tool is a separate `rustgis-cli-<version>-macos-<arch>.tar.gz`;
 the other packages include it (the Windows installers and the MSIX add `rustgis-cli` to every
 new terminal). `SHA256SUMS` lists the checksum of every file.
 
-On Windows, `setup.exe` installs for your account in `%LOCALAPPDATA%\Programs\RustGIS` and needs
+On Windows, `setup.exe` installs for your account in `%LOCALAPPDATA%\Programs\Syngle Observatory` and needs
 no admin rights; the `.msi` installs for every user in `Program Files` and suits managed
-deployment (`msiexec /i RustGIS-<version>-windows-x86_64.msi /qn`). Both add a Start menu
+deployment (`msiexec /i Syngle Observatory-<version>-windows-x86_64.msi /qn`). Both add a Start menu
 entry, open `.rgis` projects and uninstall from **Settings › Apps**.
 
 The `.msix` is the package submitted to the Microsoft Store, which signs it. It is unsigned
@@ -49,41 +49,41 @@ or the portable zip instead.
 
 The macOS DMG and command line tool are signed with a Developer ID and notarized by Apple, so
 they open without a warning. From the release after 0.1.0, the notarization ticket is also
-stapled to RustGIS.app, so it opens even when the Mac cannot reach Apple's servers. If macOS
-says Apple could not verify RustGIS 0.1.0, connect to the internet and open it again, or run
-`xattr -dr com.apple.quarantine /Applications/RustGIS.app`. The Windows builds are not yet
+stapled to Syngle Observatory.app, so it opens even when the Mac cannot reach Apple's servers. If macOS
+says Apple could not verify Syngle Observatory 0.1.0, connect to the internet and open it again, or run
+`xattr -dr com.apple.quarantine /Applications/Syngle Observatory.app`. The Windows builds are not yet
 signed: choose **More info › Run anyway** if SmartScreen warns about an unknown publisher.
 
 ## Package managers
 
-RustGIS is also published to these package managers, which keep it up to date:
+Syngle Observatory is also published to these package managers, which keep it up to date:
 
 | Platform | Command |
 | --- | --- |
-| Windows ([winget](https://learn.microsoft.com/windows/package-manager/)) | `winget install OpenGeos.RustGIS` |
-| macOS ([Homebrew](https://brew.sh)) | `brew install --cask opengeos/rustgis/rustgis` |
-| macOS and Linux, command line tool only (Homebrew) | `brew install opengeos/rustgis/rustgis-cli` |
+| Windows ([winget](https://learn.microsoft.com/windows/package-manager/)) | `winget install OpenGeos.Syngle Observatory` |
+| macOS ([Homebrew](https://brew.sh)) | `brew install --cask BrinceMasr/syngle-observatory` |
+| macOS and Linux, command line tool only (Homebrew) | `brew install BrinceMasr/syngle-observatory-cli` |
 | Arch Linux ([AUR](https://aur.archlinux.org/packages/rustgis-bin)) | `yay -S rustgis-bin` (or any AUR helper) |
 | Fedora ([COPR](https://copr.fedorainfracloud.org/coprs/giswqs/rustgis/)) | `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` |
 
 winget installs for your account with the setup.exe; add `--scope machine` for the `.msi`. On
-Homebrew 5.1 and later, run `brew trust opengeos/rustgis` once before installing from the tap.
+Homebrew 5.1 and later, run `brew trust BrinceMasr/syngle-observatory` once before installing from the tap.
 Each package is the same build as the release page, and a new release reaches the package
 managers shortly after it is published (winget after Microsoft's review).
 
 ## From source
 
-RustGIS builds from source with a recent stable Rust toolchain (1.90 or later).
+Syngle Observatory builds from source with a recent stable Rust toolchain (1.90 or later).
 
 ```sh
-git clone https://github.com/opengeos/RustGIS.git
-cd RustGIS
+git clone https://github.com/BrinceMasr/syngle-observatory.git
+cd Syngle Observatory
 cargo run --release -p rustgis            # the desktop app
 cargo build --release -p rustgis-cli      # the command line tool
 ```
 
 The build downloads the Natural Earth sample data (a few hundred KB) from
-[rustgis-assets](https://github.com/opengeos/rustgis-assets). To build offline, download the
+[rustgis-assets](https://github.com/BrinceMasr/syngle-observatory-assets). To build offline, download the
 four files from `https://assets.rustgis.app/data/` once and point the build at them:
 
 ```sh
@@ -97,12 +97,12 @@ RUSTGIS_DATA_DIR=/path/to/data cargo build --release
 | Linux (X11 and Wayland) | Supported |
 | macOS | Supported |
 | Windows | Supported |
-| Web browser | Supported: [web.rustgis.app](https://web.rustgis.app) (WebGPU or WebGL2), installable as an app on iOS, Android and desktops ([how](#install-the-web-app)) |
+| Web browser | Supported: [brincemasr.github.io/syngle-observatory](https://github.com/BrinceMasr/syngle-observatory) (WebGPU or WebGL2), installable as an app on iOS, Android and desktops ([how](#install-the-web-app)) |
 
 ## Web app
 
-RustGIS also runs in the browser, compiled to WebAssembly: open
-**[web.rustgis.app](https://web.rustgis.app)**. It is the same app with three differences:
+Syngle Observatory also runs in the browser, compiled to WebAssembly: open
+**[brincemasr.github.io/syngle-observatory](https://github.com/BrinceMasr/syngle-observatory)**. It is the same app with three differences:
 
 - **Open** and **Add Data** use the browser's file picker, and you can drop files on the page.
   GeoJSON, CSV, GeoTIFF, ASCII grids, `.rgis` projects and the other formats in
@@ -160,11 +160,11 @@ the project with the page that frames it through `postMessage` (the messages are
 
 The web app installs like an app on phones, tablets and computers, with its own icon and a window
 without the browser's toolbars, and starts without a network connection once it has been opened
-online. Nothing is downloaded from an app store, and it updates itself from web.rustgis.app.
+online. Nothing is downloaded from an app store, and it updates itself from brincemasr.github.io/syngle-observatory.
 
 | Platform | How |
 | --- | --- |
-| iPhone and iPad | Open web.rustgis.app in Safari, tap **Share**, then **Add to Home Screen** |
+| iPhone and iPad | Open brincemasr.github.io/syngle-observatory in Safari, tap **Share**, then **Add to Home Screen** |
 | Android | Open it in Chrome, tap the **⋮** menu, then **Install app** (or **Add to Home screen**) |
 | Windows, macOS, Linux, ChromeOS | In Chrome or Edge, click the install icon at the right of the address bar (or **⋮ › Cast, save and share › Install page as app**) |
 | Mac (Safari 17 or later) | **File › Add to Dock** |
@@ -196,7 +196,7 @@ stale cache.
 
 ## Fonts
 
-RustGIS uses an installed sans-serif when it finds one (Segoe UI, San Francisco, Inter, Noto
+Syngle Observatory uses an installed sans-serif when it finds one (Segoe UI, San Francisco, Inter, Noto
 Sans, Open Sans or DejaVu Sans) and falls back to a built-in face. Set
 `RUSTGIS_BUILTIN_FONTS=1` to always use the built-in face.
 
@@ -206,17 +206,17 @@ The desktop app and the command line keep their files in three folders:
 
 | Folder | Holds | Windows | macOS | Linux |
 | --- | --- | --- | --- | --- |
-| Settings | preferences (`prefs.json`), the crash log, AI Assistant sign-ins and skills | `%APPDATA%\RustGIS` | `~/Library/Application Support/RustGIS` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
-| Data | installed plugins and the GeoLibre runner | `%LOCALAPPDATA%\RustGIS` | `~/Library/Application Support/RustGIS` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
-| Cache | GDAL and DuckDB conversions | `%LOCALAPPDATA%\RustGIS\cache` | `~/Library/Caches/RustGIS` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
+| Settings | preferences (`prefs.json`), the crash log, AI Assistant sign-ins and skills | `%APPDATA%\Syngle Observatory` | `~/Library/Application Support/Syngle Observatory` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
+| Data | installed plugins and the GeoLibre runner | `%LOCALAPPDATA%\Syngle Observatory` | `~/Library/Application Support/Syngle Observatory` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
+| Cache | GDAL and DuckDB conversions | `%LOCALAPPDATA%\Syngle Observatory\cache` | `~/Library/Caches/Syngle Observatory` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
 
 Set `RUSTGIS_CONFIG_DIR`, `RUSTGIS_APP_DATA_DIR` or `RUSTGIS_CACHE_DIR` to use another folder
-instead, for a portable install on a USB drive, for example. The folder is used as is, and RustGIS
+instead, for a portable install on a USB drive, for example. The folder is used as is, and Syngle Observatory
 keeps the same files in it (`plugins/` and `geolibre/` in the data folder, `gdal/` and `duckdb/`
 in the cache folder). `RUSTGIS_PLUGINS_DIR`, `RUSTGIS_GDAL_CACHE` and `RUSTGIS_DUCKDB_CACHE` name
 the plugins folder and the GDAL and DuckDB caches themselves, ahead of these.
 
-## If RustGIS closes unexpectedly
+## If Syngle Observatory closes unexpectedly
 
 The desktop app writes its internal errors to `crash.log` in its
 [settings folder](#settings-data-and-cache-folders): one that closed the app, and also one it
@@ -224,9 +224,9 @@ recovered from (an error in the AI Assistant, for example, stops the request and
 chat instead of closing the app). The next launch moves the log to `crash-last.log` and names the
 file in a notice.
 
-Attach it to a [bug report](https://github.com/opengeos/RustGIS/issues/new?template=bug_report.yml).
-It holds the version, the operating system, the error message and where in RustGIS it happened.
-An error message can quote what RustGIS was working on, such as a file path or a layer name, so
+Attach it to a [bug report](https://github.com/BrinceMasr/syngle-observatory/issues/new?template=bug_report.yml).
+It holds the version, the operating system, the error message and where in Syngle Observatory it happened.
+An error message can quote what Syngle Observatory was working on, such as a file path or a layer name, so
 read the log first and remove anything you don't want to share.
 
 ## If the app doesn't start
@@ -243,5 +243,5 @@ rustgis --backend vulkan   # Vulkan
 ```
 
 The `WGPU_BACKEND` environment variable takes the same names, for every launch. On Windows,
-RustGIS uses Vulkan only when asked like this: some Vulkan drivers, such as Intel's for UHD 600
+Syngle Observatory uses Vulkan only when asked like this: some Vulkan drivers, such as Intel's for UHD 600
 series graphics, crash as the app starts. Updating the graphics driver may also help.

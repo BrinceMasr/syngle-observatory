@@ -2,7 +2,7 @@
 //! key: OpenAI's Sign in with ChatGPT for open-source apps
 //! (<https://developers.openai.com/siwc/token-sharing-open-source>).
 //!
-//! The first sign-in registers RustGIS as the user's own agent (`client_id=dynamic_agent_client`,
+//! The first sign-in registers Syngle Observatory as the user's own agent (`client_id=dynamic_agent_client`,
 //! with this computer's host id); the browser comes back with the client id OpenAI issued, which
 //! later sign-ins and renewals use. It is OAuth 2.0 authorization code with PKCE in the system
 //! browser, returning to a short-lived server on `127.0.0.1`. The id token is verified against
@@ -30,10 +30,10 @@ pub const TOKEN_URL: &str = "https://auth.openai.com/api/accounts/oauth/token";
 pub const DISCOVERY_URL: &str = "https://auth.openai.com/.well-known/openid-configuration";
 /// The API the plan's tokens are for (the `resource` of every grant).
 pub const API: &str = "https://api.openai.com/v1";
-/// The client id of a first sign-in, which registers RustGIS for the account.
+/// The client id of a first sign-in, which registers Syngle Observatory for the account.
 pub const REGISTER: &str = "dynamic_agent_client";
 /// The name the registration suggests (the user may edit it).
-pub const AGENT_NAME: &str = "RustGIS";
+pub const AGENT_NAME: &str = "Syngle Observatory";
 /// Identity, a refresh token, and the permission to use the plan.
 pub const SCOPES: &str = "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct";
 /// The permission to use the user's ChatGPT plan.
@@ -47,7 +47,7 @@ pub const REFRESH_MARGIN: i64 = 5 * 60;
 /// The clock skew allowed when checking an id token's expiry.
 pub const CLOCK_SKEW: i64 = 5 * 60;
 
-/// The registration of RustGIS for a ChatGPT account and, while signed in, its tokens.
+/// The registration of Syngle Observatory for a ChatGPT account and, while signed in, its tokens.
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct Credentials {
     /// The client id OpenAI issued for this account (kept after signing out).
@@ -115,7 +115,7 @@ impl Credentials {
         !self.access_token.is_empty()
     }
 
-    /// Whether the grant lets RustGIS use the plan.
+    /// Whether the grant lets Syngle Observatory use the plan.
     pub fn plan_allowed(&self) -> bool {
         self.scopes.iter().any(|s| s == PLAN_SCOPE)
     }
@@ -873,7 +873,7 @@ mod native {
                 .ok_or_else(|| Error::new(Recovery::SignIn, "not signed in to ChatGPT"))?
         };
         if !c.plan_allowed() {
-            return Err(Error::new(Recovery::Consent, "RustGIS isn't allowed to use your ChatGPT plan; sign in again and allow it"));
+            return Err(Error::new(Recovery::Consent, "Syngle Observatory isn't allowed to use your ChatGPT plan; sign in again and allow it"));
         }
         if c.expires_soon(now()) { refresh(path, &c, send) } else { Ok(c) }
     }
@@ -957,7 +957,7 @@ mod native {
         let saved = read_credentials(path)?;
         check_account(account, &saved)?;
         if !c.plan_allowed() || !saved.plan_allowed() {
-            return Err(Error::new(Recovery::Consent, "RustGIS isn't allowed to use your ChatGPT plan; sign in again and allow it"));
+            return Err(Error::new(Recovery::Consent, "Syngle Observatory isn't allowed to use your ChatGPT plan; sign in again and allow it"));
         }
         Ok(())
     }
@@ -1011,7 +1011,7 @@ mod native {
     }
 
     /// Ends a signed-out session at OpenAI (blocking; retried a few times on network and server
-    /// errors). An error means OpenAI didn't confirm it: the user can disconnect RustGIS in their
+    /// errors). An error means OpenAI didn't confirm it: the user can disconnect Syngle Observatory in their
     /// ChatGPT settings.
     pub fn revoke(r: &Revocation) -> Result<(), Error> {
         revoke_with(r, &mut |req| http::send_timeout(req, Duration::from_secs(30)).map_err(Error::auth_context), &mut |d| {
@@ -1224,12 +1224,12 @@ mod native {
             });
             return match result {
                 Ok(c) if !c.plan_allowed() => {
-                    let why = "RustGIS wasn't allowed to use your ChatGPT plan. Sign in again and allow it to use the assistant.";
+                    let why = "Syngle Observatory wasn't allowed to use your ChatGPT plan. Sign in again and allow it to use the assistant.";
                     respond(&mut stream, 200, &page("Sign-in incomplete", why));
                     Ok(c)
                 }
                 Ok(c) => {
-                    respond(&mut stream, 200, &page("Signed in", "RustGIS can now use your ChatGPT plan. You can close this tab."));
+                    respond(&mut stream, 200, &page("Signed in", "Syngle Observatory can now use your ChatGPT plan. You can close this tab."));
                     Ok(c)
                 }
                 Err(e) => {
@@ -1379,7 +1379,7 @@ mod native {
     /// The page the browser shows at the end.
     fn page(title: &str, text: &str) -> String {
         format!(
-            "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>RustGIS: {t}</title></head>\
+            "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Syngle Observatory: {t}</title></head>\
 <body style=\"font-family: system-ui, sans-serif; margin: 3em auto; max-width: 32em; text-align: center\">\
 <h1>{t}</h1><p>{b}</p></body></html>",
             t = escape(title),

@@ -1,22 +1,26 @@
-//! Spike A (#43): the native engine sidecar.
+//! The Syngle Observatory engine sidecar (fork crate; from spike A, #43).
 //!
-//! What it is, and the boundary it draws:
+//! What it is, and the boundary it draws (ADR 0005):
 //!
 //! * **Data authority.** It owns the datasets: a `Session` (the fork's own engine) loads them with
 //!   the fork's readers, so the same code the desktop app runs parses the same bytes.
-//! * **Gateway.** It serves one localhost HTTP surface, with byte ranges: the WASM view (the fork's
-//!   `dist/web` build), the embedding page and the dataset files. Byte ranges matter: a GeoParquet
-//!   or FlatGeobuf "read in place" fetches its footer and its row groups by range.
-//! * **Control channel.** It speaks JSON lines over stdin/stdout with the Electron main process.
-//!   What crosses it: commands in, and the *project* (never the pixels or the feature buffers) out.
+//! * **Gateway.** It serves one localhost HTTP surface, with byte ranges: the canvas-only WASM
+//!   view (the fork's `dist/canvas` or `dist/web` build), the embedding page and the dataset files.
+//!   Byte ranges matter: a GeoParquet or FlatGeobuf "read in place" fetches its footer and its row
+//!   groups by range.
+//! * **Control channel.** It speaks JSON lines over stdin/stdout with the host process (Electron
+//!   today, SyngleCode's desktop process later). What crosses it: commands in, and the *project*
+//!   (never the pixels or the feature buffers) out.
 //!
 //! Deliberately *not* in the engine: the map view. The engine never renders; the view never reads
-//! the disk. See the spike report for the rationale.
+//! the disk. See `agents/docs/research/observatory-engine-spike.md` in the Syngle-Ecosystem repo.
 //!
-//! Usage: `syngle-spike-engine --root <repo> --data <dir> [--preload <url|path>]`
+//! Usage: `syngle-observatory-engine --root <repo> --data <dir> [--preload <url|path>]`
 //!
 //! stdout: one JSON object a line, `{"event": …}` — the protocol.
 //! stderr: human/log lines — HTTP requests and their byte counts, notices, timings.
+
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::net::{TcpListener, TcpStream};
@@ -53,8 +57,10 @@ struct Counters {
     bytes: std::sync::atomic::AtomicU64,
 }
 
-fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+/// Runs the sidecar: binds the loopback gateway, speaks the JSON-lines protocol on stdin/stdout
+/// and returns the process exit code. `args` are the command line's arguments after the program
+/// name.
+pub fn run(args: &[String]) -> i32 {
     let opt = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
     let root = PathBuf::from(opt("--root").unwrap_or_else(|| ".".to_string()));
     // `--cache` makes the view's content-hashed assets cacheable: the second launch reuses the
@@ -71,7 +77,7 @@ fn main() {
         Ok(l) => l,
         Err(e) => {
             emit(&json!({"event": "error", "error": format!("could not listen: {e}")}));
-            std::process::exit(2);
+            return 2;
         }
     };
     let port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
@@ -122,20 +128,17 @@ fn main() {
             continue;
         };
         let id = msg.get("id").cloned().unwrap_or(Value::Null);
-        let cmd = msg.get("cmd").and_then(Value::as_str).unwrap_or("");
-        match cmd {
-            "ping" => emit(&json!({"event":"pong","id":id,"t":now_ms()})),
-            "open" => {
-                let which = msg.get("url").and_then(Value::as_str).map(|u| (u, "url")).or_else(|| msg.get("path").and_then(Value::as_str).map(|p| (p, "path")));
-                let Some((target, kind)) = which else {
+        let id = msg.get("id").cloned().unwrap_or(Value::Null);
+        match Command::parse(&msg) {
+            Command::Ping => emit(&json!({"event":"pong","id":id,"t":now_ms()})),
+            Command::Open { which, name, zoom } => {
+                let Some((kind, target)) = which else {
                     emit(&json!({"event":"error","id":id,"error":"open needs url or path"}));
                     continue;
                 };
-                let name = msg.get("name").and_then(Value::as_str);
-                let zoom = msg.get("zoom").and_then(Value::as_bool).unwrap_or(true);
                 // Progress, not an answer: an id here would resolve the caller's promise early.
                 emit(&json!({"event":"opening","kind":kind,"target":target,"t":now_ms()}));
-                let out = open(&mut session, target, kind, name, zoom);
+                let out = open(&mut session, &target, kind, name.as_deref(), zoom);
                 if let Some(text) = out.get("project").and_then(Value::as_str)
                     && let Ok(mut shared) = project.lock()
                 {
@@ -143,12 +146,14 @@ fn main() {
                 }
                 emit(&json!({"event":"opened","id":id,"t":now_ms(),"result":out}));
             }
-            "project" => {
+            Command::Project => {
                 let t = Instant::now();
                 let text = serde_json::to_string(&session.project).unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}"));
-                emit(&json!({"event":"project","id":id,"t":now_ms(),"serializeMs":t.elapsed().as_secs_f64() * 1000.0,"bytes":text.len(),"text":text}));
+                emit(
+                    &json!({"event":"project","id":id,"t":now_ms(),"serializeMs":t.elapsed().as_secs_f64() * 1000.0,"bytes":text.len(),"text":text}),
+                );
             }
-            "stats" => {
+            Command::Stats => {
                 use std::sync::atomic::Ordering;
                 let features: usize = session.project.map().layers.iter().map(|l| l.dataset.features.len()).sum();
                 emit(&json!({
@@ -162,8 +167,54 @@ fn main() {
                     "bytes":counters.bytes.load(Ordering::Relaxed),
                 }))
             }
-            "quit" => break,
-            other => emit(&json!({"event":"error","id":id,"error":format!("unknown command {other}")})),
+            Command::Quit => break,
+            Command::Unknown(other) => emit(&json!({"event":"error","id":id,"error":format!("unknown command {other}")})),
+        }
+    }
+    0
+}
+
+/// One line of the control protocol: what the host asks the engine to do.
+#[derive(Debug, PartialEq)]
+enum Command {
+    Ping,
+    /// Open a dataset. `which` is (kind, target) with kind `"url"` or `"path"`, or `None` when the
+    /// line carried neither.
+    Open {
+        which: Option<(&'static str, String)>,
+        name: Option<String>,
+        zoom: bool,
+    },
+    /// The current project, serialised, for the view.
+    Project,
+    /// The load counters and what is open.
+    Stats,
+    Quit,
+    Unknown(String),
+}
+
+impl Command {
+    /// Reads one protocol line. A line without a `cmd` member is [`Command::Unknown`], like one
+    /// naming a command this engine does not know.
+    fn parse(msg: &Value) -> Command {
+        match msg.get("cmd").and_then(Value::as_str).unwrap_or("") {
+            "ping" => Command::Ping,
+            "open" => {
+                let which = msg
+                    .get("url")
+                    .and_then(Value::as_str)
+                    .map(|u| ("url", u.to_string()))
+                    .or_else(|| msg.get("path").and_then(Value::as_str).map(|p| ("path", p.to_string())));
+                Command::Open {
+                    which,
+                    name: msg.get("name").and_then(Value::as_str).map(str::to_string),
+                    zoom: msg.get("zoom").and_then(Value::as_bool).unwrap_or(true),
+                }
+            }
+            "project" => Command::Project,
+            "stats" => Command::Stats,
+            "quit" => Command::Quit,
+            other => Command::Unknown(other.to_string()),
         }
     }
 }
@@ -224,7 +275,7 @@ const INSTRUMENT: &str = include_str!("instrument.js");
 /// A `Range` request, in the two shapes a reader uses: `bytes=a-b` / `bytes=a-` (a start), and
 /// `bytes=-n` (the last n bytes — how a Parquet reader fetches the footer, and the reason a naive
 /// "first n bytes" server answers `not a Parquet file`).
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum ByteRange {
     From { start: u64, end: Option<u64> },
     Last(u64),
@@ -236,12 +287,7 @@ struct Request {
     range: Option<ByteRange>,
 }
 
-fn handle(
-    mut stream: TcpStream,
-    cfg: &Cfg,
-    counters: &Counters,
-    project: &std::sync::Mutex<String>,
-) -> std::io::Result<()> {
+fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::sync::Mutex<String>) -> std::io::Result<()> {
     use std::sync::atomic::Ordering;
     stream.set_nodelay(true).ok();
     let mut reader = BufReader::new(stream.try_clone()?);
@@ -320,7 +366,13 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
             let bytes = text.into_bytes();
             return (200, (head(200, "application/json", bytes.len() as u64, None, false), bytes.len() as u64), bytes);
         }
-        "/spike/instrument.js" => return (200, (head(200, "text/javascript", INSTRUMENT.len() as u64, None, false), INSTRUMENT.len() as u64), INSTRUMENT.as_bytes().to_vec()),
+        "/spike/instrument.js" => {
+            return (
+                200,
+                (head(200, "text/javascript", INSTRUMENT.len() as u64, None, false), INSTRUMENT.len() as u64),
+                INSTRUMENT.as_bytes().to_vec(),
+            );
+        }
         other => {
             let decoded = percent_decode(other);
             if decoded.contains("..") {
@@ -498,4 +550,137 @@ fn percent_decode(s: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).to_string()
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
+mod tests {
+    use super::*;
+
+    /// A request against `cfg`, with a real file behind `/data` so range answers are the bytes on
+    /// disk, not a mock.
+    fn tmp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("syngle-obs-engine-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("data")).ok();
+        dir
+    }
+
+    fn cfg(root: &Path) -> Cfg {
+        Cfg { web: root.join("web"), host: root.join("host"), data: root.join("data"), cache: false }
+    }
+
+    fn the_project() -> std::sync::Mutex<String> {
+        std::sync::Mutex::new(String::from("{\"name\":\"test\"}"))
+    }
+
+    #[test]
+    fn ranges_are_read_in_the_shapes_a_reader_asks_for() {
+        assert_eq!(parse_range("bytes=10-20"), Some(ByteRange::From { start: 10, end: Some(20) }));
+        assert_eq!(parse_range("bytes=10-"), Some(ByteRange::From { start: 10, end: None }));
+        // `bytes=-n` is the *last* n bytes: the Parquet footer request.
+        assert_eq!(parse_range("bytes=-100"), Some(ByteRange::Last(100)));
+        for bad in ["", "items=1-2", "bytes=abc", "bytes=10", "bytes=a-b"] {
+            assert_eq!(parse_range(bad), None, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn a_last_n_range_returns_the_tail_of_the_file() {
+        let root = tmp_dir("tail");
+        std::fs::write(root.join("data/blob.bin"), b"0123456789").ok();
+        let req = Request { method: "GET".into(), target: "/data/blob.bin".into(), range: parse_range("bytes=-4") };
+        let (status, (head, len), body) = route(&req, &cfg(&root), &the_project());
+        assert_eq!(status, 206);
+        assert!(head.contains("Content-Range: bytes 6-9/10"));
+        assert_eq!(len, 4);
+        assert_eq!(body, b"6789");
+    }
+
+    #[test]
+    fn a_whole_file_answer_is_200_and_carries_the_reader_headers() {
+        let root = tmp_dir("whole");
+        std::fs::write(root.join("data/notes.json"), b"hi").ok();
+        let req = Request { method: "GET".into(), target: "/data/notes.json".into(), range: None };
+        let (status, (head, len), body) = route(&req, &cfg(&root), &the_project());
+        assert_eq!(status, 200);
+        assert_eq!(len, 2);
+        assert_eq!(body, b"hi");
+        assert!(head.contains("Accept-Ranges: bytes"));
+        assert!(head.contains("Access-Control-Allow-Origin: *"));
+        assert!(head.contains("Content-Type: application/json"));
+    }
+
+    #[test]
+    fn traversal_out_of_a_served_root_is_refused() {
+        let root = tmp_dir("traversal");
+        std::fs::write(root.join("secret.txt"), b"secret").ok();
+        let req = Request { method: "GET".into(), target: "/data/%2e%2e/secret.txt".into(), range: None };
+        let (status, _, body) = route(&req, &cfg(&root), &the_project());
+        assert_eq!(status, 404);
+        assert!(body.is_empty());
+    }
+
+    #[test]
+    fn health_and_project_documents_answer_without_touching_the_disk() {
+        let root = tmp_dir("meta");
+        let project = the_project();
+        let health = route(&Request { method: "GET".into(), target: "/health".into(), range: None }, &cfg(&root), &project);
+        assert_eq!((health.0, health.2), (200, b"ok".to_vec()));
+        let doc = route(&Request { method: "GET".into(), target: "/project.json".into(), range: None }, &cfg(&root), &project);
+        assert_eq!(doc.0, 200);
+        assert_eq!(doc.2, b"{\"name\":\"test\"}");
+        assert!((doc.1).0.contains("Content-Type: application/json"));
+    }
+
+    #[test]
+    fn the_protocol_reads_the_commands_the_host_sends() {
+        assert_eq!(Command::parse(&json!({"cmd": "ping"})), Command::Ping);
+        assert_eq!(Command::parse(&json!({"cmd": "project"})), Command::Project);
+        assert_eq!(Command::parse(&json!({"cmd": "stats"})), Command::Stats);
+        assert_eq!(Command::parse(&json!({"cmd": "quit"})), Command::Quit);
+        assert_eq!(
+            Command::parse(&json!({"cmd": "open", "url": "http://x/a.parquet", "zoom": false})),
+            Command::Open { which: Some(("url", "http://x/a.parquet".into())), name: None, zoom: false }
+        );
+        assert_eq!(
+            Command::parse(&json!({"cmd": "open", "path": "C:/d/a.fgb", "name": "roads"})),
+            Command::Open { which: Some(("path", "C:/d/a.fgb".into())), name: Some("roads".into()), zoom: true }
+        );
+        // `url` wins when a line carries both, and a missing target stays missing for the caller
+        // to answer with its own error.
+        assert_eq!(
+            Command::parse(&json!({"cmd": "open", "url": "u", "path": "p"})),
+            Command::Open { which: Some(("url", "u".into())), name: None, zoom: true }
+        );
+        assert_eq!(Command::parse(&json!({"cmd": "open"})), Command::Open { which: None, name: None, zoom: true });
+        assert_eq!(Command::parse(&json!({"cmd": "nope"})), Command::Unknown("nope".into()));
+        assert_eq!(Command::parse(&json!({"id": 1})), Command::Unknown(String::new()));
+    }
+
+    #[test]
+    fn content_types_cover_the_view_and_the_datasets() {
+        assert_eq!(content_type("index.html"), Some("text/html; charset=utf-8"));
+        assert_eq!(content_type("app_bg.WASM"), Some("application/wasm"));
+        assert_eq!(content_type("points.fgb"), Some("application/octet-stream"));
+        assert_eq!(content_type("no-extension"), None);
+    }
+
+    #[test]
+    fn percent_decoding_leaves_bad_escapes_alone() {
+        assert_eq!(percent_decode("/a%20b"), "/a b");
+        assert_eq!(percent_decode("/a%2"), "/a%2");
+        assert_eq!(percent_decode("/a%zz"), "/a%zz");
+    }
+
+    #[test]
+    fn a_slice_reads_exactly_the_asked_range() {
+        let root = tmp_dir("slice");
+        let path = root.join("data/blob.bin");
+        std::fs::write(&path, b"abcdef").ok();
+        let mut f = std::fs::File::open(&path).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(read_slice(&mut f, 2, 4), b"cde");
+        assert_eq!(read_slice(&mut f, 4, 2), b"");
+        assert_eq!(read_slice(&mut f, 5, 99), b"f");
+    }
 }

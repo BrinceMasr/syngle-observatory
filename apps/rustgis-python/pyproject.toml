@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "rustgis"
-description = "Python bindings to RustGIS, a fast, free and open-source GIS in pure Rust"
+description = "Python bindings to Syngle Observatory, a fast, free and open-source GIS in pure Rust"
 readme = "README.md"
 license = "Apache-2.0"
 # A copy of the repository's LICENSE: license-files can't reach outside this directory, and
@@ -30,10 +30,10 @@ jupyter = ["anywidget>=0.9"]
 test = ["pytest>=7", "anywidget>=0.9"]
 
 [project.urls]
-Homepage = "https://rustgis.app"
-Documentation = "https://rustgis.app/python/"
-Repository = "https://github.com/opengeos/RustGIS"
-Issues = "https://github.com/opengeos/RustGIS/issues"
+Homepage = "https://github.com/BrinceMasr/syngle-observatory"
+Documentation = "https://github.com/BrinceMasr/syngle-observatory/python/"
+Repository = "https://github.com/BrinceMasr/syngle-observatory"
+Issues = "https://github.com/BrinceMasr/syngle-observatory/issues"
 
 [tool.maturin]
 python-source = "python"

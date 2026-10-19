@@ -1,7 +1,7 @@
 //! Process plugins (desktop and command line): a program on the user's computer, not sandboxed,
 //! that speaks the plugin ABI over its standard input and output, one JSON object per line.
 //!
-//! For each command or tool call RustGIS starts the program in the plugin's folder and writes
+//! For each command or tool call Syngle Observatory starts the program in the plugin's folder and writes
 //! the request (the same object a WebAssembly module gets) as one line. The program answers with
 //! lines of its own:
 //!
@@ -9,7 +9,7 @@
 //!   `{"ok": value}` or `{"error": "text"}`.
 //! - `{"log": "text"}`: a log line.
 //! - `{"progress": "text"}`: what it's doing now, shown while a tool runs and not kept.
-//! - `{"ok": value}` or `{"error": "text"}`: the result. RustGIS then closes the program's input
+//! - `{"ok": value}` or `{"error": "text"}`: the result. Syngle Observatory then closes the program's input
 //!   and waits briefly for it to exit before stopping it.
 //!
 //! Other output lines are logged and skipped (libraries print), and so is what it writes to its
@@ -100,7 +100,7 @@ enum Line {
 }
 
 /// Reads the program's output lines on a thread, so waiting for one can time out. A few lines
-/// at most wait to be handled: a program printing faster than RustGIS reads is made to wait
+/// at most wait to be handled: a program printing faster than Syngle Observatory reads is made to wait
 /// rather than filling memory.
 fn lines(out: impl Read + Send + 'static) -> Receiver<Line> {
     let (tx, rx) = sync_channel(2);
@@ -195,7 +195,7 @@ fn kill_tree(child: &Child) {
 }
 
 /// Writes lines to the program's input on a thread, so a program that doesn't read can't block
-/// RustGIS (the timeout still applies). Dropping the sender closes the input.
+/// Syngle Observatory (the timeout still applies). Dropping the sender closes the input.
 fn writer(mut stdin: impl Write + Send + 'static) -> Sender<Vec<u8>> {
     let (tx, rx) = channel::<Vec<u8>>();
     std::thread::spawn(move || {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the downloads.rustgis.app site for a RustGIS release: its assets up to 100 MB (checked
+# Builds the the fork releases site for a Syngle Observatory release: its assets up to 100 MB (checked
 # against GitHub's SHA-256 digests), a manifest.json the page reads, SHA256SUMS.txt and the page.
 #
 #   packaging/downloads/build.sh <output-dir> [release-tag]
@@ -8,8 +8,8 @@
 # manifest.json, so a caller can tell whether anything changed before downloading.
 set -euo pipefail
 
-readonly SOURCE_REPOSITORY="opengeos/RustGIS"
-readonly MIRROR_ORIGIN="https://downloads.rustgis.app"
+readonly SOURCE_REPOSITORY="BrinceMasr/syngle-observatory"
+readonly MIRROR_ORIGIN="https://github.com/BrinceMasr/syngle-observatory/releases"
 readonly MAX_MIRRORED_BYTES=$((100 * 1024 * 1024))
 readonly METADATA_ONLY="${DOWNLOAD_MIRROR_METADATA_ONLY:-false}"
 # The Store-only MSIX, and the release's own SHA256SUMS (the mirror writes SHA256SUMS.txt).
@@ -57,7 +57,7 @@ jq \
   --argjson omitted_asset_patterns "$OMITTED_ASSET_PATTERNS_JSON" \
   '{
     schema_version: 1,
-    product: "RustGIS",
+    product: "Syngle Observatory",
     generated_at: $generated_at,
     max_mirrored_bytes: $max_mirrored_bytes,
     release: {
@@ -150,7 +150,7 @@ cp "$template_directory/app.js" "$output_directory/app.js"
 cp "$template_directory/404.html" "$output_directory/404.html"
 cp "$template_directory/README.md" "$output_directory/README.md"
 touch "$output_directory/.nojekyll"
-printf '%s\n' 'downloads.rustgis.app' > "$output_directory/CNAME"
+printf '%s\n' 'the fork releases' > "$output_directory/CNAME"
 rm "$release_json"
 
 echo "Built mirror for $release_tag: $(jq -r '.mirrored_count' "$output_directory/manifest.json") mirrored, $(jq -r '.github_only_count' "$output_directory/manifest.json") linked to GitHub."

@@ -33,7 +33,7 @@ pub struct Exif {
     pub orientation: u16,
 }
 
-/// Whether a file name is a photo RustGIS reads (a JPEG).
+/// Whether a file name is a photo Syngle Observatory reads (a JPEG).
 pub fn is_photo_name(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     lower.ends_with(".jpg") || lower.ends_with(".jpeg")

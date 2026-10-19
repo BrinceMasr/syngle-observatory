@@ -25,7 +25,7 @@ function parse(argv) {
   return out;
 }
 const args = parse(process.argv.slice(2));
-const engine = args.engine || path.join(root, "target", "release", "syngle-spike-engine.exe");
+const engine = args.engine || path.join(root, "target", "release", "syngle-observatory-engine.exe");
 const web = args.web || path.join(root, "dist", "web");
 const extras = args.extra ? String(args.extra).split(",") : [];
 const out = args.out || path.join(here, "sizes.json");

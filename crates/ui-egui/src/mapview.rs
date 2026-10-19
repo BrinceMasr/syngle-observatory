@@ -337,6 +337,15 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
     main_view(app, ui, &t);
 }
 
+/// Draws only the map view (ADR 0010's canvas-only build): no map tabs, no ModelBuilder, layout or
+/// catalog takeover, no split pair — the host's React chrome owns those. Pan, zoom, select and the
+/// other direct-manipulation gestures are `main_view`'s own.
+pub fn show_canvas(app: &mut RustGisApp, ui: &mut Ui) {
+    let t = Tokens::get(ui.ctx());
+    animate(app, ui);
+    main_view(app, ui, &t);
+}
+
 /// Plays the map's animation: the camera moves through the keyframes in real time.
 fn animate(app: &mut RustGisApp, ui: &mut Ui) {
     let Some((t, k)) = app.ws.playing else { return };

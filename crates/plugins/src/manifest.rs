@@ -23,7 +23,7 @@ const MAX_TAB_LABEL: usize = 32;
 const MAX_RUN_ARGS: usize = 64;
 const MAX_SKILLS: usize = 32;
 
-/// RustGIS's own ribbon tabs (and the Project button), and the names they had before: a plugin's
+/// Syngle Observatory's own ribbon tabs (and the Project button), and the names they had before: a plugin's
 /// tab can't take them.
 pub const RESERVED_TABS: &[&str] = &[
     "Project",
@@ -57,7 +57,7 @@ pub enum Permission {
     Edit,
     /// Run commands that read or write files the user names.
     Files,
-    /// Have RustGIS fetch from addresses the plugin gives it: web tile layers, data files
+    /// Have Syngle Observatory fetch from addresses the plugin gives it: web tile layers, data files
     /// (`layer.addUrl`) and web services.
     Network,
 }
@@ -137,7 +137,7 @@ impl RunDecl {
     }
 }
 
-/// A process plugin's Python environment, which RustGIS makes for it: a Python of `version`
+/// A process plugin's Python environment, which Syngle Observatory makes for it: a Python of `version`
 /// with the packages `requirements` lists (a requirements file in the plugin's folder). The
 /// plugin's `run` then names `python` for that environment's interpreter.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -164,7 +164,7 @@ pub struct CommandDecl {
     /// A longer description, shown on hover.
     #[serde(default)]
     pub help: String,
-    /// The name of one of RustGIS's own icons (`plugin` when unset or unknown).
+    /// The name of one of Syngle Observatory's own icons (`plugin` when unset or unknown).
     #[serde(default)]
     pub icon: String,
     /// Parameter description for scripts and agents, like a built-in command's.
@@ -200,7 +200,7 @@ pub struct ParamDecl {
     pub help: String,
 }
 
-/// A ribbon tab of the plugin's own, beside RustGIS's tabs.
+/// A ribbon tab of the plugin's own, beside Syngle Observatory's tabs.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TabDecl {
     pub label: String,
@@ -295,13 +295,13 @@ pub struct Manifest {
     /// name is looked up on `PATH`; a relative path is in the plugin's folder.
     #[serde(default)]
     pub run: Option<RunDecl>,
-    /// For a process plugin in Python: the environment RustGIS makes for it.
+    /// For a process plugin in Python: the environment Syngle Observatory makes for it.
     #[serde(default)]
     pub python: Option<PythonDecl>,
     /// The plugin ABI the module was built for.
     #[serde(default = "default_abi")]
     pub abi: u32,
-    /// The oldest RustGIS that can run it.
+    /// The oldest Syngle Observatory that can run it.
     #[serde(default)]
     pub min_rustgis_version: String,
     #[serde(default)]
@@ -385,7 +385,7 @@ pub fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     version_parts(a).cmp(&version_parts(b))
 }
 
-/// RustGIS's own version.
+/// Syngle Observatory's own version.
 pub const RUSTGIS_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn check_text(what: &str, s: &str, required: bool) -> Result<(), String> {
@@ -498,14 +498,14 @@ impl Manifest {
             }
         }
         if self.abi != ABI {
-            return Err(format!("{} was built for plugin ABI {}; this RustGIS runs ABI {ABI}", self.name, self.abi));
+            return Err(format!("{} was built for plugin ABI {}; this Syngle Observatory runs ABI {ABI}", self.name, self.abi));
         }
         if !self.min_rustgis_version.is_empty() {
             if version_parts(&self.min_rustgis_version).is_none() {
                 return Err("plugin.json: minRustgisVersion is not a version number".into());
             }
             if version_cmp(RUSTGIS_VERSION, &self.min_rustgis_version).is_lt() {
-                return Err(format!("{} needs RustGIS {} or newer (this is {RUSTGIS_VERSION})", self.name, self.min_rustgis_version));
+                return Err(format!("{} needs Syngle Observatory {} or newer (this is {RUSTGIS_VERSION})", self.name, self.min_rustgis_version));
             }
         }
         if self.commands.len() > MAX_COMMANDS || self.tools.len() > MAX_TOOLS {
@@ -615,7 +615,7 @@ impl Manifest {
             return Err(format!("plugin.json: the tab's label must be one line of 1 to {MAX_TAB_LABEL} characters"));
         }
         if RESERVED_TABS.iter().any(|r| r.eq_ignore_ascii_case(label)) {
-            return Err(format!("plugin.json: the tab can't be called '{label}', the name of one of RustGIS's tabs"));
+            return Err(format!("plugin.json: the tab can't be called '{label}', the name of one of Syngle Observatory's tabs"));
         }
         if tab.groups.is_empty() || tab.groups.len() > MAX_GROUPS {
             return Err(format!("plugin.json: the tab needs 1 to {MAX_GROUPS} groups"));

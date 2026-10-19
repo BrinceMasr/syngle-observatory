@@ -559,7 +559,7 @@ fn imported_tasks_name_outputs_and_steps_are_edited() {
     assert!(s.run("task.import", &json!({"text": to_a_file.to_string()})).is_err());
     assert!(crate::cmd::items::touches_files("gp.run", &json!({"tool": "buffer", "params": {"output": "../x.shp"}})));
     assert!(!crate::cmd::items::touches_files("gp.run", &json!({"tool": "buffer", "params": {"output": "Near cities"}})));
-    // Only a plain layer name, only gp.run's, only for RustGIS's own tools.
+    // Only a plain layer name, only gp.run's, only for Syngle Observatory's own tools.
     for (command, params) in [
         ("gp.run", json!({"tool": "buffer", "params": {"output": "x.shp"}})),
         ("gp.run", json!({"tool": "buffer", "params": {"output": "sub/x"}})),
@@ -567,7 +567,7 @@ fn imported_tasks_name_outputs_and_steps_are_edited() {
         ("gp.run", json!({"tool": "buffer", "params": {"output": ".bashrc"}})),
         ("gp.run", json!({"tool": "geolibre:slope", "params": {"output": "slope"}})),
         ("gp.run", json!({"tool": "plugin:kit/hex", "params": {"output": "hex"}})),
-        // Not one of RustGIS's own tools, even without a prefix.
+        // Not one of Syngle Observatory's own tools, even without a prefix.
         ("gp.run", json!({"tool": "someOtherTool", "params": {"output": "x"}})),
         ("gp.run", json!({"tool": "buffer", "params": {"input": "Cities", "nested": {"output": "x"}}})),
         ("layer.rename", json!({"layer": "Cities", "output": "x"})),
@@ -5165,7 +5165,7 @@ fn services_list_and_add_layers() {
     let r = s.run("service.add", &json!({"url": api, "layer": "lakes", "text": collections})).unwrap();
     assert_eq!(r["features"], 1);
     assert!(s.map().layer_by_name("Lakes").is_some());
-    // A document on the web can't send RustGIS into the local network.
+    // A document on the web can't send Syngle Observatory into the local network.
     let inward = WMS.replace("https://maps.example.com/wms?", "http://127.0.0.1:8080/wms?");
     let v = s.run("service.layers", &json!({"url": url, "text": inward})).unwrap();
     assert_eq!(v["count"], 0);
@@ -5237,7 +5237,7 @@ fn ogc_api_features_follow_next_pages() {
 }
 
 /// A WCS coverage (from a local server) becomes a raster of the view, asked for in EPSG:4326 within
-/// its bounds; an error answer is refused. A catalogue's records come with the links RustGIS can
+/// its bounds; an error answer is refused. A catalogue's records come with the links Syngle Observatory can
 /// follow, those pointing inward left out.
 #[test]
 fn wcs_coverages_and_catalogue_records() {
@@ -5962,7 +5962,7 @@ fn osm_and_boundaries() {
     }
 }
 
-/// Search Open Data against a local CKAN site: datasets with their resources (what RustGIS can't
+/// Search Open Data against a local CKAN site: datasets with their resources (what Syngle Observatory can't
 /// add dropped, the best format first), one added by its address; bad requests are refused.
 #[test]
 fn open_data_portal_search_and_add() {

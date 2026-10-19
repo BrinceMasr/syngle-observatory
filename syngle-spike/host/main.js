@@ -9,7 +9,7 @@
 //   memory      renderer + GPU + engine working sets with 1M points loaded
 //
 // Usage (from syngle-spike/host):
-//   npx electron . --engine ..\target\release\syngle-spike-engine.exe --root ..\.. \
+//   npx electron . --engine ..\target\release\syngle-observatory-engine.exe --root ..\.. \
 //     --mode both --engine-open http://127.0.0.1:0/data/points_1m.fgb --out run.json
 "use strict";
 
@@ -79,7 +79,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function startEngine() {
   return new Promise((resolve, reject) => {
     const exe = args.engine;
-    if (!exe) return reject(new Error("--engine <path to syngle-spike-engine> is required"));
+    if (!exe) return reject(new Error("--engine <path to syngle-observatory-engine> is required"));
     const engineArgs = ["--root", args.root || path.resolve(__dirname, "..", ".."), "--data", args.data || path.resolve(__dirname, "..", "data")];
     if (args.port) engineArgs.push("--port", String(args.port));
     if (args["engine-web"]) engineArgs.push("--web", String(args["engine-web"]));

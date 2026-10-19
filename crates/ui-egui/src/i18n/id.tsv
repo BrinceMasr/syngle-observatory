@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	Penyimpanan Zarr (format 2 atau 3) melalui alamat webnya, dengan metadata terkonsolidasi, atau folder di komputer ini. Peta variabel dibaca untuk langkah yang dipilih dari dimensi lainnya, seperti waktu.
 About	Tentang
 About plugins	Tentang plugin
-About RustGIS	Tentang RustGIS
-About RustGIS.	Tentang RustGIS.
+About Syngle Observatory	Tentang Syngle Observatory
+About Syngle Observatory.	Tentang Syngle Observatory.
 Above	Atas
 Above Left	Kiri Atas
 Above Right	Kanan Atas
@@ -169,8 +169,8 @@ Agent input pipe closed.	Pipa input agen ditutup.
 Agent input queue is full or disconnected; stop the agent and try again.	Antrean input agen penuh atau terputus; hentikan agen dan coba lagi.
 Agent threads	Utas agen
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Agen di komputer ini yang terhubung (Claude Code, Codex, Cursor, dan lainnya) bekerja pada peta yang terbuka di sini dengan alat RustGIS: mereka dapat membuka dan menyimpan file serta menggunakan web. Skrip dan pengelolaan plugin tetap nonaktif.
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Agen di komputer ini yang terhubung (Claude Code, Codex, Cursor, dan lainnya) bekerja pada peta yang terbuka di sini dengan alat RustGIS: mereka dapat membuka dan menyimpan file serta menggunakan web. Skrip dan pengelolaan plugin tetap nonaktif. Pilihan ini diingat di setiap peluncuran.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Agen di komputer ini yang terhubung (Claude Code, Codex, Cursor, dan lainnya) bekerja pada peta yang terbuka di sini dengan alat Syngle Observatory: mereka dapat membuka dan menyimpan file serta menggunakan web. Skrip dan pengelolaan plugin tetap nonaktif.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Agen di komputer ini yang terhubung (Claude Code, Codex, Cursor, dan lainnya) bekerja pada peta yang terbuka di sini dengan alat Syngle Observatory: mereka dapat membuka dan menyimpan file serta menggunakan web. Skrip dan pengelolaan plugin tetap nonaktif. Pilihan ini diingat di setiap peluncuran.
 Agents then run commands, change files and use the web on this computer without asking you.	Agen akan menjalankan perintah, mengubah file, dan menggunakan web di komputer ini tanpa bertanya kepada Anda.
 Aggregation	Agregasi
 AI	AI
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	Izinkan hanya kombinasi nilai tertentu di antara kolom.
 Allow such actions for this conversation	Izinkan tindakan seperti ini untuk percakapan ini
 Allow this action?	Izinkan tindakan ini?
-Allow this agent's RustGIS action?	Izinkan tindakan RustGIS dari agen ini?
+Allow this agent's Syngle Observatory action?	Izinkan tindakan Syngle Observatory dari agen ini?
 Along Selected Line	Sepanjang Garis Terpilih
 Alternating bar	Bilah berselang-seling
 Altitude	Ketinggian
 Always allow	Selalu izinkan
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3, atau layanan yang kompatibel dengan S3 (MinIO, Cloudflare R2, Wasabi…) melalui endpoint-nya. Kunci disimpan sampai RustGIS ditutup; koneksi yang diingat menyimpan nama, endpoint, dan wilayahnya, tidak pernah rahasianya.
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3, atau layanan yang kompatibel dengan S3 (MinIO, Cloudflare R2, Wasabi…) melalui endpoint-nya. Kunci disimpan sampai Syngle Observatory ditutup; koneksi yang diingat menyimpan nama, endpoint, dan wilayahnya, tidak pernah rahasianya.
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	Agen di komputer ini meminta untuk:
 An AWS profile	Profil AWS
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	Area penggunaan: dalam {r}° d
 Area of use: within {r}° of {lon}°, {lat}°	Area penggunaan: dalam {r}° dari {lon}°, {lat}°
 Area {area}   ·   Perimeter {perimeter}	Luas {area}   ·   Keliling {perimeter}
 Areas (name, land use, area)	Area (nama, penggunaan lahan, luas)
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	Ajukan pertanyaan tentang data Anda, atau jelaskan apa yang harus dilakukan pada peta. Asisten menjalankan perintah RustGIS untuk Anda; setiap perubahan dapat diurungkan.
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	Ajukan pertanyaan tentang data Anda, atau jelaskan apa yang harus dilakukan pada peta. Asisten menjalankan perintah Syngle Observatory untuk Anda; setiap perubahan dapat diurungkan.
 Ask about the map, or tell it what to do…	Tanyakan tentang peta, atau beri tahu apa yang harus dilakukan…
 Ask about your data, or tell the assistant what to do with the map.	Tanyakan tentang data Anda, atau beri tahu asisten apa yang harus dilakukan pada peta.
 Asking the catalog…	Menanyakan ke katalog…
@@ -479,7 +479,7 @@ Color Vision Simulator	Simulator Penglihatan Warna
 Colorbar	Bilah Warna
 Colormap	Peta Warna
 Colors from the raster's own color table.	Warna dari tabel warna raster itu sendiri.
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	Ramp warna (RustGIS, QGIS, GDAL, GMT)
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	Ramp warna (Syngle Observatory, QGIS, GDAL, GMT)
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	Kolom bernama seperti longitude/latitude, easting/northing atau geometry dipilih secara otomatis.
 Combinations from the box above, one per line	Kombinasi dari kotak di atas, satu per baris
 Comma	Koma
@@ -631,7 +631,7 @@ Delete selected rows	Hapus baris terpilih
 Delete Style	Hapus Gaya
 Delete Task	Hapus Tugas
 Delete Task Step	Hapus Langkah Tugas
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	Hapus runner GeoLibre yang dipasang RustGIS. Pasang lagi kapan saja.
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	Hapus runner GeoLibre yang dipasang Syngle Observatory. Pasang lagi kapan saja.
 Delete the layout {name}?	Hapus tata letak {name}?
 Delete the map {name}?	Hapus peta {name}?
 Delete the selected features.	Hapus fitur terpilih.
@@ -770,7 +770,7 @@ Element	Elemen
 Element Properties	Properti Elemen
 Elevation	Elevasi
 Elevation profiles along lines, cross sections and more.	Profil elevasi di sepanjang garis, penampang melintang, dan lainnya.
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	Permintaan yang memenuhi syarat di RustGIS menggunakan paket ChatGPT Anda. Anda dapat mengelola penggunaan di pengaturan ChatGPT.
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Permintaan yang memenuhi syarat di Syngle Observatory menggunakan paket ChatGPT Anda. Anda dapat mengelola penggunaan di pengaturan ChatGPT.
 Ellipse	Elips
 Embeddings	Embedding
 Ember	Bara
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	Temukan perintah apa pun berdasarkan nama (Ct
 Find Datasets	Cari Dataset
 Find Items	Cari Item
 Find Place	Cari Tempat
-Find plugins in the RustGIS plugin registry.	Temukan plugin di registri plugin RustGIS.
+Find plugins in the Syngle Observatory plugin registry.	Temukan plugin di registri plugin Syngle Observatory.
 Find Similar	Cari yang Mirip
 Find Tools	Cari Alat
 Finding routes…	Mencari rute…
@@ -932,7 +932,7 @@ Folder…	Folder…
 for a store that doesn't say	untuk penyimpanan yang tidak menyebutkannya
 Forest	Hutan
 Format	Format
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	Ditemukan: {names}. Agen bekerja pada peta ini dengan alat RustGIS dan alatnya sendiri (web, skrip, file), di folder miliknya yang disimpan di Dokumen › RustGIS › Agent work. Agen meminta izin Anda sebelum setiap tindakan.
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	Ditemukan: {names}. Agen bekerja pada peta ini dengan alat Syngle Observatory dan alatnya sendiri (web, skrip, file), di folder miliknya yang disimpan di Dokumen › Syngle Observatory › Agent work. Agen meminta izin Anda sebelum setiap tindakan.
 Frame rate	Laju bingkai
 Frame rate, draw time, data size and memory.	Laju bingkai, waktu gambar, ukuran data, dan memori.
 Free the prepared geometry.	Bebaskan geometri yang telah disiapkan.
@@ -1091,7 +1091,7 @@ In memory	Di memori
 In Progress	Sedang Berjalan
 in progress	sedang berjalan
 In project	Dalam proyek
-In RustGIS, it can:	Di RustGIS, plugin ini dapat:
+In Syngle Observatory, it can:	Di Syngle Observatory, plugin ini dapat:
 In use	Digunakan
 Indices	Indeks
 Infographics	Infografis
@@ -1205,7 +1205,7 @@ Legend	Legenda
 Legend label. Clear it to show the value again.	Label legenda. Kosongkan untuk menampilkan nilainya lagi.
 Length {length} · gain {gain} m · loss {loss} m	Panjang {length} · naik {gain} m · turun {loss} m
 Let the assistant hand tasks to agents on this computer	Izinkan asisten menyerahkan tugas ke agen di komputer ini
-Let your Agents Control RustGIS	Biarkan agen Anda mengendalikan RustGIS
+Let your Agents Control Syngle Observatory	Biarkan agen Anda mengendalikan Syngle Observatory
 Level	Tingkat
 Library	Pustaka
 Light and Shadow	Cahaya dan Bayangan
@@ -1271,7 +1271,7 @@ Longitude (X)	Bujur (X)
 Look for {name}, outlined on the ribbon.	Cari {name}, yang diberi garis tepi di ribbon.
 Looking up the place…	Mencari tempat…
 Lower Priority	Prioritas Lebih Rendah
-Made in RustGIS: samples, drawings and tool outputs	Dibuat di RustGIS: sampel, gambar, dan keluaran alat
+Made in Syngle Observatory: samples, drawings and tool outputs	Dibuat di Syngle Observatory: sampel, gambar, dan keluaran alat
 Magnifier	Kaca Pembesar
 Major Lakes	Danau Utama
 Major Rivers	Sungai Utama
@@ -1436,7 +1436,7 @@ No bookmarks yet	Belum ada penanda
 No bookmarks yet. New Bookmark saves the current view of the map.	Belum ada penanda. Penanda Baru menyimpan tampilan peta saat ini.
 no command	tidak ada perintah
 No connections this session	Tidak ada koneksi di sesi ini
-No datasets with data RustGIS can add	Tidak ada dataset dengan data yang dapat ditambahkan RustGIS
+No datasets with data Syngle Observatory can add	Tidak ada dataset dengan data yang dapat ditambahkan Syngle Observatory
 No edits since the project was saved	Tidak ada suntingan sejak proyek disimpan
 no home folder	tidak ada folder home
 No layers match	Tidak ada layer yang cocok
@@ -1472,8 +1472,8 @@ North	Utara
 North\nArrow	Panah\nUtara
 North Polar Stereographic	Stereografis Kutub Utara
 not a picture	bukan gambar
-not a RustGIS layout	bukan tata letak RustGIS
-not a RustGIS project	bukan proyek RustGIS
+not a Syngle Observatory layout	bukan tata letak Syngle Observatory
+not a Syngle Observatory project	bukan proyek Syngle Observatory
 not needed	tidak diperlukan
 Not sandboxed	Tanpa sandbox
 Not saved yet	Belum disimpan
@@ -1515,8 +1515,8 @@ Opacity	Opasitas
 Open	Buka
 Open a .rgis project	Buka proyek .rgis
 open a layout first	buka tata letak terlebih dahulu
-Open a RustGIS or Jupyter notebook.	Buka notebook RustGIS atau Jupyter.
-Open a RustGIS project.	Buka proyek RustGIS.
+Open a Syngle Observatory or Jupyter notebook.	Buka notebook Syngle Observatory atau Jupyter.
+Open a Syngle Observatory project.	Buka proyek Syngle Observatory.
 Open an offline area to edit.	Buka area offline untuk disunting.
 Open browser again	Buka browser lagi
 Open Custom Template	Buka Templat Kustom
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	Buka tabel atribut layer.
 Open the layer's table.	Buka tabel layer.
 Open the plugin's panel.	Buka panel plugin.
 Open the Release Page	Buka Halaman Rilis
-Open the RustGIS user guide.	Buka panduan pengguna RustGIS.
+Open the Syngle Observatory user guide.	Buka panduan pengguna Syngle Observatory.
 Open the selected layer's table.	Buka tabel layer terpilih.
 Open the Symbology pane.	Buka panel Simbologi.
 Open the task's steps	Buka langkah-langkah tugas
@@ -1660,7 +1660,7 @@ Plugin registry	Registri plugin
 Plugins	Plugin
 Plugins are .rgplugin files. Install only plugins from people you trust.	Plugin adalah file .rgplugin. Pasang hanya plugin dari orang yang Anda percaya.
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	Plugin bertanda "Tanpa sandbox" berjalan sebagai program di komputer Anda dan dapat melakukan apa pun yang dapat Anda lakukan.
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	Plugin berjalan di sandbox: plugin tidak dapat mengakses file Anda atau jaringan, dan hanya mengubah proyek melalui perintah RustGIS sendiri, dalam batas izin yang Anda setujui.
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	Plugin berjalan di sandbox: plugin tidak dapat mengakses file Anda atau jaringan, dan hanya mengubah proyek melalui perintah Syngle Observatory sendiri, dalam batas izin yang Anda setujui.
 PMTiles archive	Arsip PMTiles
 PNG frames (zip)	Bingkai PNG (zip)
 PNG image	Gambar PNG
@@ -1882,26 +1882,26 @@ Run Tool	Jalankan Alat
 Run {name}	Jalankan {name}
 Running the query for the map…	Menjalankan kueri untuk peta…
 Running…	Berjalan…
-RustGIS	RustGIS
-RustGIS bookmarks	Penanda RustGIS
-RustGIS deep learning package	Paket deep learning RustGIS
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	RustGIS tidak ditutup dengan benar terakhir kali, jadi RustGIS dimulai dengan World Atlas, bukan proyek awal Anda. Buka proyek dari menu Proyek saat Anda siap.
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS adalah SIG bebas dan sumber terbuka yang ditulis dalam Rust murni. Aplikasi ini berjalan di desktop dan di peramban, dan setiap tindakan adalah perintah yang juga dapat Anda jalankan dari baris perintah.
-RustGIS layer file	File layer RustGIS
-RustGIS layers, maps and projects	Layer, peta, dan proyek RustGIS
-RustGIS layout	Tata letak RustGIS
-RustGIS maps and projects	Peta dan proyek RustGIS
-RustGIS or Jupyter notebook	Notebook RustGIS atau Jupyter
-RustGIS plugin	Plugin RustGIS
-RustGIS presentation	Presentasi RustGIS
-RustGIS project	Proyek RustGIS
-RustGIS project template	Templat proyek RustGIS
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	RustGIS mengalami kesalahan internal terakhir kali. Detailnya ada di {path}; lampirkan ke laporan bug.
-RustGIS report or report template	Laporan atau templat laporan RustGIS
-RustGIS styles	Gaya RustGIS
-RustGIS task	Tugas RustGIS
-RustGIS {latest} is available.	RustGIS {latest} tersedia.
-RustGIS {version} is the latest version.	RustGIS {version} adalah versi terbaru.
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Penanda Syngle Observatory
+Syngle Observatory deep learning package	Paket deep learning Syngle Observatory
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	Syngle Observatory tidak ditutup dengan benar terakhir kali, jadi Syngle Observatory dimulai dengan World Atlas, bukan proyek awal Anda. Buka proyek dari menu Proyek saat Anda siap.
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory adalah SIG bebas dan sumber terbuka yang ditulis dalam Rust murni. Aplikasi ini berjalan di desktop dan di peramban, dan setiap tindakan adalah perintah yang juga dapat Anda jalankan dari baris perintah.
+Syngle Observatory layer file	File layer Syngle Observatory
+Syngle Observatory layers, maps and projects	Layer, peta, dan proyek Syngle Observatory
+Syngle Observatory layout	Tata letak Syngle Observatory
+Syngle Observatory maps and projects	Peta dan proyek Syngle Observatory
+Syngle Observatory or Jupyter notebook	Notebook Syngle Observatory atau Jupyter
+Syngle Observatory plugin	Plugin Syngle Observatory
+Syngle Observatory presentation	Presentasi Syngle Observatory
+Syngle Observatory project	Proyek Syngle Observatory
+Syngle Observatory project template	Templat proyek Syngle Observatory
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Syngle Observatory mengalami kesalahan internal terakhir kali. Detailnya ada di {path}; lampirkan ke laporan bug.
+Syngle Observatory report or report template	Laporan atau templat laporan Syngle Observatory
+Syngle Observatory styles	Gaya Syngle Observatory
+Syngle Observatory task	Tugas Syngle Observatory
+Syngle Observatory {latest} is available.	Syngle Observatory {latest} tersedia.
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} adalah versi terbaru.
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	Bucket S3
 S3 Connections	Koneksi S3
 S3…	S3…
 Sample data (Natural Earth)	Data contoh (Natural Earth)
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	Data contoh © Natural Earth (domain publik). RustGIS dilisensikan di bawah Apache-2.0.
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	Data contoh © Natural Earth (domain publik). Syngle Observatory dilisensikan di bawah Apache-2.0.
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	Data contoh: Natural Earth (domain publik). Dilisensikan di bawah Apache-2.0.
 Saturation	Saturasi
 Save	Simpan
@@ -1994,7 +1994,7 @@ Sections	Bagian
 See and set the camera's position and scale.	Lihat dan atur posisi serta skala kamera.
 See the map as people with colour vision deficiencies do.	Lihat peta seperti yang dilihat penyandang gangguan penglihatan warna.
 See the tools you've run.	Lihat alat yang telah Anda jalankan.
-See whether a newer RustGIS has been released.	Periksa apakah RustGIS yang lebih baru telah dirilis.
+See whether a newer Syngle Observatory has been released.	Periksa apakah Syngle Observatory yang lebih baru telah dirilis.
 SELECT	SELECT
 Select	Pilih
 Select (click)	Pilih (klik)
@@ -2121,7 +2121,7 @@ Sign out	Keluar
 Sign-in cancelled.	Proses masuk dibatalkan.
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	Waktu masuk habis. Mulai lagi dan izinkan browser mengakses alamat loopback komputer ini.
 signed in	sudah masuk
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	Keluar di komputer ini, tetapi OpenAI tidak mengonfirmasinya. Anda dapat memutus RustGIS di pengaturan ChatGPT.
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	Keluar di komputer ini, tetapi OpenAI tidak mengonfirmasinya. Anda dapat memutus Syngle Observatory di pengaturan ChatGPT.
 Signing in with ChatGPT works in the desktop app.	Masuk dengan ChatGPT berfungsi di aplikasi desktop.
 Signing the asset (Planetary Computer)…	Menandatangani aset (Planetary Computer)…
 Simplify	Sederhanakan
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	Kunci hanya disimpan untuk sesi ini.
 The layer's file couldn't be read: {error}	Berkas layer tidak dapat dibaca: {error}
 the layout export failed unexpectedly	ekspor tata letak gagal secara tak terduga
 The link doesn't say its STAC API: Find Items searches {api}	Tautan tidak menyebutkan STAC API-nya: Cari Item mencari di {api}
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	Daftar plugin untuk dijelajahi. Biarkan kosong untuk registri plugin RustGIS.
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	Daftar plugin untuk dijelajahi. Biarkan kosong untuk registri plugin Syngle Observatory.
 the map has no layers	peta tidak memiliki layer
 The map is drawn in this coordinate system; layers are projected on the fly.	Peta digambar dalam sistem koordinat ini; lapisan diproyeksikan secara langsung.
 The map view as it is now	Tampilan peta seperti sekarang
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	Berkas-berkas Shapefile diunduh sebag
 The sign-in expired or was revoked. Sign in again.	Sesi masuk kedaluwarsa atau dicabut. Masuk lagi.
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	Info masuk disimpan di folder pengaturan aplikasi, hanya untuk akun pengguna Anda, dan tidak pernah di berkas proyek.
 The start-up project {path} didn't open: {error}	Proyek awal {path} tidak dapat dibuka: {error}
-The start-up project {path} isn't a RustGIS project file.	Proyek awal {path} bukan file proyek RustGIS.
+The start-up project {path} isn't a Syngle Observatory project file.	Proyek awal {path} bukan file proyek Syngle Observatory.
 The step's layer {name} isn't in the map.	Layer langkah ini, {name}, tidak ada di peta.
 The store has no variables with two or more dimensions.	Penyimpanan tidak memiliki variabel dengan dua dimensi atau lebih.
 the store is gone	penyimpanan sudah tidak ada
@@ -2365,7 +2365,7 @@ This map has no layers yet.	Peta ini belum memiliki layer.
 This map's thumbnail, from an image.	Thumbnail peta ini, dari sebuah gambar.
 This map's thumbnail, from the view.	Thumbnail peta ini, dari tampilan.
 This plugin can:	Plugin ini dapat:
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Plugin ini berjalan sebagai program di komputer Anda, di luar sandbox RustGIS. Plugin ini dapat melakukan apa pun yang dapat Anda lakukan: membaca dan mengubah file Anda, menggunakan jaringan, dan menjalankan program lain. Pasang hanya jika Anda memercayai pembuatnya.
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Plugin ini berjalan sebagai program di komputer Anda, di luar sandbox Syngle Observatory. Plugin ini dapat melakukan apa pun yang dapat Anda lakukan: membaca dan mengubah file Anda, menggunakan jaringan, dan menjalankan program lain. Pasang hanya jika Anda memercayai pembuatnya.
 This request has no one-time allow option.	Permintaan ini tidak memiliki opsi izinkan sekali.
 This request uses an unsupported capability. Check the parameter and change the request.	Permintaan ini menggunakan kemampuan yang tidak didukung. Periksa parameter dan ubah permintaan.
 This step names no tool to show.	Langkah ini tidak menyebut alat untuk ditunjukkan.
@@ -2439,7 +2439,7 @@ Uninstall Plugin	Copot Plugin
 Uninstalled {id}.	{id} telah dicopot.
 Unique Values	Nilai Unik
 Units	Satuan
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	Lepas alat GeoLibre dan berhenti memuatnya saat RustGIS dimulai.
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	Lepas alat GeoLibre dan berhenti memuatnya saat Syngle Observatory dimulai.
 Unsupervised classes (k-means)	Kelas tak terbimbing (k-means)
 Unsupervised classes (k-means).	Kelas tak terbimbing (k-means).
 Up	Naik
@@ -2515,13 +2515,13 @@ Web Tool	Alat Web
 Website	Situs web
 Weekly usage	Penggunaan mingguan
 Weights	Bobot
-Welcome to RustGIS	Selamat datang di RustGIS
+Welcome to Syngle Observatory	Selamat datang di Syngle Observatory
 West	Barat
 WFS	WFS
 WGS 84 / Globe	WGS 84 / Globe
 WGS 84 / Web Mercator	WGS 84 / Web Mercator
-What RustGIS opens with: the World Atlas sample or a blank map.	Apa yang dibuka RustGIS: contoh World Atlas atau peta kosong.
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Apa yang dibuka RustGIS: contoh World Atlas, peta kosong, proyek yang Anda pilih, atau proyek terakhir yang dibuka atau disimpan.
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	Apa yang dibuka Syngle Observatory: contoh World Atlas atau peta kosong.
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Apa yang dibuka Syngle Observatory: contoh World Atlas, peta kosong, proyek yang Anda pilih, atau proyek terakhir yang dibuka atau disimpan.
 What to do, where to find it and why	Apa yang dilakukan, di mana menemukannya, dan mengapa
 What's near a point	Apa yang ada di dekat suatu titik
 WHERE	WHERE

@@ -319,7 +319,7 @@ mod tests {
         assert!((back.x - lonlat.0).abs() < 1e-7 && (back.y - lonlat.1).abs() < 1e-7, "EPSG:{code}: {back:?}");
     }
 
-    /// EPSG codes 9020–20003 come from the built-in gap table (opengeos/RustGIS#198); the
+    /// EPSG codes 9020–20003 come from the built-in gap table (upstream #198); the
     /// expected coordinates are pyproj's (PROJ 9.8, EPSG dataset v12.029).
     #[test]
     fn codes_crs_definitions_lacks() {
@@ -349,7 +349,7 @@ mod tests {
         assert_eq!(Crs::from_epsg(10622), None);
     }
 
-    /// The ESRI table (opengeos/RustGIS#213) is in order and holds only projected systems on Earth.
+    /// The ESRI table (upstream #213) is in order and holds only projected systems on Earth.
     #[test]
     fn esri_table_is_sound() {
         let defs = super::super::esri::DEFS;
@@ -364,7 +364,7 @@ mod tests {
         assert_eq!(esri_codes().count(), defs.len());
         // South America Albers Equal Area Conic, which opened the issue.
         assert!(esri_proj4(102033).is_some_and(|d| d.contains("+proj=aea") && d.contains("+lon_0=-60")));
-        // Left out: World Miller (RustGIS's sphere is kilometres from PROJ's), a lunar system, a
+        // Left out: World Miller (Syngle Observatory's sphere is kilometres from PROJ's), a lunar system, a
         // Hammer–Aitoff PROJ can't write as a string, and codes that don't exist.
         for code in [54003, 103877, 54044, 0, 4326, u32::MAX] {
             assert_eq!(esri_proj4(code), None, "ESRI:{code}");

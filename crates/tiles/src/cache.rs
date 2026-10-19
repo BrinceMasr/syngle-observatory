@@ -506,7 +506,7 @@ pub fn decode(bytes: &[u8], want: Want) -> Result<Payload, String> {
     }
 }
 
-/// Starts a picture drawn by RustGIS itself (a COG's map tile): its width and height (u32, little
+/// Starts a picture drawn by Syngle Observatory itself (a COG's map tile): its width and height (u32, little
 /// end first), then straight RGBA pixels. No encoding, so no PNG encoder in the browser build.
 pub(crate) const RAW: &[u8] = b"RUSTGIS-RGBA";
 
@@ -569,7 +569,7 @@ mod native {
     /// Fetches under way at once from one server.
     const PER_HOST: usize = 16;
     /// From the OpenStreetMap Foundation's tile servers, which ask for restraint: what every
-    /// version of RustGIS before this one used in all.
+    /// version of Syngle Observatory before this one used in all.
     const PER_HOST_OSM: usize = 8;
     /// Requests waiting beyond this many are dropped, oldest first: the view moved on.
     const QUEUE: usize = 512;
@@ -761,7 +761,7 @@ mod native {
     }
 
     /// The User-Agent every request goes with.
-    const USER_AGENT: &str = concat!("RustGIS/", env!("CARGO_PKG_VERSION"), " (+https://rustgis.app)");
+    const USER_AGENT: &str = concat!("Syngle Observatory/", env!("CARGO_PKG_VERSION"), " (+https://github.com/BrinceMasr/syngle-observatory)");
 
     /// A request that never got an answer: what kind of failure, for the user (#509).
     fn unanswered(e: ureq::Error) -> Failure {
@@ -1074,7 +1074,7 @@ mod tests {
         let f = native::get_detailed(&agent, &format!("{base}/MapServer?f=json")).unwrap_err();
         assert_eq!((f.status(), f.firewall(), f.excerpt()), (Some(403), Some("Cloudflare"), Some("Attention Required! | Cloudflare")));
         assert_eq!((f.url.as_str(), f.request_id()), (format!("{base}/MapServer?f=json").as_str(), Some("cf-ray a4c9-BOG".to_string())));
-        assert!(f.user_agent().is_some_and(|u| u.starts_with("RustGIS/")));
+        assert!(f.user_agent().is_some_and(|u| u.starts_with("Syngle Observatory/")));
         assert_eq!(native::get(&agent, &format!("{base}/x")).unwrap_err(), "http status: 403");
         // No server there: unreachable, not an answer.
         let closed = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap();

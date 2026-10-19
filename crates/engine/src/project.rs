@@ -553,9 +553,9 @@ impl Project {
         if text.len() as u64 > MAX_BYTES {
             return Err("the project file is too large".into());
         }
-        let mut p: Project = serde_json::from_str(text).map_err(|e| format!("not a RustGIS project: {e}"))?;
+        let mut p: Project = serde_json::from_str(text).map_err(|e| format!("not a Syngle Observatory project: {e}"))?;
         if p.format > FORMAT {
-            return Err(format!("this project was saved by a newer RustGIS (format {})", p.format));
+            return Err(format!("this project was saved by a newer Syngle Observatory (format {})", p.format));
         }
         p.normalize();
         Ok(p)

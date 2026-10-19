@@ -78,7 +78,7 @@ pub fn write(pages: &[Page], title: &str) -> Vec<u8> {
     obj(&mut out, &mut offsets, b"<< /Type /Catalog /Pages 2 0 R >>");
     let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 4 + i * 3)).collect();
     obj(&mut out, &mut offsets, format!("<< /Type /Pages /Kids [{}] /Count {n} >>", kids.join(" ")).as_bytes());
-    obj(&mut out, &mut offsets, format!("<< /Title {} /Producer (RustGIS) >>", text_string(title)).as_bytes());
+    obj(&mut out, &mut offsets, format!("<< /Title {} /Producer (Syngle Observatory) >>", text_string(title)).as_bytes());
     for (i, p) in pages.iter().enumerate() {
         let (pw, ph) = (p.width_mm * 72.0 / 25.4, p.height_mm * 72.0 / 25.4);
         let (page, contents, image) = (4 + i * 3, 5 + i * 3, 6 + i * 3);

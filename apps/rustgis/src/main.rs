@@ -1,4 +1,4 @@
-//! RustGIS desktop app.
+//! Syngle Observatory desktop app.
 //!
 //! `rustgis [project.rgis | data.geojson|csv|shp …] [--sample] [--backend dx12|vulkan|gl|metal]`
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -81,7 +81,7 @@ mod crash {
         let used = std::fs::metadata(&path).map_or(0, |m| m.len());
         let thread = std::thread::current();
         let entry = format!(
-            "--- RustGIS {} on {} {}, {} UTC, thread {}\n{info}\n{}\n\n",
+            "--- Syngle Observatory {} on {} {}, {} UTC, thread {}\n{info}\n{}\n\n",
             env!("CARGO_PKG_VERSION"),
             std::env::consts::OS,
             std::env::consts::ARCH,
@@ -169,7 +169,7 @@ mod running {
         match file.try_lock() {
             Ok(()) => {}
             Err(std::fs::TryLockError::WouldBlock) => {
-                log::info!("the run marker is held: another copy of RustGIS is running");
+                log::info!("the run marker is held: another copy of Syngle Observatory is running");
                 return (None, false);
             }
             // The folder can't lock files (some network or FUSE folders): keep the marker unlocked,
@@ -292,7 +292,7 @@ fn backends(flag: Option<&str>, env: Option<&str>, windows: bool) -> wgpu::Backe
 fn main() -> eframe::Result {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--version" || a == "-V") {
-        println!("rustgis {}", env!("CARGO_PKG_VERSION"));
+        println!("Syngle Observatory {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
     // What an earlier session left, before this one can write a new log.
@@ -326,7 +326,7 @@ fn main() -> eframe::Result {
         // Notices are shown as written: translate this one now that the language is known.
         rustgis_ui_egui::i18n::set_current(app.chosen_lang());
         let text = rustgis_ui_egui::i18n::fmt(
-            "RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.",
+            "Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.",
             &[("path", &log.display().to_string())],
         );
         app.session.notify(text, true);
@@ -340,8 +340,8 @@ fn main() -> eframe::Result {
     }
     app.session.dirty = false;
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("RustGIS")
-        .with_app_id("org.rustgis.RustGIS")
+        .with_title("Syngle Observatory")
+        .with_app_id("com.syngle.observatory")
         .with_inner_size([1480.0, 920.0])
         .with_min_inner_size([900.0, 560.0])
         .with_drag_and_drop(true);
@@ -361,7 +361,7 @@ fn main() -> eframe::Result {
     let options = eframe::NativeOptions { viewport, wgpu_options, ..Default::default() };
     let marker: running::Shared = std::sync::Arc::new(std::sync::Mutex::new(marker));
     let held = marker.clone();
-    let result = eframe::run_native("RustGIS", options, Box::new(move |_cc| Ok(Box::new(App(app, held)))));
+    let result = eframe::run_native("Syngle Observatory", options, Box::new(move |_cc| Ok(Box::new(App(app, held)))));
     running::close(&marker);
     result
 }

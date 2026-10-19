@@ -4,7 +4,7 @@
 #   packaging/package.sh <version> [rust-target]
 #
 # Linux: a .tar.gz, a .deb, an .rpm (when rpmbuild is installed) and an AppImage.
-# macOS: a .dmg holding RustGIS.app, plus a .tar.gz of the CLI
+# macOS: a .dmg holding Syngle Observatory.app, plus a .tar.gz of the CLI
 # (signed and notarized when the MACOS_SIGN_IDENTITY / APPLE_API_* variables are set).
 # Windows (Git Bash): a portable .zip, an NSIS setup.exe (per user), a WiX .msi (all users) and
 # an .msix for the Microsoft Store. The installers need makensis and the wix .NET tool with the
@@ -40,7 +40,7 @@ for b in rustgis rustgis-cli; do
   [ -f "$bin/$b$exe" ] || { echo "missing $bin/$b$exe: build it first" >&2; exit 1; }
 done
 logo() { "$bin/rustgis-cli$exe" logo "$1" --size "$2"; }
-name="RustGIS-$version-$os-$arch"
+name="syngle-observatory-$version-$os-$arch"
 
 case "$os" in
   linux)
@@ -90,7 +90,7 @@ Section: science
 Priority: optional
 Architecture: $debarch
 Maintainer: Qiusheng Wu <giswqs@gmail.com>
-Homepage: https://rustgis.app
+Homepage: https://github.com/BrinceMasr/syngle-observatory
 Installed-Size: $(du -sk "$p/usr" | cut -f1)
 Depends: ${shlibs:-libc6, libgcc-s1}, libxkbcommon0, libwayland-client0 | libx11-6
 Recommends: libxkbcommon-x11-0, libxcursor1, libxi6, libxrandr2, libvulkan1 | libegl1
@@ -114,7 +114,7 @@ Version: $pkgver
 Release: 1
 Summary: Fast, open-source GIS for mapping, analyzing and sharing geospatial data
 License: Apache-2.0
-URL: https://rustgis.app
+URL: https://github.com/BrinceMasr/syngle-observatory
 Requires: libxkbcommon.so.0()(64bit)
 Requires: (libwayland-client.so.0()(64bit) or libX11.so.6()(64bit))
 Recommends: libxkbcommon-x11.so.0()(64bit)
@@ -173,7 +173,7 @@ SPEC
       fetch "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-$arch" \
         "$runtime_sha" "$t/runtime"
       chmod +x "$t/appimagetool"
-      a="$work/RustGIS.AppDir"
+      a="$work/Syngle Observatory.AppDir"
       mkdir -p "$a"
       cp -a "$p/usr" "$a/"
       cp "$root/packaging/linux/rustgis.desktop" "$a/"
@@ -185,7 +185,7 @@ SPEC
     ;;
 
   macos)
-    app="$work/RustGIS.app"
+    app="$work/Syngle Observatory.app"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
     cp "$bin/rustgis" "$app/Contents/MacOS/rustgis"
     # Bundle versions must be dot-separated numbers: drop a pre-release suffix (0.2.0-rc.1).
@@ -230,8 +230,8 @@ SPEC
     # reaches Apple's servers at first launch (#89). Stapling adds a file outside the signed
     # contents, so the signature stays valid.
     if [ -n "$identity" ] && [ -n "${APPLE_API_KEY_PATH:-}" ]; then
-      ditto -c -k --keepParent "$app" "$work/RustGIS.app.zip"
-      notarize "$work/RustGIS.app.zip"
+      ditto -c -k --keepParent "$app" "$work/Syngle Observatory.app.zip"
+      notarize "$work/Syngle Observatory.app.zip"
       staple "$app"
     fi
 
@@ -239,7 +239,7 @@ SPEC
     mkdir -p "$stage"
     cp -R "$app" "$stage/"
     ln -s /Applications "$stage/Applications"
-    hdiutil create -volname "RustGIS $version" -srcfolder "$stage" -ov -format UDZO "$dist/$name.dmg"
+    hdiutil create -volname "Syngle Observatory $version" -srcfolder "$stage" -ov -format UDZO "$dist/$name.dmg"
     if [ -n "$identity" ]; then
       sign "$dist/$name.dmg"
       if notarize "$dist/$name.dmg" && [ -n "${APPLE_API_KEY_PATH:-}" ]; then
@@ -330,9 +330,9 @@ SPEC
     xmlval() { printf '%s' "$1" | sed -e 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g' -e 's/[\\|&]/\\&/g'; }
     # MSIX versions are four numbers: drop a pre-release suffix (0.2.0-rc.1 -> 0.2.0.0).
     sed -e "s|@VERSION@|${version%%-*}.0|g" -e "s|@ARCH@|$instarch|g" \
-      -e "s|@NAME@|$(xmlval "${MSIX_NAME:-OpenGeospatialSolutions.RustGIS}")|g" \
+      -e "s|@NAME@|$(xmlval "${MSIX_NAME:-Syngle.Observatory}")|g" \
       -e "s|@PUBLISHER@|$(xmlval "${MSIX_PUBLISHER:-CN=E6AE8172-DC4F-4F79-844B-9D84204BF95A}")|g" \
-      -e "s|@PUBLISHER_DISPLAY_NAME@|$(xmlval "${MSIX_PUBLISHER_DISPLAY_NAME:-Open Geospatial Solutions}")|g" \
+      -e "s|@PUBLISHER_DISPLAY_NAME@|$(xmlval "${MSIX_PUBLISHER_DISPLAY_NAME:-Syngle}")|g" \
       "$root/packaging/windows/AppxManifest.xml" > "$m/AppxManifest.xml"
     makeappx="$(command -v makeappx.exe || true)"
     if [ -z "$makeappx" ]; then

@@ -1,8 +1,10 @@
-// The RustGIS web app's service worker: it lets the installed app (and the page) start offline.
+// The Syngle Observatory web app's service worker: it lets the installed app (and the page)
+// start offline.
 //
-// This file is a template. `cargo xtask web-pwa dist/web`, run after `trunk build` by the deploy
-// workflows, fills in VERSION and SHELL with the built files (Trunk names them by content hash) and
-// writes the result to dist/web/sw.js. A plain `trunk serve` or `trunk build` has no service worker.
+// This file is a template. `cargo xtask web-pwa dist/canvas`, run after `trunk build` by the
+// deploy workflows, fills in VERSION and SHELL with the built files (Trunk names them by content
+// hash) and writes the result to the build's `sw.js`. A plain `trunk serve` or `trunk build` has
+// no service worker.
 //
 // - The app shell (index.html, the hashed .js and .wasm, the manifest) is cached when the worker
 //   installs. Hashed files are served cache-first; the page itself network-first, so a new deploy
@@ -10,20 +12,14 @@
 // - Every other request (map tiles, the AI Assistant, plugins, data the user opens, analytics) is
 //   left to the browser: the worker never answers or stores it.
 // - A new deploy's worker waits until the page asks it to take over (the "new version" notice in
-//   index.html) or every RustGIS window has closed, so the app never changes under the user.
+//   index.html) or every Syngle Observatory window has closed, so the app never changes under the
+//   user.
 
 const VERSION = "__VERSION__";
 const SHELL = __SHELL__;
-// The icons and the loading logo, served from rustgis-assets: cached when reachable, but never
-// required for the install to succeed.
-const EXTRA = [
-  "https://assets.rustgis.app/images/favicon.png",
-  "https://assets.rustgis.app/images/logo.svg",
-  "https://assets.rustgis.app/images/icon-192.png",
-  "https://assets.rustgis.app/images/icon-512.png",
-  "https://assets.rustgis.app/images/icon-maskable-512.png",
-  "https://assets.rustgis.app/images/apple-touch-icon.png",
-];
+// The fork ships no icon or logo assets (AGENTS.md: no third-party images in the repo, and no
+// upstream brand assets), so the shell is the whole cache.
+const EXTRA = [];
 
 // Caches are per origin, and pull request previews share one: name them by scope so one build
 // never removes another's.

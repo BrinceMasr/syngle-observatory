@@ -3,7 +3,7 @@
 //! (as GeoJSON addresses) and OGC API Tiles tilesets (map and vector tiles in WebMercatorQuad) —
 //! and ArcGIS REST services (FeatureServer, MapServer, ImageServer,
 //! VectorTileServer). The documents are hostile input: no DTD is read, nodes are capped, and
-//! only layers RustGIS can draw are listed (the rest are counted in a note).
+//! only layers Syngle Observatory can draw are listed (the rest are counted in a note).
 
 use roxmltree::{Node, ParsingOptions};
 
@@ -39,7 +39,7 @@ pub struct ServiceLayer {
 }
 
 /// A service's capabilities: its kind (`WMS`, `WMTS`, `WFS`, `OGC API Features`), title, the
-/// layers RustGIS can add, and notes on what it left out.
+/// layers Syngle Observatory can add, and notes on what it left out.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Service {
     pub kind: String,
@@ -49,7 +49,7 @@ pub struct Service {
     /// An OGC API landing page's advertised JSON collections document, resolved against it.
     pub collections_url: Option<String>,
     /// Some advertised collections were left out (past the listing limit, or with an items
-    /// address RustGIS doesn't fetch): the listing isn't the whole service.
+    /// address Syngle Observatory doesn't fetch): the listing isn't the whole service.
     pub incomplete: bool,
 }
 
@@ -531,7 +531,7 @@ fn wmts(url: &str, root: &Node) -> Service {
         service.layers.push(ServiceLayer { name, title, offer: Offer::Tiles { template }, bbox, tilesets: None });
     }
     if skipped > 0 {
-        service.notes.push(format!("{skipped} layers have no Web Mercator tile matrix set RustGIS can draw and are left out"));
+        service.notes.push(format!("{skipped} layers have no Web Mercator tile matrix set Syngle Observatory can draw and are left out"));
     }
     service
 }
@@ -879,7 +879,7 @@ pub fn coverage_area(info: &CoverageInfo, area: [f64; 4]) -> Option<[f64; 4]> {
 /// Records asked of a catalogue in one request.
 pub const RECORDS_PAGE: u32 = 20;
 
-/// A catalogue record's link: a service (`wms`, `wmts`, `wfs`, `wcs`, `ogcapi`, `arcgis`) RustGIS
+/// A catalogue record's link: a service (`wms`, `wmts`, `wfs`, `wcs`, `ogcapi`, `arcgis`) Syngle Observatory
 /// can open, a file to download, or another web page.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RecordLink {
@@ -1287,7 +1287,7 @@ fn ogc_api(url: &str, v: &serde_json::Value) -> Result<Service, String> {
         service.layers.push(ServiceLayer { name: id.to_string(), title, offer: Offer::Features { url: items }, bbox, tilesets: None });
     }
     if unreadable > 0 {
-        service.notes.push(format!("{unreadable} collections link to their items with an address RustGIS doesn't fetch and are left out"));
+        service.notes.push(format!("{unreadable} collections link to their items with an address Syngle Observatory doesn't fetch and are left out"));
     }
     if collections.len() > MAX_LAYERS {
         service.notes.push(format!("only the first {MAX_LAYERS} collections are listed"));

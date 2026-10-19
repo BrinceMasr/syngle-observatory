@@ -137,7 +137,7 @@ impl FileBridge {
         match lock_file.try_lock() {
             Ok(()) => {}
             Err(std::fs::TryLockError::WouldBlock) => {
-                return Err("another RustGIS is running the file bridge; close it to use the bridge here".into());
+                return Err("another Syngle Observatory is running the file bridge; close it to use the bridge here".into());
             }
             Err(std::fs::TryLockError::Error(e)) => return Err(format!("{}: {e}", lock_path.display())),
         }
@@ -482,7 +482,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let first = FileBridge::start_in(dir.path().to_path_buf()).unwrap();
         let e = FileBridge::start_in(dir.path().to_path_buf()).unwrap_err();
-        assert!(e.contains("another RustGIS"), "{e}");
+        assert!(e.contains("another Syngle Observatory"), "{e}");
         first.stop();
         let second = FileBridge::start_in(dir.path().to_path_buf()).unwrap();
         second.stop();

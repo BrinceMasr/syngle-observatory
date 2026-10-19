@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	Một kho Zarr (định dạng 2 hoặc 3) theo địa chỉ web, có siêu dữ liệu hợp nhất, hoặc một thư mục trên máy tính này. Bản đồ của một biến được đọc theo các bước đã chọn của các chiều khác, chẳng hạn thời gian.
 About	Giới thiệu
 About plugins	Giới thiệu về plugin
-About RustGIS	Giới thiệu RustGIS
-About RustGIS.	Giới thiệu RustGIS.
+About Syngle Observatory	Giới thiệu Syngle Observatory
+About Syngle Observatory.	Giới thiệu Syngle Observatory.
 Above	Trên
 Above Left	Trên trái
 Above Right	Trên phải
@@ -169,8 +169,8 @@ Agent input pipe closed.	Đường ống đầu vào của tác tử đã đóng
 Agent input queue is full or disconnected; stop the agent and try again.	Hàng đợi đầu vào của tác tử đã đầy hoặc bị ngắt kết nối; hãy dừng tác tử và thử lại.
 Agent threads	Luồng tác tử
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Các tác tử trên máy tính này đã kết nối (Claude Code, Codex, Cursor và các tác tử khác) làm việc trên bản đồ đang mở ở đây bằng công cụ của RustGIS: chúng có thể mở, lưu tệp và dùng web. Script và quản lý plugin vẫn tắt.
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Các tác tử trên máy tính này đã kết nối (Claude Code, Codex, Cursor và các tác tử khác) làm việc trên bản đồ đang mở ở đây bằng công cụ của RustGIS: chúng có thể mở, lưu tệp và dùng web. Script và quản lý plugin vẫn tắt. Lựa chọn này được ghi nhớ qua các lần khởi động.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Các tác tử trên máy tính này đã kết nối (Claude Code, Codex, Cursor và các tác tử khác) làm việc trên bản đồ đang mở ở đây bằng công cụ của Syngle Observatory: chúng có thể mở, lưu tệp và dùng web. Script và quản lý plugin vẫn tắt.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Các tác tử trên máy tính này đã kết nối (Claude Code, Codex, Cursor và các tác tử khác) làm việc trên bản đồ đang mở ở đây bằng công cụ của Syngle Observatory: chúng có thể mở, lưu tệp và dùng web. Script và quản lý plugin vẫn tắt. Lựa chọn này được ghi nhớ qua các lần khởi động.
 Agents then run commands, change files and use the web on this computer without asking you.	Khi đó tác tử sẽ chạy lệnh, thay đổi tệp và dùng web trên máy tính này mà không hỏi bạn.
 Aggregation	Gộp nhóm
 AI	AI
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	Chỉ cho phép một số tổ hợp giá trị nhất định giữa các trường.
 Allow such actions for this conversation	Cho phép các thao tác như vậy trong cuộc trò chuyện này
 Allow this action?	Cho phép thao tác này?
-Allow this agent's RustGIS action?	Cho phép thao tác RustGIS này của tác tử?
+Allow this agent's Syngle Observatory action?	Cho phép thao tác Syngle Observatory này của tác tử?
 Along Selected Line	Dọc theo đường được chọn
 Alternating bar	Thanh xen kẽ
 Altitude	Độ cao
 Always allow	Luôn cho phép
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3, hoặc một dịch vụ tương thích S3 (MinIO, Cloudflare R2, Wasabi…) theo điểm cuối của nó. Khóa được giữ cho đến khi RustGIS đóng; kết nối được ghi nhớ giữ tên, điểm cuối và khu vực, không bao giờ giữ khóa bí mật.
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3, hoặc một dịch vụ tương thích S3 (MinIO, Cloudflare R2, Wasabi…) theo điểm cuối của nó. Khóa được giữ cho đến khi Syngle Observatory đóng; kết nối được ghi nhớ giữ tên, điểm cuối và khu vực, không bao giờ giữ khóa bí mật.
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	Một tác tử trên máy tính này yêu cầu:
 An AWS profile	Một hồ sơ AWS
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	Phạm vi sử dụng: trong v
 Area of use: within {r}° of {lon}°, {lat}°	Phạm vi sử dụng: trong vòng {r}° quanh {lon}°, {lat}°
 Area {area}   ·   Perimeter {perimeter}	Diện tích {area}   ·   Chu vi {perimeter}
 Areas (name, land use, area)	Vùng (tên, sử dụng đất, diện tích)
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	Đặt câu hỏi về dữ liệu của bạn, hoặc mô tả việc cần làm với bản đồ. Trợ lý sẽ chạy các lệnh RustGIS cho bạn; mọi thay đổi đều có thể hoàn tác.
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	Đặt câu hỏi về dữ liệu của bạn, hoặc mô tả việc cần làm với bản đồ. Trợ lý sẽ chạy các lệnh Syngle Observatory cho bạn; mọi thay đổi đều có thể hoàn tác.
 Ask about the map, or tell it what to do…	Hỏi về bản đồ, hoặc bảo nó cần làm gì…
 Ask about your data, or tell the assistant what to do with the map.	Hỏi về dữ liệu của bạn, hoặc bảo trợ lý cần làm gì với bản đồ.
 Asking the catalog…	Đang hỏi danh mục…
@@ -479,7 +479,7 @@ Color Vision Simulator	Trình mô phỏng thị giác màu
 Colorbar	Thanh màu
 Colormap	Bản đồ màu
 Colors from the raster's own color table.	Màu lấy từ bảng màu riêng của raster.
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	Dải màu (RustGIS, QGIS, GDAL, GMT)
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	Dải màu (Syngle Observatory, QGIS, GDAL, GMT)
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	Các cột có tên như longitude/latitude, easting/northing hoặc geometry được chọn sẵn cho bạn.
 Combinations from the box above, one per line	Các tổ hợp từ ô phía trên, mỗi dòng một tổ hợp
 Comma	Dấu phẩy
@@ -631,7 +631,7 @@ Delete selected rows	Xóa các hàng được chọn
 Delete Style	Xóa kiểu
 Delete Task	Xóa nhiệm vụ
 Delete Task Step	Xóa bước nhiệm vụ
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	Xóa trình chạy GeoLibre mà RustGIS đã cài đặt. Có thể cài đặt lại bất cứ lúc nào.
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	Xóa trình chạy GeoLibre mà Syngle Observatory đã cài đặt. Có thể cài đặt lại bất cứ lúc nào.
 Delete the layout {name}?	Xóa bố cục {name}?
 Delete the map {name}?	Xóa bản đồ {name}?
 Delete the selected features.	Xóa các đối tượng được chọn.
@@ -770,7 +770,7 @@ Element	Phần tử
 Element Properties	Thuộc tính phần tử
 Elevation	Độ cao
 Elevation profiles along lines, cross sections and more.	Mặt cắt độ cao dọc theo đường, mặt cắt ngang và hơn thế.
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	Các yêu cầu đủ điều kiện trong RustGIS dùng gói ChatGPT của bạn. Bạn có thể quản lý mức sử dụng trong cài đặt ChatGPT.
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Các yêu cầu đủ điều kiện trong Syngle Observatory dùng gói ChatGPT của bạn. Bạn có thể quản lý mức sử dụng trong cài đặt ChatGPT.
 Ellipse	Hình elip
 Embeddings	Embedding
 Ember	Than hồng
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	Tìm bất kỳ lệnh nào theo tên (Ctrl+K
 Find Datasets	Tìm bộ dữ liệu
 Find Items	Tìm mục
 Find Place	Tìm địa điểm
-Find plugins in the RustGIS plugin registry.	Tìm plugin trong kho plugin RustGIS.
+Find plugins in the Syngle Observatory plugin registry.	Tìm plugin trong kho plugin Syngle Observatory.
 Find Similar	Tìm tương tự
 Find Tools	Tìm công cụ
 Finding routes…	Đang tìm tuyến đường…
@@ -932,7 +932,7 @@ Folder…	Thư mục…
 for a store that doesn't say	cho kho không ghi rõ
 Forest	Rừng
 Format	Định dạng
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	Đã tìm thấy: {names}. Tác tử làm việc trên bản đồ này bằng công cụ của RustGIS và công cụ riêng (web, script, tệp), trong thư mục riêng được lưu ở Tài liệu › RustGIS › Agent work. Nó sẽ hỏi bạn trước mỗi thao tác.
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	Đã tìm thấy: {names}. Tác tử làm việc trên bản đồ này bằng công cụ của Syngle Observatory và công cụ riêng (web, script, tệp), trong thư mục riêng được lưu ở Tài liệu › Syngle Observatory › Agent work. Nó sẽ hỏi bạn trước mỗi thao tác.
 Frame rate	Tốc độ khung hình
 Frame rate, draw time, data size and memory.	Tốc độ khung hình, thời gian vẽ, kích thước dữ liệu và bộ nhớ.
 Free the prepared geometry.	Giải phóng hình học đã chuẩn bị.
@@ -1091,7 +1091,7 @@ In memory	Trong bộ nhớ
 In Progress	Đang thực hiện
 in progress	đang thực hiện
 In project	Trong dự án
-In RustGIS, it can:	Trong RustGIS, nó có thể:
+In Syngle Observatory, it can:	Trong Syngle Observatory, nó có thể:
 In use	Đang dùng
 Indices	Chỉ số
 Infographics	Đồ họa thông tin
@@ -1205,7 +1205,7 @@ Legend	Chú giải
 Legend label. Clear it to show the value again.	Nhãn chú giải. Xóa nhãn để hiện lại giá trị.
 Length {length} · gain {gain} m · loss {loss} m	Chiều dài {length} · tăng {gain} m · giảm {loss} m
 Let the assistant hand tasks to agents on this computer	Cho phép trợ lý giao việc cho các tác tử trên máy tính này
-Let your Agents Control RustGIS	Cho phép tác tử của bạn điều khiển RustGIS
+Let your Agents Control Syngle Observatory	Cho phép tác tử của bạn điều khiển Syngle Observatory
 Level	Cấp
 Library	Thư viện
 Light and Shadow	Ánh sáng và bóng
@@ -1271,7 +1271,7 @@ Longitude (X)	Kinh độ (X)
 Look for {name}, outlined on the ribbon.	Tìm {name}, được viền nổi bật trên ribbon.
 Looking up the place…	Đang tra cứu địa điểm…
 Lower Priority	Giảm ưu tiên
-Made in RustGIS: samples, drawings and tool outputs	Tạo trong RustGIS: dữ liệu mẫu, hình vẽ và kết quả công cụ
+Made in Syngle Observatory: samples, drawings and tool outputs	Tạo trong Syngle Observatory: dữ liệu mẫu, hình vẽ và kết quả công cụ
 Magnifier	Kính lúp
 Major Lakes	Hồ lớn
 Major Rivers	Sông lớn
@@ -1436,7 +1436,7 @@ No bookmarks yet	Chưa có dấu trang
 No bookmarks yet. New Bookmark saves the current view of the map.	Chưa có dấu trang nào. Dấu trang mới lưu khung nhìn hiện tại của bản đồ.
 no command	không có lệnh
 No connections this session	Không có kết nối trong phiên này
-No datasets with data RustGIS can add	Không có bộ dữ liệu nào chứa dữ liệu RustGIS có thể thêm
+No datasets with data Syngle Observatory can add	Không có bộ dữ liệu nào chứa dữ liệu Syngle Observatory có thể thêm
 No edits since the project was saved	Không có chỉnh sửa nào từ lần lưu dự án gần nhất
 no home folder	không có thư mục home
 No layers match	Không có lớp nào khớp
@@ -1472,8 +1472,8 @@ North	Bắc
 North\nArrow	Mũi tên\nchỉ bắc
 North Polar Stereographic	Phép chiếu nổi cực Bắc
 not a picture	không phải ảnh
-not a RustGIS layout	không phải bố cục RustGIS
-not a RustGIS project	không phải dự án RustGIS
+not a Syngle Observatory layout	không phải bố cục Syngle Observatory
+not a Syngle Observatory project	không phải dự án Syngle Observatory
 not needed	không cần
 Not sandboxed	Không có hộp cát
 Not saved yet	Chưa lưu
@@ -1515,8 +1515,8 @@ Opacity	Độ mờ đục
 Open	Mở
 Open a .rgis project	Mở dự án .rgis
 open a layout first	hãy mở một bố cục trước
-Open a RustGIS or Jupyter notebook.	Mở sổ tay RustGIS hoặc Jupyter.
-Open a RustGIS project.	Mở một dự án RustGIS.
+Open a Syngle Observatory or Jupyter notebook.	Mở sổ tay Syngle Observatory hoặc Jupyter.
+Open a Syngle Observatory project.	Mở một dự án Syngle Observatory.
 Open an offline area to edit.	Mở một khu vực ngoại tuyến để chỉnh sửa.
 Open browser again	Mở lại trình duyệt
 Open Custom Template	Mở mẫu tùy chỉnh
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	Mở bảng thuộc tính của lớp.
 Open the layer's table.	Mở bảng của lớp.
 Open the plugin's panel.	Mở bảng điều khiển của plugin.
 Open the Release Page	Mở trang phát hành
-Open the RustGIS user guide.	Mở hướng dẫn sử dụng RustGIS.
+Open the Syngle Observatory user guide.	Mở hướng dẫn sử dụng Syngle Observatory.
 Open the selected layer's table.	Mở bảng của lớp được chọn.
 Open the Symbology pane.	Mở ngăn Ký hiệu.
 Open the task's steps	Mở các bước của nhiệm vụ
@@ -1660,7 +1660,7 @@ Plugin registry	Kho plugin
 Plugins	Plugin
 Plugins are .rgplugin files. Install only plugins from people you trust.	Plugin là các tệp .rgplugin. Chỉ cài đặt plugin từ những người bạn tin tưởng.
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	Các plugin được đánh dấu "Không có hộp cát" thì chạy như chương trình trên máy tính của bạn và có thể làm mọi việc bạn làm được.
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	Plugin chạy trong hộp cát: chúng không thể truy cập tệp của bạn hay mạng, và chỉ thay đổi dự án thông qua các lệnh của chính RustGIS, trong phạm vi quyền bạn chấp nhận.
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	Plugin chạy trong hộp cát: chúng không thể truy cập tệp của bạn hay mạng, và chỉ thay đổi dự án thông qua các lệnh của chính Syngle Observatory, trong phạm vi quyền bạn chấp nhận.
 PMTiles archive	Kho PMTiles
 PNG frames (zip)	Khung hình PNG (zip)
 PNG image	Ảnh PNG
@@ -1882,26 +1882,26 @@ Run Tool	Chạy công cụ
 Run {name}	Chạy {name}
 Running the query for the map…	Đang chạy truy vấn cho bản đồ…
 Running…	Đang chạy…
-RustGIS	RustGIS
-RustGIS bookmarks	Dấu trang RustGIS
-RustGIS deep learning package	Gói học sâu RustGIS
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	Lần trước RustGIS không đóng đúng cách, vì vậy nó đã khởi động với World Atlas thay vì dự án khởi động của bạn. Hãy mở dự án từ menu Dự án khi bạn sẵn sàng.
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS là một GIS miễn phí và mã nguồn mở viết bằng Rust thuần. Nó chạy trên máy tính và trong trình duyệt, và mọi thao tác đều là một lệnh mà bạn cũng có thể chạy từ dòng lệnh.
-RustGIS layer file	Tệp lớp RustGIS
-RustGIS layers, maps and projects	Lớp, bản đồ và dự án RustGIS
-RustGIS layout	Bố cục RustGIS
-RustGIS maps and projects	Bản đồ và dự án RustGIS
-RustGIS or Jupyter notebook	Sổ tay RustGIS hoặc Jupyter
-RustGIS plugin	Plugin RustGIS
-RustGIS presentation	Bản trình bày RustGIS
-RustGIS project	Dự án RustGIS
-RustGIS project template	Mẫu dự án RustGIS
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Lần trước RustGIS gặp lỗi nội bộ. Chi tiết nằm trong {path}; hãy đính kèm vào báo cáo lỗi.
-RustGIS report or report template	Báo cáo hoặc mẫu báo cáo RustGIS
-RustGIS styles	Kiểu RustGIS
-RustGIS task	Nhiệm vụ RustGIS
-RustGIS {latest} is available.	Đã có RustGIS {latest}.
-RustGIS {version} is the latest version.	RustGIS {version} là phiên bản mới nhất.
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Dấu trang Syngle Observatory
+Syngle Observatory deep learning package	Gói học sâu Syngle Observatory
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	Lần trước Syngle Observatory không đóng đúng cách, vì vậy nó đã khởi động với World Atlas thay vì dự án khởi động của bạn. Hãy mở dự án từ menu Dự án khi bạn sẵn sàng.
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory là một GIS miễn phí và mã nguồn mở viết bằng Rust thuần. Nó chạy trên máy tính và trong trình duyệt, và mọi thao tác đều là một lệnh mà bạn cũng có thể chạy từ dòng lệnh.
+Syngle Observatory layer file	Tệp lớp Syngle Observatory
+Syngle Observatory layers, maps and projects	Lớp, bản đồ và dự án Syngle Observatory
+Syngle Observatory layout	Bố cục Syngle Observatory
+Syngle Observatory maps and projects	Bản đồ và dự án Syngle Observatory
+Syngle Observatory or Jupyter notebook	Sổ tay Syngle Observatory hoặc Jupyter
+Syngle Observatory plugin	Plugin Syngle Observatory
+Syngle Observatory presentation	Bản trình bày Syngle Observatory
+Syngle Observatory project	Dự án Syngle Observatory
+Syngle Observatory project template	Mẫu dự án Syngle Observatory
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Lần trước Syngle Observatory gặp lỗi nội bộ. Chi tiết nằm trong {path}; hãy đính kèm vào báo cáo lỗi.
+Syngle Observatory report or report template	Báo cáo hoặc mẫu báo cáo Syngle Observatory
+Syngle Observatory styles	Kiểu Syngle Observatory
+Syngle Observatory task	Nhiệm vụ Syngle Observatory
+Syngle Observatory {latest} is available.	Đã có Syngle Observatory {latest}.
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} là phiên bản mới nhất.
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	Bucket S3
 S3 Connections	Kết nối S3
 S3…	S3…
 Sample data (Natural Earth)	Dữ liệu mẫu (Natural Earth)
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	Dữ liệu mẫu © Natural Earth (phạm vi công cộng). RustGIS được cấp phép theo Apache-2.0.
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	Dữ liệu mẫu © Natural Earth (phạm vi công cộng). Syngle Observatory được cấp phép theo Apache-2.0.
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	Dữ liệu mẫu: Natural Earth (phạm vi công cộng). Cấp phép theo Apache-2.0.
 Saturation	Độ bão hòa
 Save	Lưu
@@ -1994,7 +1994,7 @@ Sections	Phần
 See and set the camera's position and scale.	Xem và đặt vị trí và tỷ lệ của máy ảnh.
 See the map as people with colour vision deficiencies do.	Xem bản đồ như người bị khiếm khuyết thị giác màu.
 See the tools you've run.	Xem các công cụ bạn đã chạy.
-See whether a newer RustGIS has been released.	Kiểm tra xem đã có bản RustGIS mới hơn chưa.
+See whether a newer Syngle Observatory has been released.	Kiểm tra xem đã có bản Syngle Observatory mới hơn chưa.
 SELECT	SELECT
 Select	Chọn
 Select (click)	Chọn (nhấp)
@@ -2121,7 +2121,7 @@ Sign out	Đăng xuất
 Sign-in cancelled.	Đã hủy đăng nhập.
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	Đã hết thời gian đăng nhập. Hãy bắt đầu lại và cho phép trình duyệt truy cập địa chỉ loopback của máy tính này.
 signed in	đã đăng nhập
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	Đã đăng xuất trên máy tính này, nhưng OpenAI chưa xác nhận. Bạn có thể ngắt kết nối RustGIS trong cài đặt ChatGPT.
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	Đã đăng xuất trên máy tính này, nhưng OpenAI chưa xác nhận. Bạn có thể ngắt kết nối Syngle Observatory trong cài đặt ChatGPT.
 Signing in with ChatGPT works in the desktop app.	Đăng nhập bằng ChatGPT hoạt động trong ứng dụng máy tính.
 Signing the asset (Planetary Computer)…	Đang ký tài nguyên (Planetary Computer)…
 Simplify	Đơn giản hóa
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	Khóa chỉ được giữ trong phiên n
 The layer's file couldn't be read: {error}	Không thể đọc tệp của lớp: {error}
 the layout export failed unexpectedly	xuất bố cục thất bại ngoài dự kiến
 The link doesn't say its STAC API: Find Items searches {api}	Liên kết không ghi rõ STAC API của nó: Tìm mục sẽ tìm trong {api}
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	Danh sách plugin để duyệt. Để trống để dùng kho plugin RustGIS.
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	Danh sách plugin để duyệt. Để trống để dùng kho plugin Syngle Observatory.
 the map has no layers	bản đồ không có lớp nào
 The map is drawn in this coordinate system; layers are projected on the fly.	Bản đồ được vẽ trong hệ tọa độ này; các lớp được chiếu tức thời.
 The map view as it is now	Khung nhìn bản đồ như hiện tại
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	Các tệp của Shapefile được t
 The sign-in expired or was revoked. Sign in again.	Phiên đăng nhập đã hết hạn hoặc bị thu hồi. Hãy đăng nhập lại.
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	Thông tin đăng nhập được lưu trong thư mục cài đặt của ứng dụng, chỉ cho tài khoản người dùng của bạn, và không bao giờ trong tệp dự án.
 The start-up project {path} didn't open: {error}	Không mở được dự án khởi động {path}: {error}
-The start-up project {path} isn't a RustGIS project file.	Dự án khởi động {path} không phải là tệp dự án RustGIS.
+The start-up project {path} isn't a Syngle Observatory project file.	Dự án khởi động {path} không phải là tệp dự án Syngle Observatory.
 The step's layer {name} isn't in the map.	Lớp {name} của bước này không có trên bản đồ.
 The store has no variables with two or more dimensions.	Kho không có biến nào có từ hai chiều trở lên.
 the store is gone	kho không còn nữa
@@ -2365,7 +2365,7 @@ This map has no layers yet.	Bản đồ này chưa có lớp nào.
 This map's thumbnail, from an image.	Ảnh thu nhỏ của bản đồ này, từ một ảnh.
 This map's thumbnail, from the view.	Ảnh thu nhỏ của bản đồ này, từ khung nhìn.
 This plugin can:	Plugin này có thể:
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Plugin này chạy như một chương trình trên máy tính của bạn, bên ngoài hộp cát của RustGIS. Nó có thể làm mọi việc bạn làm được: đọc và thay đổi tệp của bạn, dùng mạng và chạy các chương trình khác. Chỉ cài đặt nếu bạn tin tưởng tác giả của nó.
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Plugin này chạy như một chương trình trên máy tính của bạn, bên ngoài hộp cát của Syngle Observatory. Nó có thể làm mọi việc bạn làm được: đọc và thay đổi tệp của bạn, dùng mạng và chạy các chương trình khác. Chỉ cài đặt nếu bạn tin tưởng tác giả của nó.
 This request has no one-time allow option.	Yêu cầu này không có tùy chọn cho phép một lần.
 This request uses an unsupported capability. Check the parameter and change the request.	Yêu cầu này dùng tính năng không được hỗ trợ. Kiểm tra tham số và sửa yêu cầu.
 This step names no tool to show.	Bước này không nêu công cụ nào để chỉ ra.
@@ -2439,7 +2439,7 @@ Uninstall Plugin	Gỡ cài đặt plugin
 Uninstalled {id}.	Đã gỡ cài đặt {id}.
 Unique Values	Giá trị duy nhất
 Units	Đơn vị
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	Gỡ tải các công cụ GeoLibre và không tải chúng khi RustGIS khởi động nữa.
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	Gỡ tải các công cụ GeoLibre và không tải chúng khi Syngle Observatory khởi động nữa.
 Unsupervised classes (k-means)	Lớp không giám sát (k-means)
 Unsupervised classes (k-means).	Lớp không giám sát (k-means).
 Up	Lên
@@ -2515,13 +2515,13 @@ Web Tool	Công cụ web
 Website	Trang web
 Weekly usage	Mức sử dụng hằng tuần
 Weights	Trọng số
-Welcome to RustGIS	Chào mừng đến với RustGIS
+Welcome to Syngle Observatory	Chào mừng đến với Syngle Observatory
 West	Tây
 WFS	WFS
 WGS 84 / Globe	WGS 84 / Quả địa cầu
 WGS 84 / Web Mercator	WGS 84 / Web Mercator
-What RustGIS opens with: the World Atlas sample or a blank map.	RustGIS mở với gì: mẫu World Atlas hoặc một bản đồ trống.
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	RustGIS mở với gì: mẫu World Atlas, một bản đồ trống, một dự án bạn chọn, hoặc dự án mở hoặc lưu gần nhất.
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	Syngle Observatory mở với gì: mẫu World Atlas hoặc một bản đồ trống.
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Syngle Observatory mở với gì: mẫu World Atlas, một bản đồ trống, một dự án bạn chọn, hoặc dự án mở hoặc lưu gần nhất.
 What to do, where to find it and why	Cần làm gì, tìm ở đâu và tại sao
 What's near a point	Những gì gần một điểm
 WHERE	WHERE

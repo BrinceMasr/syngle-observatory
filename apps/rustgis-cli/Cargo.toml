@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
-description = "RustGIS command line: run commands and geoprocessing, render maps, inspect data"
+description = "Syngle Observatory command line: run commands and geoprocessing, render maps, inspect data"
 
 [lints]
 workspace = true

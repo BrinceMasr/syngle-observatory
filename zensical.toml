@@ -1,18 +1,18 @@
 [project]
-site_name = "RustGIS"
+site_name = "Syngle Observatory"
 site_description = "A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data, on the desktop and in the browser"
-site_author = "opengeos"
-site_url = "https://rustgis.app"
-repo_url = "https://github.com/opengeos/RustGIS"
-repo_name = "opengeos/RustGIS"
-copyright = "Copyright &copy; 2026 Qiusheng Wu"
+site_author = "Syngle (BrinceMasr)"
+site_url = "https://brincemasr.github.io/syngle-observatory/"
+repo_url = "https://github.com/BrinceMasr/syngle-observatory"
+repo_name = "BrinceMasr/syngle-observatory"
+copyright = "Copyright &copy; 2026 Syngle (BrinceMasr); RustGIS is &copy; its upstream contributors"
 extra_css = ["stylesheets/extra.css"]
 
 nav = [
   { "Home" = "index.md" },
   { "Installation" = "installation.md" },
   { "Getting Started" = "getting-started.md" },
-  { "Web App" = "https://web.rustgis.app" },
+  { "Web App" = "https://brincemasr.github.io/syngle-observatory/" },
   { "User Guide" = [
     "user-guide/index.md",
     "user-guide/data.md",
@@ -40,12 +40,10 @@ nav = [
   { "Contributing" = "contributing.md" },
   { "Sponsor" = "sponsor.md" },
   { "Privacy" = "privacy.md" },
-  { "Report Issues" = "https://github.com/opengeos/RustGIS/issues" },
+  { "Report Issues" = "https://github.com/BrinceMasr/syngle-observatory/issues" },
 ]
 
 [project.theme]
-logo = "https://assets.rustgis.app/images/logo.svg"
-favicon = "https://assets.rustgis.app/images/favicon.png"
 features = [
   "content.code.copy",
   "navigation.indexes",
@@ -90,13 +88,13 @@ permalink = true
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
-link = "https://github.com/opengeos/RustGIS"
-name = "RustGIS on GitHub"
+link = "https://github.com/BrinceMasr/syngle-observatory"
+name = "Syngle Observatory on GitHub"
 
 [[project.extra.social]]
 icon = "fontawesome/solid/heart"
 link = "https://github.com/sponsors/giswqs"
-name = "Sponsor RustGIS on GitHub"
+name = "Sponsor Syngle Observatory on GitHub"
 
 [[project.extra.social]]
 icon = "fontawesome/solid/mug-hot"

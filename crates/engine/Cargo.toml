@@ -3,7 +3,7 @@ name = "rustgis-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L4: session, undo, command registry, ribbon feature catalog, sample project"
+description = "Syngle Observatory L4: session, undo, command registry, ribbon feature catalog, sample project"
 
 [lints]
 workspace = true

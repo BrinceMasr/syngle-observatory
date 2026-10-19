@@ -1,4 +1,4 @@
-"""Type stubs for the native RustGIS module."""
+"""Type stubs for the native Syngle Observatory module."""
 
 from typing import List, Optional, Tuple
 

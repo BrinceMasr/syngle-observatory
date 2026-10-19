@@ -1,8 +1,8 @@
-# Install RustGIS for the user and connect an agent
+# Install Syngle Observatory for the user and connect an agent
 
 Run these steps on the **user's desktop machine**, not an unrelated agent host.
 Install the desktop app and `rustgis-cli`; registering MCP alone installs neither.
-This procedure follows <https://rustgis.app/installation/> and the repository's
+This procedure follows <https://github.com/BrinceMasr/syngle-observatory/installation/> and the repository's
 `docs/installation.md` and `docs/mcp.md`.
 
 ## 1. Detect the platform and existing installation
@@ -43,12 +43,12 @@ Run the appropriate platform row, not every command:
 
 | Platform | Agent-runnable commands |
 | --- | --- |
-| Windows x64 | `winget install OpenGeos.RustGIS` |
-| macOS | `brew install --cask opengeos/rustgis/rustgis` then `brew install opengeos/rustgis/rustgis-cli` |
+| Windows x64 | `winget install OpenGeos.Syngle Observatory` |
+| macOS | `brew install --cask BrinceMasr/syngle-observatory` then `brew install BrinceMasr/syngle-observatory-cli` |
 | Arch Linux with an AUR helper | `yay -S rustgis-bin` |
 | Fedora | `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` |
 
-On Homebrew 5.1 or later, first run `brew trust opengeos/rustgis` once.
+On Homebrew 5.1 or later, first run `brew trust BrinceMasr/syngle-observatory` once.
 Homebrew's `rustgis-cli` formula also works on Linux but installs **only the
 CLI**, not the desktop app. winget's default is the per-user installer; use
 `--scope machine` only for an authorized all-user MSI installation.
@@ -62,8 +62,8 @@ manifest; it is not an independent publisher signature.
 
 ### Checked release downloads: Linux and macOS
 
-Use the current release at <https://github.com/opengeos/RustGIS/releases/latest>,
-or its mirror <https://downloads.rustgis.app>. Discover the version instead of
+Use the current release at <https://github.com/BrinceMasr/syngle-observatory/releases/latest>,
+or its mirror <https://github.com/BrinceMasr/syngle-observatory/releases>. Discover the version instead of
 pinning an old release. The following Bash setup requires `curl` and `jq`; if
 those are unavailable, use the agent's HTTP/JSON tools to obtain the same
 release metadata and downloads rather than guessing asset URLs.
@@ -73,7 +73,7 @@ Run in a fresh download directory so unrelated files are not overwritten:
 set -euo pipefail
 work=$(mktemp -d)
 cd "$work"
-curl -fsSL https://api.github.com/repos/opengeos/RustGIS/releases/latest -o release.json
+curl -fsSL https://api.github.com/repos/BrinceMasr/syngle-observatory/releases/latest -o release.json
 version=$(jq -er '.tag_name | ltrimstr("v")' release.json)
 case "$(uname -m)" in
   x86_64) arch=x86_64 ;;
@@ -127,7 +127,7 @@ sudo dnf install "./$asset"
 includes both executables, unlike macOS's separate CLI archive.
 
 ```bash
-asset="RustGIS-${version}-linux-${arch}.tar.gz"
+asset="Syngle Observatory-${version}-linux-${arch}.tar.gz"
 fetch_checked "$asset"
 mkdir -p "$HOME/.local/opt/rustgis/$version" "$HOME/.local/bin"
 tar -xzf "$asset" -C "$HOME/.local/opt/rustgis/$version" --strip-components=1
@@ -143,7 +143,7 @@ an existing entry. GUI-launched MCP clients may not inherit shell configuration;
 a full executable path in MCP configuration avoids that problem.
 
 The alternative Linux AppImage is
-`RustGIS-${version}-linux-${arch}.AppImage`. Verify it with `fetch_checked`,
+`Syngle Observatory-${version}-linux-${arch}.AppImage`. Verify it with `fetch_checked`,
 then `chmod +x` and run it. For an agent needing a conventional `rustgis-cli`
 on PATH, prefer the package or tarball route above.
 
@@ -151,18 +151,18 @@ on PATH, prefer the package or tarball route above.
 for the current user without writing to system-wide `/Applications`:
 
 ```bash
-dmg="RustGIS-${version}-macos-${arch}.dmg"
+dmg="Syngle Observatory-${version}-macos-${arch}.dmg"
 cli="rustgis-cli-${version}-macos-${arch}.tar.gz"
 fetch_checked "$dmg"
 fetch_checked "$cli"
 mkdir -p "$work/mount" "$HOME/Applications" "$HOME/.local/bin" "$HOME/.local/opt/rustgis-cli/$version"
 hdiutil attach "$dmg" -nobrowse -mountpoint "$work/mount"
-ditto "$work/mount/RustGIS.app" "$HOME/Applications/RustGIS.app"
+ditto "$work/mount/Syngle Observatory.app" "$HOME/Applications/Syngle Observatory.app"
 hdiutil detach "$work/mount"
 tar -xzf "$cli" -C "$HOME/.local/opt/rustgis-cli/$version" --strip-components=1
 ln -sfn "$HOME/.local/opt/rustgis-cli/$version/rustgis-cli" "$HOME/.local/bin/rustgis-cli"
 export PATH="$HOME/.local/bin:$PATH"
-open "$HOME/Applications/RustGIS.app"
+open "$HOME/Applications/Syngle Observatory.app"
 ```
 
 Check for an existing app before copying over it. The macOS releases are
@@ -176,9 +176,9 @@ rights and includes both the app and CLI. In PowerShell:
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-$release = Invoke-RestMethod 'https://api.github.com/repos/opengeos/RustGIS/releases/latest'
+$release = Invoke-RestMethod 'https://api.github.com/repos/BrinceMasr/syngle-observatory/releases/latest'
 $version = $release.tag_name -replace '^v', ''
-$name = "RustGIS-$version-windows-x86_64-portable.zip"
+$name = "Syngle Observatory-$version-windows-x86_64-portable.zip"
 $asset = $release.assets | Where-Object name -eq $name
 $manifest = $release.assets | Where-Object name -eq 'SHA256SUMS'
 if (!$asset -or !$manifest) { throw 'Release asset or SHA256SUMS is missing' }
@@ -193,23 +193,23 @@ $line = Get-Content $sums | Where-Object { $_ -match $pattern }
 if (@($line).Count -ne 1) { throw 'Expected exactly one checksum for the asset' }
 $expected = [regex]::Match($line, $pattern).Groups[1].Value
 if ((Get-FileHash $zip -Algorithm SHA256).Hash -ine $expected) { throw 'Checksum mismatch' }
-$destination = Join-Path $env:LOCALAPPDATA "Programs\RustGIS-portable\$version"
+$destination = Join-Path $env:LOCALAPPDATA "Programs\Syngle Observatory-portable\$version"
 if (Test-Path $destination) { throw 'Destination exists; inspect it before updating' }
 Expand-Archive $zip -DestinationPath $destination
-$bin = Join-Path $destination "RustGIS-$version-windows-x86_64"
+$bin = Join-Path $destination "Syngle Observatory-$version-windows-x86_64"
 $env:Path = "$bin;$env:Path"
 & (Join-Path $bin 'rustgis-cli.exe') commands
-if ($LASTEXITCODE -ne 0) { throw 'RustGIS CLI failed' }
+if ($LASTEXITCODE -ne 0) { throw 'Syngle Observatory CLI failed' }
 Start-Process (Join-Path $bin 'rustgis.exe')
 ```
 
 Use `$bin\rustgis-cli.exe` as the MCP command if the client does not inherit the
 updated PATH. For a permanent per-user PATH entry, preserve the existing value
 and avoid duplicates, or let the per-user installer manage it. The alternative
-`RustGIS-<version>-windows-x86_64-setup.exe` installs into
-`%LOCALAPPDATA%\Programs\RustGIS`. Verify its checksum before launching its
+`Syngle Observatory-<version>-windows-x86_64-setup.exe` installs into
+`%LOCALAPPDATA%\Programs\Syngle Observatory`. Verify its checksum before launching its
 installer. For authorized all-user deployment, the verified MSI uses
-`msiexec /i RustGIS-<version>-windows-x86_64.msi /qn`.
+`msiexec /i Syngle Observatory-<version>-windows-x86_64.msi /qn`.
 Do not sideload the unsigned release-page MSIX; use the Microsoft Store for
 that package. Windows installers may show a SmartScreen unknown-publisher
 warning; do not disable security controls to make installation unattended.
@@ -218,12 +218,12 @@ warning; do not disable security controls to make installation unattended.
 
 Use source only when a matching release is unsuitable or the required MCP Relay
 is not present in the installed app/CLI. Use a checkout that includes the
-[documented open-app support](https://rustgis.app/mcp/), with stable Rust 1.90 or
+[documented open-app support](https://github.com/BrinceMasr/syngle-observatory/mcp/), with stable Rust 1.90 or
 later. In a user-chosen source directory:
 
 ```sh
-git clone https://github.com/opengeos/RustGIS.git
-cd RustGIS
+git clone https://github.com/BrinceMasr/syngle-observatory.git
+cd Syngle Observatory
 cargo build --release -p rustgis-cli
 cargo run --release -p rustgis
 ```
@@ -320,10 +320,10 @@ MCP configuration or start a new session, as that client requires.
 
 ## 4. Manage the already-open desktop app
 
-1. Launch the installed RustGIS desktop app in the user's graphical session,
+1. Launch the installed Syngle Observatory desktop app in the user's graphical session,
    or keep the existing window and project. On Linux use `rustgis`; on macOS
-   open RustGIS.app; on Windows use its Start menu entry or `rustgis.exe`.
-2. In RustGIS, open **Command Search (Ctrl+K)** and run **MCP Relay**
+   open Syngle Observatory.app; on Windows use its Start menu entry or `rustgis.exe`.
+2. In Syngle Observatory, open **Command Search (Ctrl+K)** and run **MCP Relay**
    (`ui.mcpRelay`). If the agent cannot operate the UI, ask the user to perform
    this one action; an unattached MCP server cannot start the app's listener.
    Confirm the status bar says `MCP relay listening on 127.0.0.1:8767`.

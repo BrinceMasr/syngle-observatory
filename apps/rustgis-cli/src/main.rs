@@ -1,4 +1,4 @@
-//! RustGIS on the command line. Every command the ribbon runs is available here by id.
+//! Syngle Observatory on the command line. Every command the ribbon runs is available here by id.
 //!
 //! ```text
 //! rustgis-cli commands                                  # list command ids and parameters
@@ -216,7 +216,7 @@ fn ask(s: &mut Session, args: &[String]) -> Result<(), String> {
             && let Err(e) = chatgpt::revoke(&r)
         {
             eprintln!(
-                "signed out on this computer, but OpenAI didn't confirm it ({e}); disconnect RustGIS in ChatGPT's settings if needed"
+                "signed out on this computer, but OpenAI didn't confirm it ({e}); disconnect Syngle Observatory in ChatGPT's settings if needed"
             );
             return Ok(());
         }
@@ -237,7 +237,7 @@ fn ask(s: &mut Session, args: &[String]) -> Result<(), String> {
             return Err(rustgis_assistant::Error::new(rustgis_assistant::Recovery::Consent, "").to_string());
         }
         let who = if c.email.is_empty() { "your ChatGPT account" } else { c.email.as_str() };
-        eprintln!("signed in as {who}; RustGIS now uses your ChatGPT plan (manage usage at {})", chatgpt::USAGE_URL);
+        eprintln!("signed in as {who}; Syngle Observatory now uses your ChatGPT plan (manage usage at {})", chatgpt::USAGE_URL);
         return Ok(());
     }
     // A signed-in account's requests renew its tokens as needed.
@@ -366,7 +366,7 @@ fn attach(port: u16, allow_access: bool, token_file: Option<&str>, timeout: Opti
         None => rustgis_assistant::relay::read_token(port)?,
     };
     let mut stream = std::net::TcpStream::connect(("127.0.0.1", port))
-        .map_err(|e| format!("nothing is listening on 127.0.0.1:{port} ({e}); start RustGIS's MCP Relay command first"))?;
+        .map_err(|e| format!("nothing is listening on 127.0.0.1:{port} ({e}); start Syngle Observatory's MCP Relay command first"))?;
     let mut hello = json!({"jsonrpc": "2.0", "method": "rustgis/attach", "params": {"access": allow_access, "token": token}});
     // How long each call may wait for the app (5 to 600 seconds; 60 unless asked).
     if let (Some(secs), Some(params)) = (timeout, hello.get_mut("params").and_then(Value::as_object_mut)) {
@@ -374,7 +374,7 @@ fn attach(port: u16, allow_access: bool, token_file: Option<&str>, timeout: Opti
     }
     writeln!(stream, "{hello}").map_err(|e| format!("telling the app what --yes allows: {e}"))?;
     eprintln!(
-        "rustgis-cli: MCP server ready (the open RustGIS app at 127.0.0.1:{port}; file and network access {})",
+        "rustgis-cli: MCP server ready (the open Syngle Observatory app at 127.0.0.1:{port}; file and network access {})",
         if allow_access { "allowed" } else { "off, --yes allows it" }
     );
     let mut input = std::io::BufReader::new(stream.try_clone().map_err(|e| format!("opening the app's replies: {e}"))?);
@@ -399,7 +399,7 @@ fn attach(port: u16, allow_access: bool, token_file: Option<&str>, timeout: Opti
         }
         let reply = match rustgis_assistant::framing::read_message(&mut input, rustgis_assistant::framing::Oversize::Stop) {
             Ok(Some(reply)) => reply,
-            Ok(None) => return Err("the RustGIS app closed the relay".into()),
+            Ok(None) => return Err("the Syngle Observatory app closed the relay".into()),
             Err(why) => return Err(format!("the app's reply: {why}")),
         };
         writeln!(stdout, "{reply}").and_then(|()| stdout.flush()).map_err(|e| format!("writing to standard output: {e}"))?;
@@ -453,7 +453,7 @@ fn mcp_register(args: &[String]) -> Result<(), String> {
             if !status.success() {
                 return Err(format!("claude mcp add failed ({status})"));
             }
-            eprintln!("rustgis-cli: registered {name} ({url}) with Claude Code; RustGIS serves it while agents are turned on in the app");
+            eprintln!("rustgis-cli: registered {name} ({url}) with Claude Code; Syngle Observatory serves it while agents are turned on in the app");
             Ok(())
         }
         Some(other) => {

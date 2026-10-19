@@ -1,4 +1,4 @@
-//! Colour ramp files: RustGIS's own `.rgisramp` JSON, QGIS style XML (a Style Manager export or
+//! Colour ramp files: Syngle Observatory's own `.rgisramp` JSON, QGIS style XML (a Style Manager export or
 //! a `.qml` layer style), GDAL colour-relief text (and QGIS colour map exports) and GMT `.cpt`
 //! palettes, all read into [`CustomRamp`]s.
 //!
@@ -112,7 +112,7 @@ pub fn read_ramps(
 }
 
 fn read_json(text: &str) -> Result<Vec<CustomRamp>, String> {
-    let bad = |e: serde_json::Error| format!("not a RustGIS colour ramp file: {e}");
+    let bad = |e: serde_json::Error| format!("not a Syngle Observatory colour ramp file: {e}");
     match serde_json::from_str::<Value>(text).map_err(bad)? {
         Value::Array(a) if a.len() > MAX_RAMPS => Err(format!("a colour ramp file holds at most {MAX_RAMPS} ramps")),
         v @ Value::Array(_) => serde_json::from_value(v).map_err(bad),
@@ -205,7 +205,7 @@ fn read_qgis(text: &str, fallback: &str) -> Result<Vec<CustomRamp>, String> {
         ramps.push(ramp(fallback, RampKind::Sequential, stops)?);
     }
     if ramps.is_empty() && !skipped.is_empty() {
-        return Err(format!("RustGIS reads QGIS gradient and preset colour ramps, not {}", skipped.join(", ")));
+        return Err(format!("Syngle Observatory reads QGIS gradient and preset colour ramps, not {}", skipped.join(", ")));
     }
     Ok(ramps)
 }
@@ -455,7 +455,7 @@ fn read_cpt(text: &str) -> Result<Vec<(f64, Rgba)>, String> {
             if let Some((_, m)) = c.split_once("COLOR_MODEL") {
                 hsv = m.contains("HSV");
                 if m.contains("CMYK") {
-                    return Err("RustGIS reads RGB and HSV GMT palettes, not CMYK ones".into());
+                    return Err("Syngle Observatory reads RGB and HSV GMT palettes, not CMYK ones".into());
                 }
             }
             continue;

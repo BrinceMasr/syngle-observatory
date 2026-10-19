@@ -1,4 +1,4 @@
-//! Installed plugins on disk (desktop and command line): packages in RustGIS's data folder,
+//! Installed plugins on disk (desktop and command line): packages in Syngle Observatory's data folder,
 //! loaded at startup, plus plugin folders added for development.
 //!
 //! ```text

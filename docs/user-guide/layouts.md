@@ -2,7 +2,6 @@
 
 ## Layouts
 
-![A landscape A4 page layout with a map frame, title, legend, north arrow and scale bar, and the Publish tab open](https://assets.rustgis.app/images/layout.webp)
 
 Home › New Layout adds a page layout (Letter to A0, landscape or portrait) with a map frame,
 title, legend, north arrow, scale bar and a dynamic credits line. Layouts open as tabs next to
@@ -128,6 +127,6 @@ previews, edits and plays it.
   **Save As Presentation File** keeps it to import into other projects.
 
 **Analyze › New Notebook** starts a notebook of text and command cells; **Add and Open** opens a
-RustGIS (`.rgisnb`) or Jupyter (`.ipynb`) notebook. A command cell runs one command per line
+Syngle Observatory (`.rgisnb`) or Jupyter (`.ipynb`) notebook. A command cell runs one command per line
 (`id {json}`, as in scripts) and shows each command's result beneath it. Notebooks save in
 either format.

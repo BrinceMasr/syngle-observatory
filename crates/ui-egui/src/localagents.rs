@@ -95,11 +95,11 @@ fn stamp() -> String {
     format!("{year:04}-{month:02}-{day:02}-{:02}{:02}{:02}", rest / 3600, rest / 60 % 60, rest % 60)
 }
 
-/// A new folder for a task: `Documents/RustGIS/Agent work/<time>-<agent>`.
+/// A new folder for a task: `Documents/Syngle Observatory/Agent work/<time>-<agent>`.
 pub fn work_folder(agent: &str) -> Result<PathBuf, String> {
     let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from).ok_or("no home folder")?;
     let docs = Some(home.join("Documents")).filter(|d| d.is_dir()).unwrap_or(home);
-    work_folder_in(&docs.join("RustGIS").join("Agent work"), agent)
+    work_folder_in(&docs.join("Syngle Observatory").join("Agent work"), agent)
 }
 
 /// A new folder in `base` for a task: `<time>-<agent>`, numbered when another task of the same
@@ -151,7 +151,7 @@ impl Run {
         // Its own process group, so stopping it stops what it started (Unix).
         #[cfg(unix)]
         std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
-        // No console window on Windows: what the agent does shows in its window in RustGIS.
+        // No console window on Windows: what the agent does shows in its window in Syngle Observatory.
         #[cfg(windows)]
         std::os::windows::process::CommandExt::creation_flags(&mut cmd, CREATE_NO_WINDOW);
         let mut child = cmd.spawn().map_err(|e| format!("{program}: {e}"))?;

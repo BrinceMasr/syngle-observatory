@@ -115,7 +115,7 @@ pub fn header(app: &mut RustGisApp, ui: &mut Ui) {
                 let (r, _) = ui.allocate_exact_size(vec2(24.0, 24.0), Sense::hover());
                 app.paint_logo(ui, r);
                 ui.add_space(6.0);
-                ui.label(egui::RichText::new(tl!("RustGIS")).font(semibold(13.0)).color(t.text));
+                ui.label(egui::RichText::new(tl!("Syngle Observatory")).font(semibold(13.0)).color(t.text));
                 ui.add_space(10.0);
                 // Quick Access Toolbar.
                 small(ui, app, "new", "", "New project", "project.new", Value::Null, false);
@@ -758,9 +758,9 @@ pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
 /// (and its map) stays open.
 pub(crate) fn project_links(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
-        ui.add(egui::Hyperlink::from_label_and_url(tl!("Website"), "https://rustgis.app").open_in_new_tab(true));
+        ui.add(egui::Hyperlink::from_label_and_url(tl!("Website"), "https://github.com/BrinceMasr/syngle-observatory").open_in_new_tab(true));
         ui.label("·");
-        ui.add(egui::Hyperlink::from_label_and_url(tl!("GitHub"), "https://github.com/opengeos/RustGIS").open_in_new_tab(true));
+        ui.add(egui::Hyperlink::from_label_and_url(tl!("GitHub"), "https://github.com/BrinceMasr/syngle-observatory").open_in_new_tab(true));
     });
 }
 
@@ -768,7 +768,7 @@ pub fn about(app: &mut RustGisApp, ctx: &egui::Context) {
     if app.ui.about {
         let logo_tex = app.logo(ctx);
         let mut open = true;
-        egui::Window::new(tl!("About RustGIS")).open(&mut open).collapsible(false).resizable(false).pivot(Align2::CENTER_CENTER).default_pos(ctx.content_rect().center()).show(ctx, |ui| {
+        egui::Window::new(tl!("About Syngle Observatory")).open(&mut open).collapsible(false).resizable(false).pivot(Align2::CENTER_CENTER).default_pos(ctx.content_rect().center()).show(ctx, |ui| {
             ui.set_width(420.0);
             ui.horizontal(|ui| {
                 let (r, _) = ui.allocate_exact_size(vec2(56.0, 56.0), Sense::hover());
@@ -776,7 +776,7 @@ pub fn about(app: &mut RustGisApp, ctx: &egui::Context) {
                     ui.painter().image(*id, r, egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), egui::Color32::WHITE);
                 });
                 ui.vertical(|ui| {
-                    ui.label(egui::RichText::new(tl!("RustGIS")).font(semibold(20.0)));
+                    ui.label(egui::RichText::new(tl!("Syngle Observatory")).font(semibold(20.0)));
                     ui.label(egui::RichText::new(crate::i18n::fmt("Version {version}", &[("version", env!("CARGO_PKG_VERSION"))])).weak());
                 });
             });

@@ -1,8 +1,8 @@
 # MCP Server
 
-`rustgis-cli mcp` runs RustGIS as a [Model Context Protocol](https://modelcontextprotocol.io)
+`rustgis-cli mcp` runs Syngle Observatory as a [Model Context Protocol](https://modelcontextprotocol.io)
 server, so an AI agent such as Claude Code, Claude Desktop, Cursor, VS Code or Codex can make
-maps with it. The agent opens data, runs any RustGIS command or geoprocessing tool, reads
+maps with it. The agent opens data, runs any Syngle Observatory command or geoprocessing tool, reads
 attribute tables, looks at the map as an image and looks things up in this documentation.
 
 ```sh
@@ -69,10 +69,10 @@ Then ask, for example:
 ## Managing the open desktop app
 
 By default each agent gets its own project in memory. To drive the project that is open in the
-desktop app instead, tick **Let your Agents Control RustGIS** in the AI Assistant's settings. It
+desktop app instead, tick **Let your Agents Control Syngle Observatory** in the AI Assistant's settings. It
 starts the relay and shows what an agent needs to connect: the MCP server configuration, and the
 `claude mcp add` / `codex mcp add` commands. While it's ticked, attached agents may also read and
-write files and use the network, without `--yes`. RustGIS remembers the choice and starts the
+write files and use the network, without `--yes`. Syngle Observatory remembers the choice and starts the
 relay with the app. The **MCP Relay** command (Help menu, or Command Search with Ctrl+K) starts the
 relay too, without that: attached agents then have the access their `--yes` asks for.
 The relay is off until the box is ticked or that command runs. While it runs, the status bar shows `MCP relay · n attached`,
@@ -84,7 +84,7 @@ have open and that you watch the map change as they work.
 
 Under it, **Full access** (off unless you tick it, for this session only) lifts every refusal for
 agents attached with the relay's own token. They may then also run scripts, tasks and models, and
-install, remove and run plugins: what you could do yourself in RustGIS. It isn't remembered: it's
+install, remove and run plugins: what you could do yourself in Syngle Observatory. It isn't remembered: it's
 off again at the next launch, and when agents are turned off. While it's on, the status bar reads
 `MCP relay · full access · n attached` in red. Agents the app starts itself keep their own grants'
 rules.
@@ -96,14 +96,14 @@ rustgis-cli mcp --attach --timeout 300   # wait up to 5 minutes for each call (5
 ```
 
 The port is 8767 unless the `RUSTGIS_MCP_PORT` environment variable names another, for the app
-and for `--attach` alike (a second copy of RustGIS, or a port another program holds). When the
+and for `--attach` alike (a second copy of Syngle Observatory, or a port another program holds). When the
 port is taken, the relay's error says so and names that variable; a value that isn't a port number
 is an error too, not a quiet fall back to 8767. While the relay runs, the app
 publishes `endpoint.json` in the relay's private folder: `schema`, `host`, `port`, `url`, `pid`,
 `started_at`, the app `version`, the `token_file` path (not the token), the `attach` command, and
 once MCP over HTTP runs, its `http_url` and `http_token_file`.
 Setup scripts can read it instead of hard-coding the port. It's removed when the relay stops. With
-two copies of RustGIS on different ports it describes the one started last, and a crash can leave
+two copies of Syngle Observatory on different ports it describes the one started last, and a crash can leave
 it behind: check that its `pid` is still running before trusting it.
 
 ```json
@@ -120,7 +120,7 @@ it behind: check that its `pid` is still running before trusting it.
 Attached calls run on the open app's session through the same tools and refusal policy as the
 private server. One more tool works only here: `snapshot` with `mode: "screen"` captures the map as
 the window shows it. The relay holds the request until the app has taken the picture, and runs
-nothing else meanwhile. File and network commands need `--yes`, unless **Let your Agents Control RustGIS**
+nothing else meanwhile. File and network commands need `--yes`, unless **Let your Agents Control Syngle Observatory**
 is ticked. The session is the project you have open, so an attached agent can't replace it:
 `project.new`, `project.open`, `project.openText`, `project.sample` and `project.fromTemplate`
 are refused, with or without `--yes`. Each agent command is a step in your own undo history,
@@ -136,8 +136,8 @@ meanwhile; until then they act on the one you have selected.
 
 Every tool call an attached agent makes is written to an audit log, one JSON line per call in a
 file per day (`2026-10-18.jsonl`) in the `mcp-audit` folder of the app-data folder
-(`~/.local/share/rustgis/mcp-audit` on Linux, `~/Library/Application Support/RustGIS/mcp-audit` on
-macOS, `%LOCALAPPDATA%\RustGIS\mcp-audit` on Windows). Each line holds `ts`, `source` (`mcp` for the relay and MCP over HTTP, `file` for the file
+(`~/.local/share/rustgis/mcp-audit` on Linux, `~/Library/Application Support/Syngle Observatory/mcp-audit` on
+macOS, `%LOCALAPPDATA%\Syngle Observatory\mcp-audit` on Windows). Each line holds `ts`, `source` (`mcp` for the relay and MCP over HTTP, `file` for the file
 bridge),
 `tool`, `command` or `script` when there is one, `args`, `success`, `duration_s` and `error`.
 Passwords, keys and tokens in the arguments, a `run` script's lines included, are replaced before
@@ -148,7 +148,7 @@ password, a bearer…) is logged as withheld rather than risk keeping the creden
 
 ### MCP over HTTP
 
-While **Let your Agents Control RustGIS** is on, the app also serves MCP over HTTP ("Streamable
+While **Let your Agents Control Syngle Observatory** is on, the app also serves MCP over HTTP ("Streamable
 HTTP", stateless, JSON replies) on `http://127.0.0.1:8768/mcp`, beside the relay. The
 `RUSTGIS_MCP_HTTP_PORT` environment variable names another port. Clients that speak HTTP connect
 without `rustgis-cli`. Every request needs `Authorization: Bearer <token>`. The token is made once
@@ -178,14 +178,14 @@ removes its file.
 ### The file bridge
 
 For an agent that can't use MCP, or when the relay's port is taken, the app also runs scripts
-written to a file. It's on while **Let your Agents Control RustGIS** is ticked, even if the relay
+written to a file. It's on while **Let your Agents Control Syngle Observatory** is ticked, even if the relay
 couldn't start: agents then stay on, and the status bar says only the file bridge is running.
 
 1. Write a script to `bridge-command.txt` in the relay's private folder
    (`$XDG_RUNTIME_DIR/rustgis` on Linux, a `rustgis-mcp-<user>` folder in the temporary folder
    elsewhere). The settings section shows the full path. The script is in the `script.run` format:
    one `command-id {json}` per line, `#` for comments.
-2. Once the file has stopped changing for half a second, RustGIS runs it on the open project. (To be
+2. Once the file has stopped changing for half a second, Syngle Observatory runs it on the open project. (To be
    sure a half-written script never runs, write it to another file in the folder and rename it to
    `bridge-command.txt`.) It runs as one undo step, with
    the same rules as the `run` tool: a refused or failing line stops it, and nothing it did to the
@@ -193,7 +193,7 @@ couldn't start: agents then stay on, and the status bar says only the file bridg
 3. The outcome is written to `bridge-result.json` in the same folder: `{success, result, lines,
    layersAdded, notices, error, duration_s, timestamp}`. The status bar says whether it worked.
 
-Only one RustGIS at a time runs the bridge: a second copy's is refused while the first's runs
+Only one Syngle Observatory at a time runs the bridge: a second copy's is refused while the first's runs
 (it holds `bridge.lock`). The bridge runs a script each time the file changes. Whatever the file held when the bridge started
 isn't run. While the bridge is on, `bridge-ready.json` there holds its `pid`, the two files' paths,
 `started_at`, the app `version` and a `schema` number. The folder is readable by this user only,
@@ -205,7 +205,7 @@ only the bridge's own steps. It also keeps its own active layer, as an agent doe
 ### Relay requirements
 
 - **Off until asked.** Only `ui.mcpRelay` starts a listener: run directly, or by ticking **Let your
-  Agents Control RustGIS** (also at launch, when it was left ticked). `ui.mcpRelay` with no parameters
+  Agents Control Syngle Observatory** (also at launch, when it was left ticked). `ui.mcpRelay` with no parameters
   or with the same port reports the address it already listens on. A different explicit `port`
   is refused until the relay is stopped. `ui.mcpRelay {"stop": true}` stops it and is
   idempotent. The default port is 8767.
@@ -220,8 +220,8 @@ only the bridge's own steps. It also keeps its own active layer, as an agent doe
   The token never appears on a command line. The file is removed when the relay stops.
 - **App-granted access.** `Relay::set_allow_access(true)` lets connections attached with the relay's
   own token use files and the network whether or not they asked; the desktop app sets it while
-  **Let your Agents Control RustGIS** is ticked. This includes any process running as the same
-  user that can read that token, not just agents launched by RustGIS. It is checked for every call.
+  **Let your Agents Control Syngle Observatory** is ticked. This includes any process running as the same
+  user that can read that token, not just agents launched by Syngle Observatory. It is checked for every call.
   Turning the setting off stops the relay and disconnects its clients, including a relay started
   manually. A failed launch clears the saved setting and reports the error in the app.
 - **Grants.** `Relay::grant(access)` writes a run-scoped token to `{port}-{run}-{n}.token` in the
@@ -249,7 +249,7 @@ only the bridge's own steps. It also keeps its own active layer, as an agent doe
 - **Busy app.** When the app has drawn no frame for 10 seconds since a request was queued (a file
   dialog is open, a long tool is running, or the window is minimized or hidden and the system has
   stopped drawing it), the request is cancelled at once and the client gets
-  error `-32004` saying RustGIS is busy (apart from the full queue's `-32001`). It never runs, and the connection stays open. An app that
+  error `-32004` saying Syngle Observatory is busy (apart from the full queue's `-32001`). It never runs, and the connection stays open. An app that
   was only idle before the request isn't busy: the request wakes it. This comes before a long
   `timeout_s`: a stalled app answers after 10 seconds whatever the client's wait, and a client
   waiting less than 10 seconds gets `-32002` instead. A `timeout_s` outside 5 to 600 is clamped to
@@ -311,8 +311,8 @@ These behavioral tests in `crates/assistant/src/relay.rs` check the requirements
 | --- | --- |
 | `list_layers` | The whole project in one call: path and unsaved changes, the view (centre, longitude/latitude extent, scale, projection), the active layer, layers in table-of-contents order (group, type, source, extent, feature count, selection, definition query, renderer, labels, fields, visibility), web tile layers, basemap, tables and layouts with their map frames. `name_filter` keeps the layers and tables whose name holds it; `include_fields: false` leaves fields out |
 | `view_map` | The map as a PNG image, at the current view |
-| `snapshot` | The map as a PNG with JSON metadata: `mode`, `width`, `height`, `extent` (longitude/latitude), `center`, `scale`, `projection` and `render_settled`. `mode: "screen"` is exactly what you see in the RustGIS window (through the relay only), taken once the map has finished drawing or after `wait_s` seconds (default 5, at most 30); `overlays: false` leaves out the map's controls, scale bar, north arrow and sketches. `mode: "render"` draws the same layers, view and styling offscreen at `max_width` (the height follows the view's shape), which works while the window is hidden. `mode: "auto"` (the default) takes the screen when the map is on it. `save_path` also writes the PNG to a file, which needs `--yes` |
-| `search_commands` | Finds RustGIS commands by words: their ids, ribbon locations and parameters |
+| `snapshot` | The map as a PNG with JSON metadata: `mode`, `width`, `height`, `extent` (longitude/latitude), `center`, `scale`, `projection` and `render_settled`. `mode: "screen"` is exactly what you see in the Syngle Observatory window (through the relay only), taken once the map has finished drawing or after `wait_s` seconds (default 5, at most 30); `overlays: false` leaves out the map's controls, scale bar, north arrow and sketches. `mode: "render"` draws the same layers, view and styling offscreen at `max_width` (the height follows the view's shape), which works while the window is hidden. `mode: "auto"` (the default) takes the screen when the map is on it. `save_path` also writes the PNG to a file, which needs `--yes` |
+| `search_commands` | Finds Syngle Observatory commands by words: their ids, ribbon locations and parameters |
 | `run_command` | Runs a command by id with JSON parameters; each run is one undo step. The result names the layers it added (`layersAdded`) and what the command said beside it (`notices`), including any parameters it ignored (`layer.moveDown ignores 'steps' (it reads layer)`) |
 | `run` | Runs several commands in one call, as one undo step: a script in the `script.run` format (one `command-id {json}` per line, `#` comments). A failing line stops it, nothing it did to the project is kept, and the error names the line; files an earlier line wrote (an export) stay written. Answers `{success, result, lines, layersAdded, notices, error, duration_s}`, where `result` is the last command's. Each line follows `run_command`'s rules, checked before any line runs |
 | `search_tools` | Finds geoprocessing tools by words |
@@ -349,7 +349,7 @@ protocol.
 ### Local-agent approvals
 
 Local agents launched by the assistant use `Relay::grant_reviewed(auto)`, not an unrestricted
-run grant. With automatic approval off, gated tool calls wait in a RustGIS-side queue scoped to
+run grant. With automatic approval off, gated tool calls wait in a Syngle Observatory-side queue scoped to
 that grant and exact message, including all tool calls in a batch. `--yes` and the general relay
 checkbox do not bypass it. An approval cannot revive an expired request; revoking the grant or
 stopping the relay cancels pending work. Explicit automatic approval bypasses this extra queue

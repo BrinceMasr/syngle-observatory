@@ -1,10 +1,10 @@
 # Supported Data Formats
 
-This page lists the data formats RustGIS reads and writes, how to add each one, and the main
+This page lists the data formats Syngle Observatory reads and writes, how to add each one, and the main
 limits. [Data](data.md) covers adding data, large files and rasters in more detail; [Maps and
 Basemaps](maps.md#basemaps) covers web tile layers.
 
-Most formats open in the desktop app and in the [web app](https://web.rustgis.app) alike. Those
+Most formats open in the desktop app and in the [web app](https://github.com/BrinceMasr/syngle-observatory) alike. Those
 that need C libraries (GDAL, DuckDB) or files on disk are desktop-only, as the tables say. The
 web app reads GeoPackages without SQLite, with a small SQLite file reader written in Rust.
 
@@ -105,7 +105,7 @@ its capabilities. For OGC API feature collections, enter a group name (initially
 and choose **Import All**. The group expands into ordinary point, line and polygon layers with
 the same legends, styling and attribute tables as file imports. Other offerings have individual
 **Add** buttons (`service.layers` and `service.add` from scripts, the command line and MCP).
-An OGC API landing page works directly: RustGIS follows its advertised
+An OGC API landing page works directly: Syngle Observatory follows its advertised
 JSON collections link, so you don't need to append `/collections`. If the landing page also
 offers map tiles, they remain listed alongside the collections. A failed collections request
 leaves any available map layers usable and shows the error.
@@ -114,12 +114,12 @@ When a service can't be reached or refuses the request, the dialog says what hap
 words and what to try next: a sign-in or token it needs (401), access refused (403), nothing at
 that address (404), too many requests (429), a problem on the server (5xx), or a server that
 couldn't be reached or took too long. When a firewall in front of the server (Cloudflare,
-Akamai, Imperva, Sucuri or AWS WAF) blocked or challenged RustGIS itself, told by its own block
+Akamai, Imperva, Sucuri or AWS WAF) blocked or challenged Syngle Observatory itself, told by its own block
 page or a header it sends only then, it says so: only the service's administrator can let
-RustGIS through. A firewall that only passed on the service's own refusal (a private service
+Syngle Observatory through. A firewall that only passed on the service's own refusal (a private service
 wanting a token) isn't blamed for it. **Details**, folded below, lists
 what the server said for an expert or the administrator: the address (without keys or tokens),
-the status, the server, the firewall and the request's id, the `User-Agent` RustGIS sent, and
+the status, the server, the firewall and the request's id, the `User-Agent` Syngle Observatory sent, and
 the title or first words of the server's answer (as text). **Copy details** copies them to send.
 In the web app the browser hides most of a refused answer, so it tells the status only.
 
@@ -171,9 +171,9 @@ aren't paged. On the desktop, feature downloads follow their `next` pages (see t
 The same dialog's **Catalogue search (CSW)** type searches a CSW 2.0.2 catalogue (GeoNetwork,
 pycsw, geocat.ch…) by words anywhere in its records and, if you like, the map's area
 (`catalog.search`). Its records are listed 20 at a time (**More** asks for the next), with their
-titles, abstracts (on hover) and bounds (**Zoom**), and a button per link RustGIS can follow: a WMS,
+titles, abstracts (on hover) and bounds (**Zoom**), and a button per link Syngle Observatory can follow: a WMS,
 WMTS, WFS, WCS, OGC API or ArcGIS service connects in the dialog, a download is added as From URL…
-does. Links pointing where a document on the web may not send RustGIS (the local network) are left
+does. Links pointing where a document on the web may not send Syngle Observatory (the local network) are left
 out.
 
 ## PostgreSQL and PostGIS
@@ -192,7 +192,7 @@ database live, talking to the server itself: see [MySQL and MariaDB](data.md#mys
 
 | Source | How to add it | Notes |
 | --- | --- | --- |
-| MySQL or MariaDB table or view | Add Data › Database… (`layer.addDatabase`) with a `mysql://user@host:3306/database` or `mariadb://…` address | Large tables read a view at a time by their spatial index, others loaded whole. Converted to longitude/latitude by RustGIS from the column's SRID; `"crs"` for an SRID of 0. A column of mixed types becomes a layer per type. `ssl-mode` sets the encryption. The password is kept for the session only. |
+| MySQL or MariaDB table or view | Add Data › Database… (`layer.addDatabase`) with a `mysql://user@host:3306/database` or `mariadb://…` address | Large tables read a view at a time by their spatial index, others loaded whole. Converted to longitude/latitude by Syngle Observatory from the column's SRID; `"crs"` for an SRID of 0. A column of mixed types becomes a layer per type. `ssl-mode` sets the encryption. The password is kept for the session only. |
 
 ## SQL queries and DuckDB databases
 
@@ -246,11 +246,11 @@ databases](data.md#sql-queries-and-duckdb-databases).
 GeoPackage, Shapefile and FlatGeobuf exports are written in the coordinate system the layer was
 read in: a Shapefile's `.prj`, a GeoPackage's or FlatGeobuf's own system, or the `crs` a CSV was
 added with (EPSG:25832 data goes back out as EPSG:25832). A layer read in longitude/latitude, or
-made in RustGIS, is written in WGS 84 (EPSG:4326). `share.exportLayer` takes `"crs"` to choose
+made in Syngle Observatory, is written in WGS 84 (EPSG:4326). `share.exportLayer` takes `"crs"` to choose
 another, such as `{"layer": "Parcels", "path": "parcels.gpkg", "crs": "EPSG:4647"}`. GeoJSON, KML,
 GPX, GeoParquet and CSV are always written in WGS 84.
 
-## RustGIS files
+## Syngle Observatory files
 
 | File | Extension | Notes |
 | --- | --- | --- |

@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=RustGIS
+Name=Syngle Observatory
 GenericName=Geographic Information System
 Comment=Make maps and analyse spatial data
 Exec=rustgis %F
@@ -8,5 +8,5 @@ Icon=rustgis
 Terminal=false
 Categories=Science;Geography;Education;
 MimeType=application/x-rustgis-project;application/geo+json;
-StartupWMClass=org.rustgis.RustGIS
+StartupWMClass=com.syngle.observatory
 Keywords=GIS;map;geospatial;GeoJSON;shapefile;

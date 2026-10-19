@@ -228,7 +228,7 @@ pub fn start() {
             match result {
                 Ok(()) => el.remove(),
                 Err(e) => {
-                    el.set_inner_html(&format!("<p>RustGIS failed to start: {e:?}</p><p>A browser with WebGPU or WebGL2 is required.</p>"))
+                    el.set_inner_html(&format!("<p>Syngle Observatory failed to start: {e:?}</p><p>A browser with WebGPU or WebGL2 is required.</p>"))
                 }
             }
         }
@@ -462,6 +462,12 @@ impl eframe::App for WebShell {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // The canvas-only build (ADR 0010) ships the map alone; SyngleCode's React UI is the
+        // chrome. Everything else in this shell (the embed contract, the file drops, the spike
+        // samples) is shared.
+        #[cfg(feature = "canvas-only")]
+        self.app.ui_canvas(ui);
+        #[cfg(not(feature = "canvas-only"))]
         self.app.ui(ui);
     }
 }
@@ -724,10 +730,10 @@ fn services(inbox: Inbox, font_inbox: Inbox, notes: Notes, ctx: egui::Context, e
                 let exts: Vec<&str> = exts.split(',').filter(|e| !e.is_empty()).collect();
                 if exts.is_empty() { rfd::AsyncFileDialog::new() } else { rfd::AsyncFileDialog::new().add_filter(exts.join(", "), &exts) }
             } else if purpose == "project" {
-                rfd::AsyncFileDialog::new().add_filter("RustGIS project", &["rgis", "rgisx", "rgispkg"])
+                rfd::AsyncFileDialog::new().add_filter("Syngle Observatory project", &["rgis", "rgisx", "rgispkg"])
             } else if purpose == "item" {
                 rfd::AsyncFileDialog::new().add_filter(
-                    "RustGIS items",
+                    "Syngle Observatory items",
                     &[
                         "rgismap",
                         "rgismpk",
@@ -745,9 +751,9 @@ fn services(inbox: Inbox, font_inbox: Inbox, notes: Notes, ctx: egui::Context, e
             } else if purpose == "ramp" {
                 rfd::AsyncFileDialog::new().add_filter("Colour ramps", &["rgisramp", "xml", "qml", "txt", "clr", "cpt"])
             } else if purpose == "layout" {
-                rfd::AsyncFileDialog::new().add_filter("RustGIS layout", &["rgislayout"])
+                rfd::AsyncFileDialog::new().add_filter("Syngle Observatory layout", &["rgislayout"])
             } else if purpose == "plugin" {
-                rfd::AsyncFileDialog::new().add_filter("RustGIS plugin", &["rgplugin"])
+                rfd::AsyncFileDialog::new().add_filter("Syngle Observatory plugin", &["rgplugin"])
             } else if purpose == "text" {
                 rfd::AsyncFileDialog::new()
                     .add_filter("Delimited text and spreadsheets", &["csv", "tsv", "txt", "xlsx", "xlsm", "xlsb", "xls", "ods"])

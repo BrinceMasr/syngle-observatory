@@ -403,7 +403,7 @@ impl Item {
                 .or_else(|| self.assets.iter().filter(ok).find(|a| a.is_geotiff()))
                 .or_else(|| self.assets.iter().filter(ok).find(|a| a.roles.iter().any(|r| r == "data")))
         };
-        choose(true).or_else(|| choose(false)).ok_or_else(|| format!("{}: no asset RustGIS can add", self.id))
+        choose(true).or_else(|| choose(false)).ok_or_else(|| format!("{}: no asset Syngle Observatory can add", self.id))
     }
 
     /// The address of the asset to add (see [`Item::pick`]), checked: a plain web address the item
@@ -414,7 +414,7 @@ impl Item {
         if !(lower.starts_with("https://") || lower.starts_with("http://") || crate::s3::is_s3(&lower)) {
             let scheme = lower.split("://").next().unwrap_or("");
             return Err(format!(
-                "{}: asset '{}' is at {} (a {scheme}:// address); RustGIS adds assets by their web or s3:// address",
+                "{}: asset '{}' is at {} (a {scheme}:// address); Syngle Observatory adds assets by their web or s3:// address",
                 self.id, a.key, a.href
             ));
         }

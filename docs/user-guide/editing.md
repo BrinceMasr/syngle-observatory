@@ -55,7 +55,7 @@ attribute edits, Calculate Field):
 Copy (++ctrl+c++) and Cut (++ctrl+x++) take the selected features. Paste (++ctrl+v++) adds them to
 the layer selected in Layers, matching fields by name; Paste Special adds them as a new layer.
 Copied features also go on the system clipboard as GeoJSON, so they can be pasted into another
-RustGIS window or a text editor, and GeoJSON copied elsewhere pastes into RustGIS. Copy Path copies
+Syngle Observatory window or a text editor, and GeoJSON copied elsewhere pastes into Syngle Observatory. Copy Path copies
 the selected layer's data source path.
 
 Pop-ups (Home › Navigate) choose which layers a click with Explore identifies: the topmost layer

@@ -1,5 +1,5 @@
 //! The plugin registry: a curated list of plugins (`registry.json`) and a list of pulled ones
-//! (`blocklist.json`), published at <https://plugins.rustgis.app>.
+//! (`blocklist.json`), published at <https://plugins.example.org>.
 
 use std::collections::BTreeMap;
 
@@ -8,8 +8,10 @@ use serde_json::Value;
 
 use crate::manifest::{Permission, valid_id, version_parts};
 
-/// The hosted registry.
-pub const DEFAULT_URL: &str = "https://plugins.rustgis.app/registry.json";
+/// The hosted registry. Syngle Observatory has no registry of its own yet and does not read the
+/// upstream project's: a command must name a registry explicitly (`url`), and the Plugin Manager
+/// starts with an empty address.
+pub const DEFAULT_URL: &str = "";
 
 /// The most entries read from a registry (or a blocklist): room for tens of thousands of plugins.
 const MAX_ENTRIES: usize = 100_000;
@@ -200,7 +202,7 @@ pub fn fetch(url: &str, limit: usize) -> Result<Vec<u8>, String> {
         .build()
         .into();
     let mut resp =
-        agent.get(url).header("User-Agent", concat!("RustGIS/", env!("CARGO_PKG_VERSION"))).call().map_err(|e| format!("{url}: {e}"))?;
+        agent.get(url).header("User-Agent", concat!("Syngle Observatory/", env!("CARGO_PKG_VERSION"))).call().map_err(|e| format!("{url}: {e}"))?;
     let mut buf = Vec::new();
     resp.body_mut().with_config().limit(limit as u64 + 1).reader().read_to_end(&mut buf).map_err(|e| format!("{url}: {e}"))?;
     if buf.len() > limit {

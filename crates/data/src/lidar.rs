@@ -129,7 +129,7 @@ fn read_vlrs<R: Read + Seek>(r: &mut R, at: u64, n: u32, extended: bool, end: Op
         if end.is_some_and(|e| data_at.saturating_add(len) > e) {
             break;
         }
-        // Only the records RustGIS reads are kept, and only when small.
+        // Only the records Syngle Observatory reads are kept, and only when small.
         // A WKT record is 2112 whoever wrote it (libLAS wrote its own user id).
         let wanted = record == 2112 || (user == "LASF_Projection" && record == 34735) || (user == "laszip encoded" && record == 22204);
         if wanted && len <= MAX_VLR_BYTES {
@@ -165,7 +165,7 @@ fn crs_of(vlrs: &[Vlr]) -> Option<std::result::Result<Crs, String>> {
         }
     }
     let code = code?;
-    Some(Crs::from_epsg(u32::from(code)).ok_or_else(|| format!("EPSG:{code} isn't a coordinate system RustGIS converts")))
+    Some(Crs::from_epsg(u32::from(code)).ok_or_else(|| format!("EPSG:{code} isn't a coordinate system Syngle Observatory converts")))
 }
 
 /// The horizontal part of a compound WKT (a projected or geographic system with a vertical one,
@@ -318,7 +318,7 @@ pub fn read<R: Read + Seek + Send + Sync>(mut r: R, name: &str, crs: Option<Crs>
             // A damaged or cut-off file: the points before the fault, or nothing to show.
             if read == 0 {
                 return Err(bad(
-                    "its compressed points couldn't be read (a damaged file, or one written with a LAZ variant RustGIS doesn't read)",
+                    "its compressed points couldn't be read (a damaged file, or one written with a LAZ variant Syngle Observatory doesn't read)",
                 ));
             }
             report.messages.push(format!("{name}: decompression stopped after {read} of {readable} points (a damaged or cut-off file)"));

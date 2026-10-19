@@ -1,11 +1,11 @@
 # User Guide
 
-This guide walks through RustGIS by task. Each page covers one part of the app:
+This guide walks through Syngle Observatory by task. Each page covers one part of the app:
 
 | Page | What it covers |
 | --- | --- |
 | [Data](data.md) | Vector and raster formats, adding data, large files, raster display, project items |
-| [Supported Data Formats](data-formats.md) | Every format RustGIS reads and writes, how to add it, and its limits |
+| [Supported Data Formats](data-formats.md) | Every format Syngle Observatory reads and writes, how to add it, and its limits |
 | [Maps and Basemaps](maps.md) | Basemaps and web tile layers, projections, the 3D globe, view effects and navigation |
 | [Cartography](cartography.md) | Symbology, labeling, layer effects and graphics |
 | [Editing](editing.md) | Creating and modifying features, data design, the clipboard and pop-ups |
@@ -15,7 +15,7 @@ This guide walks through RustGIS by task. Each page covers one part of the app:
 | [Workspace](workspace.md) | Linked views, the Browser view, animation, profiles, offline areas, customizing the ribbon |
 | [AI Assistant](assistant.md) | A chat pane that answers questions and acts on the map through commands |
 
-[![RustGIS with the Home tab of the ribbon open over a world map in the Equal Earth projection, countries shaded by population](https://assets.rustgis.app/images/hero.webp)](https://assets.rustgis.app/images/hero.webp){ target="_blank" rel="noopener" title="Open the full-size image" }
+[](https://){ target="_blank" rel="noopener" title="Open the full-size image" }
 
 ## The window
 
@@ -102,7 +102,7 @@ self-contained; rasters are referenced by path on the desktop and stored inside 
 the web app. **Project › New** starts a blank map or the World Atlas sample; **Save** and **Save
 As** write the project, named after its file; a project opened from a file is named after that
 file too. See [Project items](data.md#project-items) for the other files
-RustGIS reads and writes.
+Syngle Observatory reads and writes.
 
 Every change is a command, and every command can be undone (++ctrl+z++) and redone
 (++ctrl+y++).

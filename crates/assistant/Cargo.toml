@@ -3,7 +3,7 @@ name = "rustgis-assistant"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L5: the AI assistant — a chat agent that drives the session through commands, over OpenAI-compatible, OpenAI Responses (a ChatGPT plan), Anthropic and Gemini APIs"
+description = "Syngle Observatory L5: the AI assistant — a chat agent that drives the session through commands, over OpenAI-compatible, OpenAI Responses (a ChatGPT plan), Anthropic and Gemini APIs"
 
 [lints]
 workspace = true

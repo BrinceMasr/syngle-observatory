@@ -1,4 +1,4 @@
-//! ESRI codes: Esri's projected coordinate systems, for `map.projection` (opengeos/RustGIS#213).
+//! ESRI codes: Esri's projected coordinate systems, for `map.projection` (upstream #213).
 //!
 //! `.prj` files and ArcGIS users name coordinate systems by their ESRI code: South America Albers
 //! Equal Area Conic is ESRI:102033, World Robinson ESRI:54030, and the state planes in feet
@@ -9,14 +9,14 @@
 //! authority, deprecated ones included (ArcGIS still writes many of them; the comment says so), as
 //! `CRS.from_user_input("ESRI:<code>").to_proj4()` without `+type=crs`. Each definition was then
 //! checked by projecting two points of its area of use (its centre, and a quarter of the way in
-//! from the south-west corner; 20°E 30°N and 40°W 40°N for world systems) with RustGIS's
+//! from the south-west corner; 20°E 30°N and 40°W 40°N for world systems) with Syngle Observatory's
 //! `Projector` and with pyproj, and kept only when they agree within 1 m. Left out:
 //!
 //! - systems whose method proj4rs lacks (`col_urban`, `omerc`, `cass`, `eqdc`, `poly`, `ortho`,
 //!   `sinu`, `bonne`, `wink2` and more), and the NAD27 ones whose grids proj4rs can't load: 170;
-//! - six world systems RustGIS computes on a sphere where PROJ uses the ellipsoid or other
+//! - six world systems Syngle Observatory computes on a sphere where PROJ uses the ellipsoid or other
 //!   parameters, kilometres apart: World Miller (54003), the WGS 84 Equal Earths (54035–54037)
-//!   and the Winkel Tripel NGS pair (53042, 54042), whose `lat_1` RustGIS doesn't read. The
+//!   and the Winkel Tripel NGS pair (53042, 54042), whose `lat_1` Syngle Observatory doesn't read. The
 //!   presets, and EPSG:8857, stay the way to draw these;
 //! - 44 systems whose datum PROJ shifts to WGS 84 by something other than one Helmert step
 //!   (Molodensky–Badekas for Korean 1985, a chain of operations for NGO 1948 …), and the 11

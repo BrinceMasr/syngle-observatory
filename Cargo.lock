@@ -5000,7 +5000,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "syngle-spike-engine"
+name = "syngle-observatory-engine"
 version = "0.3.0"
 dependencies = [
  "log",

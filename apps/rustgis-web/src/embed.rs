@@ -1,5 +1,5 @@
 //! The web app inside another page: the `rustgis` Python package's Jupyter widget, or any page
-//! that frames `web.rustgis.app/?embed`.
+//! that frames `brincemasr.github.io/syngle-observatory/?embed`.
 //!
 //! With `?embed` the app starts blank, keeps its settings in memory rather than in the browser's
 //! storage (the embedding page must not read what the user saved on the site, such as an AI

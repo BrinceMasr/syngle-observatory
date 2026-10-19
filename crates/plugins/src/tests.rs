@@ -132,7 +132,7 @@ fn bad_packages_are_refused() {
         (json!({"id": "x", "name": "X", "version": "one"}), "version"),
         (json!({"id": "x", "name": "X", "version": "1.0.0", "entry": "../evil.wasm"}), "entry"),
         (json!({"id": "x", "name": "X", "version": "1.0.0", "abi": 99}), "ABI"),
-        (json!({"id": "x", "name": "X", "version": "1.0.0", "minRustgisVersion": "999.0.0"}), "needs RustGIS"),
+        (json!({"id": "x", "name": "X", "version": "1.0.0", "minRustgisVersion": "999.0.0"}), "needs Syngle Observatory"),
         (json!({"id": "x", "name": "X", "version": "1.0.0", "permissions": ["root"]}), "plugin.json"),
         (
             json!({"id": "x", "name": "X", "version": "1.0.0", "tools": [{"id": "t", "name": "T", "params": [{"name": "a", "label": "A", "kind": "laser"}]}]}),
@@ -211,9 +211,9 @@ fn registries_and_blocklists_are_read_defensively() {
         7
     ]})
     .to_string();
-    let v = registry::parse(&text, "https://plugins.rustgis.app/registry.json").unwrap();
+    let v = registry::parse(&text, "https://plugins.example.org/registry.json").unwrap();
     assert_eq!(v.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(), ["a-plugin", "b-plugin"]);
-    assert_eq!(v[1].package, "https://plugins.rustgis.app/packages/b/b-1.2.0.rgplugin");
+    assert_eq!(v[1].package, "https://plugins.example.org/packages/b/b-1.2.0.rgplugin");
     assert!(v[0].homepage.is_empty(), "only http(s) homepages");
     // Only the name and description keep translations.
     assert_eq!(v[1].translate("de", "B"), "Be");
@@ -226,14 +226,14 @@ fn registries_and_blocklists_are_read_defensively() {
     }
     i18n.insert("de".into(), json!({"C": "Ce"}));
     let one = json!([{"id": "c-plugin", "name": "C", "version": "1.0.0", "package": "c.rgplugin", "sha256": sha, "i18n": i18n}]);
-    let v = registry::parse(&one.to_string(), "https://plugins.rustgis.app/registry.json").unwrap();
+    let v = registry::parse(&one.to_string(), "https://plugins.example.org/registry.json").unwrap();
     assert_eq!(v[0].translate("de", "C"), "Ce");
     assert_eq!(v[0].i18n.len(), 1);
     assert!(registry::parse("[]", "x").unwrap().is_empty());
     assert!(registry::parse("{", "x").is_err());
     assert_eq!(registry::resolve("http://localhost:8000/r/registry.json", "/p.rgplugin"), "http://localhost:8000/p.rgplugin");
     for (url, ok) in [
-        ("https://plugins.rustgis.app/x", true),
+        ("https://plugins.example.org/x", true),
         ("http://localhost:8000/registry.json", true),
         ("http://127.0.0.1/registry.json", true),
         ("http://localhost", true),
@@ -247,7 +247,7 @@ fn registries_and_blocklists_are_read_defensively() {
     ] {
         assert_eq!(registry::allowed_url(url), ok, "{url}");
     }
-    assert_eq!(registry::blocklist_url("https://plugins.rustgis.app/registry.json"), "https://plugins.rustgis.app/blocklist.json");
+    assert_eq!(registry::blocklist_url("https://plugins.example.org/registry.json"), "https://plugins.example.org/blocklist.json");
     let list =
         registry::parse_blocklist(&json!({"blocked": [{"id": "x", "reason": "bad"}, {"id": "y", "sha256": sha}]}).to_string()).unwrap();
     assert!(registry::blocked(&list, "x", "anything").is_some());
@@ -312,10 +312,10 @@ fn plugin_tabs_are_checked() {
     assert!(matches!(ok.entry("tool:m"), Some(crate::Entry::Tool(t)) if t.id == "m"));
     assert!(matches!(ok.entry("h"), Some(crate::Entry::Command(c)) if c.id == "h"));
     for (bad, why) in [
-        (json!({"label": "Map", "groups": [{"label": "G", "items": ["h"]}]}), "RustGIS's tabs"),
-        (json!({"label": "help", "groups": [{"label": "G", "items": ["h"]}]}), "RustGIS's tabs"),
-        (json!({"label": "Style", "groups": [{"label": "G", "items": ["h"]}]}), "RustGIS's tabs"),
-        (json!({"label": "publish", "groups": [{"label": "G", "items": ["h"]}]}), "RustGIS's tabs"),
+        (json!({"label": "Map", "groups": [{"label": "G", "items": ["h"]}]}), "Syngle Observatory's tabs"),
+        (json!({"label": "help", "groups": [{"label": "G", "items": ["h"]}]}), "Syngle Observatory's tabs"),
+        (json!({"label": "Style", "groups": [{"label": "G", "items": ["h"]}]}), "Syngle Observatory's tabs"),
+        (json!({"label": "publish", "groups": [{"label": "G", "items": ["h"]}]}), "Syngle Observatory's tabs"),
         (json!({"label": "", "groups": [{"label": "G", "items": ["h"]}]}), "label"),
         (json!({"label": "T", "groups": []}), "groups"),
         (json!({"label": "T", "groups": [{"label": "G", "items": []}]}), "items"),
@@ -545,7 +545,7 @@ fn large_registries_are_read_quickly() {
     let list: Vec<Value> = (0..20_000).chain(0..20_000).map(one).collect();
     let text = json!({"plugins": list}).to_string();
     let t0 = std::time::Instant::now();
-    let v = registry::parse(&text, "https://plugins.rustgis.app/registry.json").unwrap();
+    let v = registry::parse(&text, "https://plugins.example.org/registry.json").unwrap();
     assert_eq!(v.len(), 20_000);
     assert!(t0.elapsed() < std::time::Duration::from_secs(5), "{:?}", t0.elapsed());
 }

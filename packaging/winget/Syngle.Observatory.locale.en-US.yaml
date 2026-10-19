@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
+# Reference copy of the manifests in microsoft/winget-pkgs (manifests/s/Syngle/Observatory).
+# The Package managers workflow submits each new version with winget-releaser; see README.md.
+PackageIdentifier: Syngle.Observatory
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: Syngle
+PublisherUrl: https://github.com/BrinceMasr/syngle-observatory
+PublisherSupportUrl: https://github.com/BrinceMasr/syngle-observatory/issues
+Author: Syngle Observatory contributors
+PackageName: Syngle Observatory
+PackageUrl: https://github.com/BrinceMasr/syngle-observatory
+License: Apache-2.0
+LicenseUrl: https://github.com/BrinceMasr/syngle-observatory/blob/main/LICENSE
+Copyright: Copyright the Syngle Observatory contributors
+ShortDescription: Fast, free and open-source GIS for mapping, analyzing and sharing geospatial data
+Description: |-
+  Syngle Observatory is a geographic information system in pure Rust: maps and layers, symbology, labels,
+  editing, geoprocessing with over 1,000 GeoLibre and Whitebox tools, page layouts and export, an
+  AI Assistant and sandboxed plugins. It includes rustgis-cli for scripting every command and an
+  MCP server for AI agents.
+Moniker: rustgis
+Tags:
+- gis
+- geospatial
+- map
+- cartography
+- geojson
+- shapefile
+- geotiff
+ReleaseNotesUrl: https://github.com/BrinceMasr/syngle-observatory/releases/tag/v0.1.0
+Documentations:
+- DocumentLabel: User guide
+  DocumentUrl: https://github.com/BrinceMasr/syngle-observatory/user-guide/
+ManifestType: defaultLocale
+ManifestVersion: 1.12.0

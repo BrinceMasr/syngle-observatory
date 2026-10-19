@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	Web adresiyle, birleştirilmiş meta verili bir Zarr deposu (biçim 2 veya 3) ya da bu bilgisayardaki bir klasör. Bir değişkenin haritası, zaman gibi diğer boyutlarının seçilen adımları için okunur.
 About	Hakkında
 About plugins	Eklentiler hakkında
-About RustGIS	RustGIS Hakkında
-About RustGIS.	RustGIS hakkında.
+About Syngle Observatory	Syngle Observatory Hakkında
+About Syngle Observatory.	Syngle Observatory hakkında.
 Above	Üst
 Above Left	Sol Üst
 Above Right	Sağ Üst
@@ -169,8 +169,8 @@ Agent input pipe closed.	Ajan girdi kanalı kapandı.
 Agent input queue is full or disconnected; stop the agent and try again.	Ajan girdi kuyruğu dolu veya bağlantısı kesik; ajanı durdurup yeniden deneyin.
 Agent threads	Ajan iş parçacıkları
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Bağlanan bu bilgisayardaki ajanlar (Claude Code, Codex, Cursor ve diğerleri) RustGIS'in araçlarıyla burada açık olan harita üzerinde çalışır: dosya açıp kaydedebilir ve web'i kullanabilirler. Betikler ve eklenti yönetimi kapalı kalır.
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Bağlanan bu bilgisayardaki ajanlar (Claude Code, Codex, Cursor ve diğerleri) RustGIS'in araçlarıyla burada açık olan harita üzerinde çalışır: dosya açıp kaydedebilir ve web'i kullanabilirler. Betikler ve eklenti yönetimi kapalı kalır. Seçim, açılışlar arasında hatırlanır.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Bağlanan bu bilgisayardaki ajanlar (Claude Code, Codex, Cursor ve diğerleri) Syngle Observatory'in araçlarıyla burada açık olan harita üzerinde çalışır: dosya açıp kaydedebilir ve web'i kullanabilirler. Betikler ve eklenti yönetimi kapalı kalır.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Bağlanan bu bilgisayardaki ajanlar (Claude Code, Codex, Cursor ve diğerleri) Syngle Observatory'in araçlarıyla burada açık olan harita üzerinde çalışır: dosya açıp kaydedebilir ve web'i kullanabilirler. Betikler ve eklenti yönetimi kapalı kalır. Seçim, açılışlar arasında hatırlanır.
 Agents then run commands, change files and use the web on this computer without asking you.	Ajanlar bu durumda size sormadan bu bilgisayarda komut çalıştırır, dosyaları değiştirir ve web'i kullanır.
 Aggregation	Toplama
 AI	YZ
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	Alanlar arasında yalnızca belirli değer kombinasyonlarına izin ver.
 Allow such actions for this conversation	Bu sohbette bu tür işlemlere izin ver
 Allow this action?	Bu işleme izin verilsin mi?
-Allow this agent's RustGIS action?	Bu ajanın RustGIS işlemine izin verilsin mi?
+Allow this agent's Syngle Observatory action?	Bu ajanın Syngle Observatory işlemine izin verilsin mi?
 Along Selected Line	Seçili Çizgi Boyunca
 Alternating bar	Dönüşümlü çubuk
 Altitude	Yükseklik
 Always allow	Her zaman izin ver
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3 veya uç noktasıyla S3 uyumlu bir servis (MinIO, Cloudflare R2, Wasabi…). Anahtarlar RustGIS kapanana kadar tutulur; hatırlanan bir bağlantı adını, uç noktasını ve bölgesini saklar, gizli anahtarını asla saklamaz.
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3 veya uç noktasıyla S3 uyumlu bir servis (MinIO, Cloudflare R2, Wasabi…). Anahtarlar Syngle Observatory kapanana kadar tutulur; hatırlanan bir bağlantı adını, uç noktasını ve bölgesini saklar, gizli anahtarını asla saklamaz.
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	Bu bilgisayardaki bir ajan şunu yapmak istiyor:
 An AWS profile	Bir AWS profili
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	Kullanım alanı: {lon}° meri
 Area of use: within {r}° of {lon}°, {lat}°	Kullanım alanı: {lon}°, {lat}° noktasının {r}° yakını
 Area {area}   ·   Perimeter {perimeter}	Alan {area}   ·   Çevre {perimeter}
 Areas (name, land use, area)	Alanlar (ad, arazi kullanımı, alan)
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	Verileriniz hakkında bir soru sorun ya da haritayla ne yapılacağını anlatın. Asistan RustGIS komutlarını sizin için çalıştırır; her değişiklik geri alınabilir.
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	Verileriniz hakkında bir soru sorun ya da haritayla ne yapılacağını anlatın. Asistan Syngle Observatory komutlarını sizin için çalıştırır; her değişiklik geri alınabilir.
 Ask about the map, or tell it what to do…	Harita hakkında sorun ya da ne yapacağını söyleyin…
 Ask about your data, or tell the assistant what to do with the map.	Verileriniz hakkında sorun ya da asistana haritayla ne yapacağını söyleyin.
 Asking the catalog…	Kataloğa soruluyor…
@@ -479,7 +479,7 @@ Color Vision Simulator	Renk Görme Simülatörü
 Colorbar	Renk Çubuğu
 Colormap	Renk haritası
 Colors from the raster's own color table.	Rasterin kendi renk tablosundaki renkler.
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	Renk rampaları (RustGIS, QGIS, GDAL, GMT)
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	Renk rampaları (Syngle Observatory, QGIS, GDAL, GMT)
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	longitude/latitude, easting/northing veya geometry gibi adlandırılmış sütunlar sizin için seçilir.
 Combinations from the box above, one per line	Yukarıdaki kutudan kombinasyonlar, her satıra bir tane
 Comma	Virgül
@@ -631,7 +631,7 @@ Delete selected rows	Seçili satırları sil
 Delete Style	Stili Sil
 Delete Task	Görevi Sil
 Delete Task Step	Görev Adımını Sil
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	RustGIS'in yüklediği GeoLibre çalıştırıcısını sil. İstediğiniz zaman yeniden yükleyebilirsiniz.
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	Syngle Observatory'in yüklediği GeoLibre çalıştırıcısını sil. İstediğiniz zaman yeniden yükleyebilirsiniz.
 Delete the layout {name}?	{name} sayfa düzeni silinsin mi?
 Delete the map {name}?	{name} haritası silinsin mi?
 Delete the selected features.	Seçili detayları sil.
@@ -770,7 +770,7 @@ Element	Öğe
 Element Properties	Öğe Özellikleri
 Elevation	Yükseklik
 Elevation profiles along lines, cross sections and more.	Çizgiler boyunca yükseklik profilleri, enine kesitler ve daha fazlası.
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	RustGIS'teki uygun istekler ChatGPT planınızı kullanır. Kullanımı ChatGPT ayarlarından yönetebilirsiniz.
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Syngle Observatory'teki uygun istekler ChatGPT planınızı kullanır. Kullanımı ChatGPT ayarlarından yönetebilirsiniz.
 Ellipse	Elips
 Embeddings	Gömmeler
 Ember	Kor
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	Herhangi bir komutu adıyla bul (Ctrl+K).
 Find Datasets	Veri Kümelerini Bul
 Find Items	Öğeleri Bul
 Find Place	Yer Bul
-Find plugins in the RustGIS plugin registry.	RustGIS eklenti kayıt defterinde eklenti bulun.
+Find plugins in the Syngle Observatory plugin registry.	Syngle Observatory eklenti kayıt defterinde eklenti bulun.
 Find Similar	Benzerlerini Bul
 Find Tools	Araç Bul
 Finding routes…	Rotalar bulunuyor…
@@ -932,7 +932,7 @@ Folder…	Klasör…
 for a store that doesn't say	bunu belirtmeyen bir depo için
 Forest	Orman
 Format	Biçim
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	Bulunanlar: {names}. Bir ajan bu harita üzerinde RustGIS'in araçlarıyla ve kendi araçlarıyla (web, betikler, dosyalar), Belgeler › RustGIS › Agent work altında saklanan kendi klasöründe çalışır. Her işlemden önce size sorar.
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	Bulunanlar: {names}. Bir ajan bu harita üzerinde Syngle Observatory'in araçlarıyla ve kendi araçlarıyla (web, betikler, dosyalar), Belgeler › Syngle Observatory › Agent work altında saklanan kendi klasöründe çalışır. Her işlemden önce size sorar.
 Frame rate	Kare hızı
 Frame rate, draw time, data size and memory.	Kare hızı, çizim süresi, veri boyutu ve bellek.
 Free the prepared geometry.	Hazırlanan geometriyi serbest bırak.
@@ -1091,7 +1091,7 @@ In memory	Bellekte
 In Progress	Devam Ediyor
 in progress	devam ediyor
 In project	Projede
-In RustGIS, it can:	RustGIS'te şunları yapabilir:
+In Syngle Observatory, it can:	Syngle Observatory'te şunları yapabilir:
 In use	Kullanımda
 Indices	İndeksler
 Infographics	İnfografikler
@@ -1205,7 +1205,7 @@ Legend	Lejant
 Legend label. Clear it to show the value again.	Lejant etiketi. Değeri yeniden göstermek için temizleyin.
 Length {length} · gain {gain} m · loss {loss} m	Uzunluk {length} · çıkış {gain} m · iniş {loss} m
 Let the assistant hand tasks to agents on this computer	Asistanın görevleri bu bilgisayardaki ajanlara devretmesine izin ver
-Let your Agents Control RustGIS	Ajanlarınızın RustGIS'i yönetmesine izin verin
+Let your Agents Control Syngle Observatory	Ajanlarınızın Syngle Observatory'i yönetmesine izin verin
 Level	Düzey
 Library	Kitaplık
 Light and Shadow	Işık ve Gölge
@@ -1271,7 +1271,7 @@ Longitude (X)	Boylam (X)
 Look for {name}, outlined on the ribbon.	Şeritte çerçeveyle gösterilen {name} öğesini arayın.
 Looking up the place…	Yer aranıyor…
 Lower Priority	Önceliği Düşür
-Made in RustGIS: samples, drawings and tool outputs	RustGIS'te oluşturulanlar: örnekler, çizimler ve araç çıktıları
+Made in Syngle Observatory: samples, drawings and tool outputs	Syngle Observatory'te oluşturulanlar: örnekler, çizimler ve araç çıktıları
 Magnifier	Büyüteç
 Major Lakes	Büyük Göller
 Major Rivers	Büyük Nehirler
@@ -1436,7 +1436,7 @@ No bookmarks yet	Henüz yer imi yok
 No bookmarks yet. New Bookmark saves the current view of the map.	Henüz yer imi yok. Yeni Yer İmi haritanın geçerli görünümünü kaydeder.
 no command	komut yok
 No connections this session	Bu oturumda bağlantı yok
-No datasets with data RustGIS can add	RustGIS'in ekleyebileceği veriye sahip veri kümesi yok
+No datasets with data Syngle Observatory can add	Syngle Observatory'in ekleyebileceği veriye sahip veri kümesi yok
 No edits since the project was saved	Proje kaydedildiğinden beri düzenleme yok
 no home folder	ana klasör yok
 No layers match	Eşleşen katman yok
@@ -1472,8 +1472,8 @@ North	Kuzey
 North\nArrow	Kuzey\nOku
 North Polar Stereographic	Kuzey Kutup Stereografik
 not a picture	resim değil
-not a RustGIS layout	bir RustGIS sayfa düzeni değil
-not a RustGIS project	RustGIS projesi değil
+not a Syngle Observatory layout	bir Syngle Observatory sayfa düzeni değil
+not a Syngle Observatory project	Syngle Observatory projesi değil
 not needed	gerekmiyor
 Not sandboxed	Korumalı alan dışında
 Not saved yet	Henüz kaydedilmedi
@@ -1515,8 +1515,8 @@ Opacity	Opaklık
 Open	Aç
 Open a .rgis project	Bir .rgis projesi aç
 open a layout first	önce bir sayfa düzeni açın
-Open a RustGIS or Jupyter notebook.	Bir RustGIS veya Jupyter not defteri aç.
-Open a RustGIS project.	Bir RustGIS projesi aç.
+Open a Syngle Observatory or Jupyter notebook.	Bir Syngle Observatory veya Jupyter not defteri aç.
+Open a Syngle Observatory project.	Bir Syngle Observatory projesi aç.
 Open an offline area to edit.	Düzenlemek için bir çevrimdışı alan aç.
 Open browser again	Tarayıcıyı yeniden aç
 Open Custom Template	Özel Şablon Aç
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	Katmanın öznitelik tablosunu aç.
 Open the layer's table.	Katmanın tablosunu aç.
 Open the plugin's panel.	Eklentinin panelini aç.
 Open the Release Page	Sürüm Sayfasını Aç
-Open the RustGIS user guide.	RustGIS kullanıcı kılavuzunu aç.
+Open the Syngle Observatory user guide.	Syngle Observatory kullanıcı kılavuzunu aç.
 Open the selected layer's table.	Seçili katmanın tablosunu aç.
 Open the Symbology pane.	Semboloji panelini aç.
 Open the task's steps	Görevin adımlarını aç
@@ -1660,7 +1660,7 @@ Plugin registry	Eklenti kayıt defteri
 Plugins	Eklentiler
 Plugins are .rgplugin files. Install only plugins from people you trust.	Eklentiler .rgplugin dosyalarıdır. Yalnızca güvendiğiniz kişilerin eklentilerini yükleyin.
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	"Korumalı alan dışında" olarak işaretlenen eklentiler bunun yerine bilgisayarınızda program olarak çalışır ve sizin yapabildiğiniz her şeyi yapabilir.
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	Eklentiler bir korumalı alanda çalışır: dosyalarınıza veya ağa erişemezler ve projeyi yalnızca RustGIS'in kendi komutlarıyla, kabul ettiğiniz izinler dahilinde değiştirirler.
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	Eklentiler bir korumalı alanda çalışır: dosyalarınıza veya ağa erişemezler ve projeyi yalnızca Syngle Observatory'in kendi komutlarıyla, kabul ettiğiniz izinler dahilinde değiştirirler.
 PMTiles archive	PMTiles arşivi
 PNG frames (zip)	PNG kareleri (zip)
 PNG image	PNG görüntüsü
@@ -1882,26 +1882,26 @@ Run Tool	Aracı Çalıştır
 Run {name}	Çalıştır: {name}
 Running the query for the map…	Sorgu harita için çalıştırılıyor…
 Running…	Çalışıyor…
-RustGIS	RustGIS
-RustGIS bookmarks	RustGIS yer imleri
-RustGIS deep learning package	RustGIS derin öğrenme paketi
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	RustGIS geçen sefer düzgün kapanmadı, bu yüzden başlangıç projeniz yerine World Atlas ile açıldı. Hazır olduğunuzda projeyi Proje menüsünden açın.
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS, saf Rust ile yazılmış özgür ve açık kaynaklı bir CBS'dir. Masaüstünde ve tarayıcıda çalışır ve her işlem komut satırından da çalıştırabileceğiniz bir komuttur.
-RustGIS layer file	RustGIS katman dosyası
-RustGIS layers, maps and projects	RustGIS katmanları, haritaları ve projeleri
-RustGIS layout	RustGIS sayfa düzeni
-RustGIS maps and projects	RustGIS haritaları ve projeleri
-RustGIS or Jupyter notebook	RustGIS veya Jupyter not defteri
-RustGIS plugin	RustGIS eklentisi
-RustGIS presentation	RustGIS sunumu
-RustGIS project	RustGIS projesi
-RustGIS project template	RustGIS proje şablonu
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	RustGIS son seferde dahili bir hatayla karşılaştı. Ayrıntılar {path} dosyasında; lütfen bir hata raporuna ekleyin.
-RustGIS report or report template	RustGIS raporu veya rapor şablonu
-RustGIS styles	RustGIS stilleri
-RustGIS task	RustGIS görevi
-RustGIS {latest} is available.	RustGIS {latest} kullanılabilir.
-RustGIS {version} is the latest version.	RustGIS {version} en son sürüm.
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Syngle Observatory yer imleri
+Syngle Observatory deep learning package	Syngle Observatory derin öğrenme paketi
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	Syngle Observatory geçen sefer düzgün kapanmadı, bu yüzden başlangıç projeniz yerine World Atlas ile açıldı. Hazır olduğunuzda projeyi Proje menüsünden açın.
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory, saf Rust ile yazılmış özgür ve açık kaynaklı bir CBS'dir. Masaüstünde ve tarayıcıda çalışır ve her işlem komut satırından da çalıştırabileceğiniz bir komuttur.
+Syngle Observatory layer file	Syngle Observatory katman dosyası
+Syngle Observatory layers, maps and projects	Syngle Observatory katmanları, haritaları ve projeleri
+Syngle Observatory layout	Syngle Observatory sayfa düzeni
+Syngle Observatory maps and projects	Syngle Observatory haritaları ve projeleri
+Syngle Observatory or Jupyter notebook	Syngle Observatory veya Jupyter not defteri
+Syngle Observatory plugin	Syngle Observatory eklentisi
+Syngle Observatory presentation	Syngle Observatory sunumu
+Syngle Observatory project	Syngle Observatory projesi
+Syngle Observatory project template	Syngle Observatory proje şablonu
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Syngle Observatory son seferde dahili bir hatayla karşılaştı. Ayrıntılar {path} dosyasında; lütfen bir hata raporuna ekleyin.
+Syngle Observatory report or report template	Syngle Observatory raporu veya rapor şablonu
+Syngle Observatory styles	Syngle Observatory stilleri
+Syngle Observatory task	Syngle Observatory görevi
+Syngle Observatory {latest} is available.	Syngle Observatory {latest} kullanılabilir.
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} en son sürüm.
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	S3 Bucket'ları
 S3 Connections	S3 Bağlantıları
 S3…	S3…
 Sample data (Natural Earth)	Örnek veri (Natural Earth)
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	Örnek veri © Natural Earth (kamu malı). RustGIS, Apache-2.0 ile lisanslanmıştır.
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	Örnek veri © Natural Earth (kamu malı). Syngle Observatory, Apache-2.0 ile lisanslanmıştır.
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	Örnek veri: Natural Earth (kamu malı). Apache-2.0 ile lisanslanmıştır.
 Saturation	Doygunluk
 Save	Kaydet
@@ -1994,7 +1994,7 @@ Sections	Bölümler
 See and set the camera's position and scale.	Kameranın konumunu ve ölçeğini gör ve ayarla.
 See the map as people with colour vision deficiencies do.	Haritayı renk görme eksikliği olan kişilerin gördüğü gibi gör.
 See the tools you've run.	Çalıştırdığınız araçları görün.
-See whether a newer RustGIS has been released.	Daha yeni bir RustGIS sürümü yayımlanıp yayımlanmadığını denetle.
+See whether a newer Syngle Observatory has been released.	Daha yeni bir Syngle Observatory sürümü yayımlanıp yayımlanmadığını denetle.
 SELECT	SELECT
 Select	Seç
 Select (click)	Seç (tıklama)
@@ -2121,7 +2121,7 @@ Sign out	Oturumu kapat
 Sign-in cancelled.	Oturum açma iptal edildi.
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	Oturum açma zaman aşımına uğradı. Yeniden başlayın ve tarayıcının bu bilgisayarın geri döngü adresine erişmesine izin verin.
 signed in	oturum açık
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	Bu bilgisayarda oturum kapatıldı, ancak OpenAI bunu onaylamadı. RustGIS'in bağlantısını ChatGPT ayarlarından kesebilirsiniz.
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	Bu bilgisayarda oturum kapatıldı, ancak OpenAI bunu onaylamadı. Syngle Observatory'in bağlantısını ChatGPT ayarlarından kesebilirsiniz.
 Signing in with ChatGPT works in the desktop app.	ChatGPT ile oturum açma masaüstü uygulamasında çalışır.
 Signing the asset (Planetary Computer)…	Varlık imzalanıyor (Planetary Computer)…
 Simplify	Basitleştir
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	Anahtar yalnızca bu oturum için saklan�
 The layer's file couldn't be read: {error}	Katmanın dosyası okunamadı: {error}
 the layout export failed unexpectedly	sayfa düzeni dışa aktarımı beklenmedik şekilde başarısız oldu
 The link doesn't say its STAC API: Find Items searches {api}	Bağlantı STAC API'sini belirtmiyor: Öğeleri Bul {api} üzerinde arar
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	Göz atılacak eklenti listesi. RustGIS eklenti kayıt defteri için boş bırakın.
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	Göz atılacak eklenti listesi. Syngle Observatory eklenti kayıt defteri için boş bırakın.
 the map has no layers	haritada katman yok
 The map is drawn in this coordinate system; layers are projected on the fly.	Harita bu koordinat sisteminde çizilir; katmanlar anında projekte edilir.
 The map view as it is now	Harita görünümünün şu anki hali
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	Shapefile dosyaları tek bir zip olar
 The sign-in expired or was revoked. Sign in again.	Oturumun süresi doldu veya erişim iptal edildi. Yeniden oturum açın.
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	Oturum, uygulamanın ayarlar klasöründe yalnızca kullanıcı hesabınız için saklanır, asla bir proje dosyasında saklanmaz.
 The start-up project {path} didn't open: {error}	Başlangıç projesi {path} açılamadı: {error}
-The start-up project {path} isn't a RustGIS project file.	Başlangıç projesi {path} bir RustGIS proje dosyası değil.
+The start-up project {path} isn't a Syngle Observatory project file.	Başlangıç projesi {path} bir Syngle Observatory proje dosyası değil.
 The step's layer {name} isn't in the map.	Adımın katmanı {name} haritada değil.
 The store has no variables with two or more dimensions.	Depoda iki veya daha fazla boyutlu değişken yok.
 the store is gone	depo artık yok
@@ -2365,7 +2365,7 @@ This map has no layers yet.	Bu haritada henüz katman yok.
 This map's thumbnail, from an image.	Bir görüntüden bu haritanın küçük resmi.
 This map's thumbnail, from the view.	Görünümden bu haritanın küçük resmi.
 This plugin can:	Bu eklenti şunları yapabilir:
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Bu eklenti, RustGIS'in korumalı alanının dışında, bilgisayarınızda bir program olarak çalışır. Sizin yapabildiğiniz her şeyi yapabilir: dosyalarınızı okuyup değiştirebilir, ağı kullanabilir ve başka programlar çalıştırabilir. Yalnızca yazarına güveniyorsanız yükleyin.
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Bu eklenti, Syngle Observatory'in korumalı alanının dışında, bilgisayarınızda bir program olarak çalışır. Sizin yapabildiğiniz her şeyi yapabilir: dosyalarınızı okuyup değiştirebilir, ağı kullanabilir ve başka programlar çalıştırabilir. Yalnızca yazarına güveniyorsanız yükleyin.
 This request has no one-time allow option.	Bu istek için tek seferlik izin seçeneği yok.
 This request uses an unsupported capability. Check the parameter and change the request.	Bu istek desteklenmeyen bir özellik kullanıyor. Parametreyi kontrol edip isteği değiştirin.
 This step names no tool to show.	Bu adım gösterilecek bir araç belirtmiyor.
@@ -2439,7 +2439,7 @@ Uninstall Plugin	Eklenti Kaldır
 Uninstalled {id}.	{id} kaldırıldı.
 Unique Values	Benzersiz Değerler
 Units	Birimler
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	GeoLibre araçlarını kaldır ve RustGIS başlarken yüklenmelerini durdur.
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	GeoLibre araçlarını kaldır ve Syngle Observatory başlarken yüklenmelerini durdur.
 Unsupervised classes (k-means)	Denetimsiz sınıflar (k-ortalama)
 Unsupervised classes (k-means).	Denetimsiz sınıflar (k-ortalama).
 Up	Yukarı
@@ -2515,13 +2515,13 @@ Web Tool	Web Aracı
 Website	Web sitesi
 Weekly usage	Haftalık kullanım
 Weights	Ağırlıklar
-Welcome to RustGIS	RustGIS'e hoş geldiniz
+Welcome to Syngle Observatory	Syngle Observatory'e hoş geldiniz
 West	Batı
 WFS	WFS
 WGS 84 / Globe	WGS 84 / Küre
 WGS 84 / Web Mercator	WGS 84 / Web Mercator
-What RustGIS opens with: the World Atlas sample or a blank map.	RustGIS'in neyle açılacağı: World Atlas örneği ya da boş bir harita.
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	RustGIS'in neyle açılacağı: World Atlas örneği, boş bir harita, seçtiğiniz bir proje ya da en son açılan veya kaydedilen proje.
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	Syngle Observatory'in neyle açılacağı: World Atlas örneği ya da boş bir harita.
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Syngle Observatory'in neyle açılacağı: World Atlas örneği, boş bir harita, seçtiğiniz bir proje ya da en son açılan veya kaydedilen proje.
 What to do, where to find it and why	Ne yapılacağı, nerede bulunacağı ve neden
 What's near a point	Bir noktanın yakınında ne var
 WHERE	WHERE

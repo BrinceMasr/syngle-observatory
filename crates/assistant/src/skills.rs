@@ -49,7 +49,7 @@ pub struct Skill {
     pub source: Source,
 }
 
-/// The skills that come with RustGIS.
+/// The skills that come with Syngle Observatory.
 pub fn built_in() -> Vec<Skill> {
     [
         include_str!("../skills/thematic-map/SKILL.md"),

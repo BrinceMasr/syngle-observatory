@@ -3,7 +3,7 @@ name = "rustgis-map"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L2: maps, layers, symbology, labeling, camera and basemaps"
+description = "Syngle Observatory L2: maps, layers, symbology, labeling, camera and basemaps"
 
 [lints]
 workspace = true

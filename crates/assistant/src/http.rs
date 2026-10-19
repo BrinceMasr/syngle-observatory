@@ -33,7 +33,7 @@ fn send_with(req: &HttpRequest, timeout: std::time::Duration, mut on_chunk: Opti
         .max_redirects(0)
         .build()
         .into();
-    let ua = concat!("RustGIS/", env!("CARGO_PKG_VERSION"));
+    let ua = concat!("Syngle Observatory/", env!("CARGO_PKG_VERSION"));
     let result = match (req.method, &req.body) {
         ("POST", body) => {
             let mut b = agent.post(url).header("User-Agent", ua);

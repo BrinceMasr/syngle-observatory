@@ -1,4 +1,4 @@
-//! The RustGIS logo, drawn in code: a rust-coloured cog framing a globe split into four
+//! The Syngle Observatory logo, drawn in code: a rust-coloured cog framing a globe split into four
 //! segments by white gaps, with a tilted orbit. The same design is published as SVG in
 //! rustgis-assets; this keeps the app free of image files.
 

@@ -7,7 +7,7 @@
 # workflow that can build without publishing, waits for them all, and fails if
 # any of them fails.
 #
-#   gh workflow run release-dry-run.yml -R opengeos/RustGIS --ref main -f version=0.2.0
+#   gh workflow run release-dry-run.yml -R BrinceMasr/syngle-observatory --ref main -f version=0.2.0
 #
 # Each workflow it triggers withholds its own publishing on a non-release
 # event, so nothing here can write a release asset:
@@ -16,7 +16,7 @@
 #             tarballs, .deb/.rpm packages and AppImages, installs them where
 #             it can, and writes SHA256SUMS; its publish job is skipped
 #
-# Deliberately not included: Deploy web.rustgis.app publishes on every push to
+# Deliberately not included: Deploy brincemasr.github.io/syngle-observatory publishes on every push to
 # `main`, so it is continuously covered, and dispatching it here would publish
 # the site for real.
 name: Release dry run

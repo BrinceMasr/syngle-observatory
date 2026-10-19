@@ -1,4 +1,4 @@
-//! EPSG codes 9020–20003, which `crs-definitions` lacks (opengeos/RustGIS#198).
+//! EPSG codes 9020–20003, which `crs-definitions` lacks (upstream #198).
 //!
 //! `crs-definitions` is generated from PostGIS's `spatial_ref_sys`, whose EPSG entries jump from
 //! 9019 to 20004; the EPSG registry has added some 400 coordinate systems in between since

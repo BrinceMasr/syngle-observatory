@@ -4,7 +4,7 @@ rem Each run loads the 1M-point GeoParquet in full, waits for it, then drags for
 setlocal
 cd /d %~dp0
 set ELECTRON=..\host\node_modules\electron\dist\electron.exe
-set ENGINE=..\..\target\release\syngle-spike-engine.exe
+set ENGINE=..\..\target\release\syngle-observatory-engine.exe
 set ROOT=..\..
 
 node gpu-pref.mjs high

@@ -3,7 +3,7 @@
 //! site, or one), ArcGIS Hub, ArcGIS portals (ArcGIS Online, NASA's Earthdata GIS, an
 //! organisation's public items), OpenAerialMap, the USGS 3DEP elevation models, IGN's LiDAR HD
 //! tiles, GeoLens servers, Hugging Face datasets and the Ocean Data Platform. A search names
-//! datasets and the geospatial resources each offers: files RustGIS reads by address (GeoJSON,
+//! datasets and the geospatial resources each offers: files Syngle Observatory reads by address (GeoJSON,
 //! KML, zipped Shapefiles, GeoParquet, GeoTIFF, LiDAR…) and services it adds (WMS, WFS, ArcGIS
 //! REST); a Hugging Face dataset lists its files in a second request ([`Dataset::listing`]).
 //! Requests are built and answers read here; the fetching is the caller's.
@@ -85,7 +85,7 @@ pub struct Portal {
     pub category: Option<&'static str>,
 }
 
-/// What a resource is to RustGIS: a file read by address, or a service of a type.
+/// What a resource is to Syngle Observatory: a file read by address, or a service of a type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Use {
     File,
@@ -96,7 +96,7 @@ pub enum Use {
     },
 }
 
-/// A dataset's resource RustGIS can add.
+/// A dataset's resource Syngle Observatory can add.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resource {
     /// What it is, as people say it (`GeoJSON`, `Shapefile`, `ArcGIS REST`…).
@@ -435,7 +435,7 @@ impl Portal {
     }
 
     /// The datasets in a search's answer (`from`: the search's address, which the resources' own
-    /// addresses are judged against), with the resources RustGIS can add; datasets without one are
+    /// addresses are judged against), with the resources Syngle Observatory can add; datasets without one are
     /// left out, as are those outside `bbox` when they say where they are.
     pub fn parse(&self, from: &str, bytes: &[u8], bbox: Option<[f64; 4]>, query: &str) -> Result<Vec<Dataset>, String> {
         let v: Value = serde_json::from_slice(bytes).map_err(|_| format!("{}: the answer isn't JSON", self.label()))?;
@@ -578,7 +578,7 @@ fn rank(format: &str) -> usize {
         .unwrap_or(usize::MAX)
 }
 
-/// What a resource is, from its format label, media type and address; `None` for what RustGIS
+/// What a resource is, from its format label, media type and address; `None` for what Syngle Observatory
 /// doesn't add (web pages, PDFs, plain JSON…).
 pub fn classify(format: &str, media: &str, url: &str) -> Option<Resource> {
     let url = url.trim();
@@ -789,7 +789,7 @@ fn hub_dataset(base: &str, f: &Value) -> Option<Dataset> {
     })
 }
 
-/// The item types an ArcGIS portal's search asks for: those RustGIS adds.
+/// The item types an ArcGIS portal's search asks for: those Syngle Observatory adds.
 const ARCGIS_TYPES: [&str; 6] = ["Feature Service", "Map Service", "Image Service", "Vector Tile Service", "GeoJson", "Web Map"];
 
 /// The kinds of ArcGIS items a search can keep to: a name and the item types.
@@ -812,7 +812,7 @@ fn arcgis_words(q: &str) -> String {
     plain.split_whitespace().filter(|w| !matches!(*w, "AND" | "OR" | "NOT")).collect::<Vec<_>>().join(" ")
 }
 
-/// A web map's layers (its operational layers, those in groups too) RustGIS adds: ArcGIS services,
+/// A web map's layers (its operational layers, those in groups too) Syngle Observatory adds: ArcGIS services,
 /// named by their titles.
 fn web_map_layers(v: &Value, from: &str) -> Result<Vec<Resource>, String> {
     // A layer in a group is named after the group too (groups often repeat their layers' titles).
@@ -1183,7 +1183,7 @@ impl Portal {
     }
 
     /// The files a dataset's listing ([`Dataset::listing`], fetched from `from`) offers: those
-    /// RustGIS adds, named by their path in the dataset.
+    /// Syngle Observatory adds, named by their path in the dataset.
     pub fn parse_listing(&self, from: &str, bytes: &[u8]) -> Result<Vec<Resource>, String> {
         let v: Value = serde_json::from_slice(bytes).map_err(|_| format!("{}: the listing isn't JSON", self.label()))?;
         if self.kind == Kind::ArcGis {

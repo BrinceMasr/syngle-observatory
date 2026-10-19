@@ -37,7 +37,7 @@ pub const KINDS: &[&str] = &["text", "checkbox", "slider", "button"];
 pub struct PanelDecl {
     /// The pane's title (its tab), and the label of the ribbon button that opens it.
     pub title: String,
-    /// One of RustGIS's own icons for that button (`plugin` when unset or unknown).
+    /// One of Syngle Observatory's own icons for that button (`plugin` when unset or unknown).
     #[serde(default)]
     pub icon: String,
     /// Shown on hover over that button.

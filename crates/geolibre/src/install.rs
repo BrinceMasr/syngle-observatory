@@ -1,6 +1,6 @@
 //! One-click install of the `geolibre` runner: the latest geolibre-rust release's archive for
 //! this platform, downloaded over HTTPS, checked against its published SHA-256 and unpacked into
-//! RustGIS's data folder (where [`crate::runner`] looks for it).
+//! Syngle Observatory's data folder (where [`crate::runner`] looks for it).
 //!
 //! The checksum comes from the same release, so it guards against a corrupted or truncated
 //! download, not against a compromised release: trust rests on HTTPS and on the opengeos
@@ -40,7 +40,7 @@ fn agent() -> ureq::Agent {
 }
 
 fn get(agent: &ureq::Agent, url: &str) -> Result<ureq::http::Response<ureq::Body>, String> {
-    agent.get(url).header("User-Agent", concat!("RustGIS/", env!("CARGO_PKG_VERSION"))).call().map_err(|e| format!("{url}: {e}"))
+    agent.get(url).header("User-Agent", concat!("Syngle Observatory/", env!("CARGO_PKG_VERSION"))).call().map_err(|e| format!("{url}: {e}"))
 }
 
 /// The latest release's tag and the archive and checksum URLs for `target`.

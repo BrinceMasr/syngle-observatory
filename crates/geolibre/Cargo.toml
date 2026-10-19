@@ -3,7 +3,7 @@ name = "rustgis-geolibre"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L3: the GeoLibre/Whitebox tool suite (1,000+ raster, vector, LiDAR and hydrology tools) as geoprocessing tools, through the optional geolibre runner"
+description = "Syngle Observatory L3: the GeoLibre/Whitebox tool suite (1,000+ raster, vector, LiDAR and hydrology tools) as geoprocessing tools, through the optional geolibre runner"
 
 [lints]
 workspace = true

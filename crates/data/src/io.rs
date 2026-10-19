@@ -101,7 +101,7 @@ pub fn read_layers(file_name: &str, bytes: &[u8]) -> Result<Vec<LayerRead>> {
                     .collect()
             } else {
                 return Err(DataError::Format(format!(
-                    "{file_name}: an XML file RustGIS doesn't read (it reads GeoRSS, LandXML, KML and GPX)"
+                    "{file_name}: an XML file Syngle Observatory doesn't read (it reads GeoRSS, LandXML, KML and GPX)"
                 )));
             }
         }
@@ -319,7 +319,7 @@ pub const PROJECTED_FORMATS: [&str; 4] = ["gpkg", "shp", "zip", "fgb"];
 /// The coordinate system an export to extension `ext` is written in when none is asked for: the
 /// one the dataset was read in, for a format that can say it, else WGS 84. A system without an
 /// EPSG code goes only into a Shapefile, whose `.prj` gives it in full; GeoPackage and FlatGeobuf
-/// readers (RustGIS's among them) go by the code.
+/// readers (Syngle Observatory's among them) go by the code.
 pub fn default_export_crs(ds: &Dataset, ext: &str) -> Crs {
     let ext = ext.to_ascii_lowercase();
     ds.crs
@@ -349,7 +349,7 @@ pub fn project(ds: &Dataset, crs: Crs) -> Result<Dataset> {
     Ok(out)
 }
 
-/// Refuses a system without an EPSG code for a GeoPackage or FlatGeobuf: their readers (RustGIS's
+/// Refuses a system without an EPSG code for a GeoPackage or FlatGeobuf: their readers (Syngle Observatory's
 /// among them) go by the code, and would read the file as longitude/latitude.
 fn check_projected(ext: &str, crs: Crs) -> Result<()> {
     if crs.epsg() == 0 && matches!(ext, "gpkg" | "fgb") {
@@ -1589,7 +1589,7 @@ fn read_shapefile_parts(parts: ShapefileParts, name: &str) -> Result<(Dataset, R
     integral_numeric_to_integer(&mut ds);
     let e = ds.extent();
     if !e.is_empty() && (e.min_x < -180.5 || e.max_x > 180.5 || e.min_y < -90.5 || e.max_y > 90.5) {
-        report.messages.push("coordinates are not longitude/latitude; RustGIS reads them as WGS 84 and they may draw out of place".into());
+        report.messages.push("coordinates are not longitude/latitude; Syngle Observatory reads them as WGS 84 and they may draw out of place".into());
     }
     if report.skipped > 0 {
         report.messages.push(format!("{} shapes were unreadable or unsupported", report.skipped));

@@ -67,7 +67,7 @@ pub fn port_kind(k: ParamKind) -> Option<(PortKind, bool)> {
     }
 }
 
-/// A tool node's tool, if RustGIS has it.
+/// A tool node's tool, if Syngle Observatory has it.
 pub fn tool_of(node: &ModelNode) -> Option<&'static ToolSpec> {
     node.tool.as_deref().and_then(crate::cmd::gp::tool_id).and_then(rustgis_analysis::tool)
 }
@@ -643,7 +643,7 @@ fn rename(s: &mut Session, id: u32, wanted: &str) -> Option<String> {
 }
 
 /// The JSON a model file holds (`*.model.json`).
-pub const SCHEMA: &str = "https://rustgis.app/schemas/model-graph-v1.json";
+pub const SCHEMA: &str = "https://github.com/BrinceMasr/syngle-observatory/schemas/model-graph-v1.json";
 
 pub fn to_file(name: &str, g: &ModelGraph) -> Value {
     json!({"$schema": SCHEMA, "version": "1.0.0", "name": name, "graph": g})

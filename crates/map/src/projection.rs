@@ -34,7 +34,7 @@ pub const PRESETS: &[(&str, &str, &str)] = &[
     ("lambertConformal", "Lambert Conformal Conic", "+proj=lcc +lat_0=0 +lon_0=0 +lat_1=20 +lat_2=50 +datum=WGS84 +units=m +no_defs"),
 ];
 
-/// A parameter a preset takes (opengeos/RustGIS#517): its PROJ name and the range, in degrees,
+/// A parameter a preset takes (upstream #517): its PROJ name and the range, in degrees,
 /// it is checked against.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PresetParam {
@@ -666,7 +666,7 @@ impl Flat {
 mod tests {
     use super::*;
 
-    /// Presets with parameters (opengeos/RustGIS#517): read strictly, written one way, and drawn
+    /// Presets with parameters (upstream #517): read strictly, written one way, and drawn
     /// where they say, against pyproj 3.7.1 (PROJ 9.5.1).
     #[test]
     fn presets_take_parameters() {
@@ -754,7 +754,7 @@ mod tests {
         }
     }
 
-    /// ESRI codes (opengeos/RustGIS#213), against pyproj 3.7.2 (PROJ 9.7.1) given the table's
+    /// ESRI codes (upstream #213), against pyproj 3.7.2 (PROJ 9.7.1) given the table's
     /// definitions.
     #[test]
     fn esri_codes() {
@@ -832,7 +832,7 @@ mod tests {
         let ee = Projector::new("EPSG:8857").unwrap();
         assert!(format!("{ee:?}").contains("eqearth"));
         // Codes crs-definitions lacks (EPSG 9020–20003) come from the data crate's own table
-        // (opengeos/RustGIS#198): MAGNA-SIRGAS 2018 / Origen-Nacional, SIRGAS-Chile 2016 / UTM 19S.
+        // (upstream #198): MAGNA-SIRGAS 2018 / Origen-Nacional, SIRGAS-Chile 2016 / UTM 19S.
         let (bogota, santiago) = (Coord::new(-74.08, 4.65), Coord::new(-70.65, -33.45));
         for (ok, proj, city) in [("EPSG:9377", "tmerc", bogota), ("epsg:9155", "utm", santiago)] {
             let (def, label) = lookup(ok).unwrap_or_else(|e| panic!("{ok}: {e}"));
@@ -848,7 +848,7 @@ mod tests {
     fn codes_whose_method_cannot_be_drawn_are_refused() {
         // EPSG:5880 (SIRGAS 2000 / Brazil Polyconic) is in the EPSG table, but its method
         // (+proj=poly) has no implementation: refuse it rather than accept it and draw the map
-        // in Web Mercator while naming EPSG:5880 (opengeos/RustGIS#208).
+        // in Web Mercator while naming EPSG:5880 (upstream #208).
         assert!(lookup("EPSG:5880").is_ok(), "the code itself is known");
         let e = Projector::new("EPSG:5880").unwrap_err();
         assert!(e.contains("EPSG:5880") && e.contains("poly"), "{e}");

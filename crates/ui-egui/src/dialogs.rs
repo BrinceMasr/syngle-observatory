@@ -798,7 +798,7 @@ fn add_url(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 /// Add From Database: a PostgreSQL/PostGIS or MySQL/MariaDB connection (or a DuckDB file), its
 /// password (kept for the session only) and one table or all of them.
 fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
-    ui.label(egui::RichText::new(tl!("A PostgreSQL/PostGIS connection (host=… port=… dbname=… user=…, or a postgresql:// address), a MySQL or MariaDB address (mysql://user@host:3306/database) or a DuckDB file. PostGIS, MySQL and MariaDB tables are read live, large ones a view at a time; the password is kept until RustGIS closes, never in the project.")).weak());
+    ui.label(egui::RichText::new(tl!("A PostgreSQL/PostGIS connection (host=… port=… dbname=… user=…, or a postgresql:// address), a MySQL or MariaDB address (mysql://user@host:3306/database) or a DuckDB file. PostGIS, MySQL and MariaDB tables are read live, large ones a view at a time; the password is kept until Syngle Observatory closes, never in the project.")).weak());
     // A bare connection string is a PostgreSQL one.
     let database = |a: &str| {
         let a = a.trim();
@@ -1139,7 +1139,7 @@ fn coordinate_system(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) -> boo
     close
 }
 
-/// The chosen preset's parameters (opengeos/RustGIS#517): the central meridian, and a conic's
+/// The chosen preset's parameters (upstream #517): the central meridian, and a conic's
 /// standard parallels, each written back into the chosen code. Nothing for a preset without any.
 fn preset_fields(app: &mut RustGisApp, ui: &mut egui::Ui) {
     use rustgis_engine::map::projection::{parse_preset, preset_code, preset_params, preset_value};
@@ -1279,7 +1279,7 @@ fn crs_details(ui: &mut egui::Ui, chosen: &str, current: &str, t: &Tokens) {
 mod tests {
     use super::*;
 
-    /// The Coordinate System dialog re-centres a preset (opengeos/RustGIS#517): the central
+    /// The Coordinate System dialog re-centres a preset (upstream #517): the central
     /// meridian, set as assistive technology does, goes into the code that Apply uses.
     #[test]
     fn the_coordinate_system_dialog_sets_a_central_meridian() {

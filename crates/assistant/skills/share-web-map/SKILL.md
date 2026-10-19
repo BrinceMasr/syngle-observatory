@@ -5,7 +5,7 @@ description: Share the map or a layer as files that work without a server — a 
 
 # Sharing a web map
 
-Based on the RustGIS user guide, Sharing (`read_doc` `{"page": "user-guide/sharing.md"}`).
+Based on the Syngle Observatory user guide, Sharing (`read_doc` `{"page": "user-guide/sharing.md"}`).
 
 | Want | Command | Writes |
 | --- | --- | --- |

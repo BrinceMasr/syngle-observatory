@@ -46,7 +46,7 @@ pub fn commands() -> Vec<C> {
         .params(r#"{"name"?, "title"?: the title page's text}"#),
         C::new("presentation.import", "Import Presentation", "Publish › Presentation", |s, p| {
             let text = super::items::read_text(p)?;
-            let mut pres: Presentation = serde_json::from_str(&text).map_err(|e| format!("not a RustGIS presentation: {e}"))?;
+            let mut pres: Presentation = serde_json::from_str(&text).map_err(|e| format!("not a Syngle Observatory presentation: {e}"))?;
             pres.clamp();
             pres.name = unique_name(s, &pres.name);
             let name = pres.name.clone();

@@ -1,4 +1,4 @@
-// The rustgis.Map widget: frames the RustGIS web app (`?embed`) and passes the project between it
+// The rustgis.Map widget: frames the Syngle Observatory web app (`?embed`) and passes the project between it
 // and Python. Python's project (`_project`) is sent to the app when it starts and whenever Python
 // changes it; the app's project, after a change there, goes to Python as a message. The app's own
 // text is never sent back to it. The protocol is described in apps/rustgis-web/src/embed.rs.

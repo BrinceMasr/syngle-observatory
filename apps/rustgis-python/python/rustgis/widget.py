@@ -1,6 +1,6 @@
-"""The RustGIS app in a Jupyter notebook: an anywidget around a :class:`~rustgis.Session`.
+"""The Syngle Observatory app in a Jupyter notebook: an anywidget around a :class:`~rustgis.Session`.
 
-The widget shows the RustGIS web app (ribbon, panes, map) in the cell, kept in step with the
+The widget shows the Syngle Observatory web app (ribbon, panes, map) in the cell, kept in step with the
 Python session through the project: what Python adds or styles appears in the app, and what is
 done in the app (an edit, a new layer, a pan) is back in the session for Python to read.
 """
@@ -21,7 +21,7 @@ from . import Layer, PathLike, RustGISError, Session
 
 #: The web app the widget shows; ``RUSTGIS_WEB_URL`` points it at another build (a local
 #: ``trunk serve``, a self-hosted copy).
-DEFAULT_URL = "https://web.rustgis.app/"
+DEFAULT_URL = "https://github.com/BrinceMasr/syngle-observatory/"
 
 #: Files up to this size travel with the project, so the app in the browser shows them too. The
 #: whole project, base64 bytes and all (a third larger), crosses the notebook's websocket after
@@ -36,7 +36,7 @@ _EMBEDDABLE = {
 
 
 class Map(anywidget.AnyWidget):
-    """The RustGIS app in a notebook cell, driven from Python.
+    """The Syngle Observatory app in a notebook cell, driven from Python.
 
     Args:
         session: The session to show; a new one when left out.
@@ -44,7 +44,7 @@ class Map(anywidget.AnyWidget):
         data: Files to add as layers.
         height: The widget's height, as CSS (``"800px"``).
         lang: The interface language (``"de"``, ``"ja"``, ...); the browser's when left out.
-        url: The web app to show; ``RUSTGIS_WEB_URL`` or https://web.rustgis.app when left out.
+        url: The web app to show; ``RUSTGIS_WEB_URL`` or https://github.com/BrinceMasr/syngle-observatory when left out.
         **kwargs: Passed on to ``anywidget.AnyWidget``.
 
     Example:
@@ -92,7 +92,7 @@ class Map(anywidget.AnyWidget):
     # Commands ------------------------------------------------------------------------------
 
     def run(self, command: str, params: Optional[Dict[str, Any]] = None, /, **kwargs: Any) -> Any:
-        """Runs a RustGIS command by id, then shows the result in the app.
+        """Runs a Syngle Observatory command by id, then shows the result in the app.
 
         Args:
             command: The command id, e.g. ``"layer.symbology"``.

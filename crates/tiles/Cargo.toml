@@ -3,7 +3,7 @@ name = "rustgis-tiles"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L2: web map tiles — XYZ/TMS/WMS raster tiles, Mapbox Vector Tiles, a subset of MapLibre styles, and their cache"
+description = "Syngle Observatory L2: web map tiles — XYZ/TMS/WMS raster tiles, Mapbox Vector Tiles, a subset of MapLibre styles, and their cache"
 
 [lints]
 workspace = true

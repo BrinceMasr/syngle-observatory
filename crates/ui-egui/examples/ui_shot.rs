@@ -1,4 +1,4 @@
-//! Headless UI screenshots: renders the whole RustGIS window offscreen (wgpu).
+//! Headless UI screenshots: renders the whole Syngle Observatory window offscreen (wgpu).
 //!
 //! `cargo run -p rustgis-ui-egui --example ui_shot -- script.jsonl`
 //!

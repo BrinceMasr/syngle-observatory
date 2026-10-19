@@ -1,12 +1,12 @@
 ---
 name: rustgis
 description: |
-  Use RustGIS from an agent: list layers, read features, view the map, run commands and geoprocessing, and save. Trigger for the already-open desktop app (MCP Relay, then rustgis-cli mcp --attach), a headless project, or rustgis-cli MCP in Claude, Codex, Cursor, or VS Code. Installing RustGIS is a trigger, not the task.
+  Use Syngle Observatory from an agent: list layers, read features, view the map, run commands and geoprocessing, and save. Trigger for the already-open desktop app (MCP Relay, then rustgis-cli mcp --attach), a headless project, or rustgis-cli MCP in Claude, Codex, Cursor, or VS Code. Installing Syngle Observatory is a trigger, not the task.
 ---
 
-# RustGIS
+# Syngle Observatory
 
-[RustGIS](https://rustgis.app) is a desktop and browser GIS with an accompanying
+[Syngle Observatory](https://github.com/BrinceMasr/syngle-observatory) is a desktop and browser GIS with an accompanying
 `rustgis-cli`. The CLI exposes MCP tools over standard input/output. Choose
 which project the user wants to operate on **before** starting the server.
 
@@ -14,10 +14,10 @@ which project the user wants to operate on **before** starting the server.
 
 | User's goal | Entry point |
 | --- | --- |
-| Install RustGIS or make its CLI available to the agent | Read [install-from-agent](references/install-from-agent.md); detect the user's platform, install the app and CLI, verify the CLI, then register MCP. |
+| Install Syngle Observatory or make its CLI available to the agent | Read [install-from-agent](references/install-from-agent.md); detect the user's platform, install the app and CLI, verify the CLI, then register MCP. |
 | Manage the map already open in the desktop app | Start **MCP Relay** in the app's Command Search (Ctrl+K), confirm `127.0.0.1:8767`, then register `rustgis-cli mcp --attach`. |
 | Work in a separate headless project | Register `rustgis-cli mcp --sample`, `--project file.rgis`, or repeatable `--data file.geojson`. This is the agent's own project, not the desktop app. |
-| Use the browser app | Open <https://web.rustgis.app>. The desktop loopback relay is not a browser-management interface. |
+| Use the browser app | Open <https://github.com/BrinceMasr/syngle-observatory>. The desktop loopback relay is not a browser-management interface. |
 
 **For the open app, `--attach` is mandatory.** Do not silently fall back to a
 private project if the relay is unavailable. Do not combine `--attach` with
@@ -27,8 +27,8 @@ private project if the relay is unavailable. Do not combine `--attach` with
 
 1. Ensure the app and `rustgis-cli` are installed on the user's machine. Use the
    install reference to resolve PATH and MCP client configuration.
-2. In the open RustGIS desktop app, ask the user to tick **Let your Agents
-   Control RustGIS** in the AI Assistant's settings (it also lets attached
+2. In the open Syngle Observatory desktop app, ask the user to tick **Let your Agents
+   Control Syngle Observatory** in the AI Assistant's settings (it also lets attached
    agents use files and the network), or open Command Search (Ctrl+K) and run
    **MCP Relay** (`ui.mcpRelay`). Confirm the status bar says
    `MCP relay listening on 127.0.0.1:8767`. The listener is off until started
@@ -54,7 +54,7 @@ controlling that open app, not an exposed internet service. For a nondefault
 port, start the app command with `ui.mcpRelay {"port": 9000}` and use
 `rustgis-cli mcp --attach 9000`.
 
-## Operate through RustGIS's tools
+## Operate through Syngle Observatory's tools
 
 1. **Inspect:** `list_layers` supplies layer names, fields, feature counts,
    selections and the current view. Use `read_features` for attribute rows and
@@ -75,7 +75,7 @@ port, start the app command with `ui.mcpRelay {"port": 9000}` and use
 
 - File and network commands **still require `--yes` when attached**, just as
   in a private server, unless the user ticked **Let your Agents Control
-  RustGIS**, which allows them for attached agents. It also permits plugin commands and opening project
+  Syngle Observatory**, which allows them for attached agents. It also permits plugin commands and opening project
   text, which can bring in web layers. Do not enable it to conceal a refusal.
 - Plugin management, scripts, tasks, models and the GeoLibre runner are not
   available through this MCP surface; `--yes` does not unlock them.
@@ -92,4 +92,4 @@ Read [references/install-from-agent.md](references/install-from-agent.md) for
 agent-runnable platform detection, package-manager and checked release installs,
 PATH confirmation, Claude/Codex/`mcp.json`/VS Code registration, and the attached
 relay procedure. Canonical upstream documentation:
-<https://rustgis.app/installation/> and <https://rustgis.app/mcp/>.
+<https://github.com/BrinceMasr/syngle-observatory/installation/> and <https://github.com/BrinceMasr/syngle-observatory/mcp/>.

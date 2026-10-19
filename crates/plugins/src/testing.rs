@@ -6,7 +6,7 @@
 //! interface language code is two letters).
 //!
 //! - `h` (hello): logs "hi" and returns `{"hello": "world"}`.
-//! - `f` (forward): sends its params to RustGIS as a host request and returns the reply.
+//! - `f` (forward): sends its params to Syngle Observatory as a host request and returns the reply.
 //! - `s` (spin): loops forever (stopped by the fuel limit).
 //! - `g` (garbage): returns a reply outside its memory.
 //! - `o` (out of memory): asks for 4 GB, then traps.
