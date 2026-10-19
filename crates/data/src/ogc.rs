@@ -1291,9 +1291,20 @@ fn arcgis_directory(b: &str, v: &serde_json::Value) -> Service {
     let title = if here.is_empty() { "ArcGIS services".to_string() } else { here.to_string() };
     let mut service = Service { kind: "ArcGIS Services Directory".into(), title, ..Service::default() };
     let mut skipped = 0;
+    // Names RustGIS won't put into an address (spaces, `?`, `..`): counted in a note.
+    let mut unnamed = 0;
     // ArcGIS's own system folder holds geometry and printing tools, never maps.
     for f in v.get("folders").and_then(|f| f.as_array()).into_iter().flatten().take(MAX_LAYERS) {
-        let Some(name) = f.as_str().and_then(arcgis_name).filter(|n| !n.eq_ignore_ascii_case("Utilities")) else { continue };
+        let Some(name) = f.as_str().and_then(|n| {
+            let ok = arcgis_name(n);
+            unnamed += usize::from(ok.is_none());
+            ok
+        }) else {
+            continue;
+        };
+        if name.eq_ignore_ascii_case("Utilities") {
+            continue;
+        }
         let path = if here.is_empty() { name.to_string() } else { format!("{here}/{name}") };
         service.layers.push(ServiceLayer {
             name: format!("{path}/"),
@@ -1308,6 +1319,7 @@ fn arcgis_directory(b: &str, v: &serde_json::Value) -> Service {
         let (Some(name), Some(kind)) =
             (s.get("name").and_then(|n| n.as_str()).and_then(arcgis_name), s.get("type").and_then(|t| t.as_str()))
         else {
+            unnamed += 1;
             continue;
         };
         let Some(kind) = ARCGIS_TYPES.iter().find(|t| t.eq_ignore_ascii_case(kind)) else {
@@ -1326,6 +1338,9 @@ fn arcgis_directory(b: &str, v: &serde_json::Value) -> Service {
     }
     if skipped > 0 {
         service.notes.push(format!("{skipped} services of other types (geoprocessing, geometry, …) are left out"));
+    }
+    if unnamed > 0 {
+        service.notes.push(format!("{unnamed} folders or services with names RustGIS can't put in an address are left out"));
     }
     service
 }
@@ -1879,6 +1894,7 @@ mod tests {
             ]
         );
         assert!(s.notes.iter().any(|n| n.contains("1 services")));
+        assert!(s.notes.iter().any(|n| n.starts_with("3 folders or services")), "{:?}", s.notes);
         // A folder lists its services by their full names, which start at the root.
         let folder = r#"{"folders": [], "services": [{"name": "Hydro/Rivers", "type": "MapServer"}]}"#;
         let s = parse("https://x.org/arcgis/rest/services/Hydro?f=json", folder.as_bytes()).unwrap();

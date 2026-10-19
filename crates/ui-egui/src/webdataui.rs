@@ -546,7 +546,11 @@ pub fn national_map(app: &mut RustGisApp, ui: &mut egui::Ui) {
     if app.ui.web_services.national_map.is_none() {
         match app.session.run("nationalMap.services", &Value::Null) {
             Ok(v) => app.ui.web_services.national_map = Some(Arc::new(v)),
-            Err(e) => app.ui.web_services.note = Some((false, e)),
+            Err(e) => {
+                // Not asked again every frame: an empty catalog, and the error shown once.
+                app.ui.web_services.national_map = Some(Arc::new(Value::Null));
+                app.ui.web_services.note = Some((false, e));
+            }
         }
     }
     let catalog = app.ui.web_services.national_map.clone().unwrap_or_default();
