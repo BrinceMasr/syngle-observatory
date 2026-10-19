@@ -373,11 +373,14 @@ fn collection_item(v: &Value, from: &str) -> Option<Value> {
     let data = assets.values().take(super::MAX_ASSETS).any(|a| {
         let roles: Vec<&str> = a.get("roles").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
         let t = a.get("type").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
-        !roles.iter().any(|r| matches!(*r, "thumbnail" | "overview" | "metadata" | "style"))
-            && !t.starts_with("image/png")
-            && !t.starts_with("image/jpeg")
-            && !t.contains("style")
-            && !t.starts_with("text/")
+        let href = a.get("href").and_then(Value::as_str).unwrap_or("");
+        let path = href.split(['?', '#']).next().unwrap_or("").to_ascii_lowercase();
+        // Data RustGIS can add (by its media type or extension), or an asset that says it is data.
+        const TYPES: [&str; 9] = ["geotiff", "image/tiff", "parquet", "pmtiles", "flatgeobuf", "geo+json", "vnd.las", "laszip", "zarr"];
+        const EXTENSIONS: [&str; 11] =
+            [".tif", ".tiff", ".parquet", ".geoparquet", ".pmtiles", ".fgb", ".geojson", ".laz", ".las", ".zarr", ".gpkg"];
+        let addable = TYPES.iter().any(|k| t.contains(k)) || EXTENSIONS.iter().any(|e| path.ends_with(e));
+        !roles.iter().any(|r| matches!(*r, "thumbnail" | "overview" | "metadata" | "style")) && (addable || roles.contains(&"data"))
     });
     if !data {
         return None;
@@ -526,6 +529,10 @@ mod tests {
         let ids: Vec<&str> = w.items().iter().map(|i| i.id.as_str()).collect();
         assert_eq!(ids, ["a", "b", "c", "roads"]);
         assert_eq!(w.failed, 1, "the missing catalog");
+        // A collection whose only assets are documents (a license, metadata) isn't an item.
+        let docs_only = json!({"type": "Collection", "id": "docs", "links": [],
+            "assets": {"license": {"href": "LICENSE.pdf", "type": "application/pdf"}, "meta": {"href": "meta.json", "type": "application/json"}}});
+        assert!(collection_item(&docs_only, "https://x.org/c.json").is_none());
         assert!(!w.complete());
         let roads = &w.items()[3];
         assert_eq!(roads.bbox, Some([7.5, 46.5, 7.6, 46.6]));
