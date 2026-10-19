@@ -505,7 +505,10 @@ impl Manifest {
                 return Err("plugin.json: minRustgisVersion is not a version number".into());
             }
             if version_cmp(RUSTGIS_VERSION, &self.min_rustgis_version).is_lt() {
-                return Err(format!("{} needs Syngle Observatory {} or newer (this is {RUSTGIS_VERSION})", self.name, self.min_rustgis_version));
+                return Err(format!(
+                    "{} needs Syngle Observatory {} or newer (this is {RUSTGIS_VERSION})",
+                    self.name, self.min_rustgis_version
+                ));
             }
         }
         if self.commands.len() > MAX_COMMANDS || self.tools.len() > MAX_TOOLS {

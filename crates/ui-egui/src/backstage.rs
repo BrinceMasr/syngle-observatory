@@ -166,7 +166,8 @@ fn about(ui: &mut Ui, t: &Tokens) {
     crate::chrome::project_links(ui);
     ui.add_space(8.0);
     ui.label(
-        egui::RichText::new(tl!("Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.")).color(t.text_dim),
+        egui::RichText::new(tl!("Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0."))
+            .color(t.text_dim),
     );
 }
 

@@ -137,7 +137,10 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
                     });
                 }
                 Some(Ok(r)) if is_newer(&r.version, current) => {
-                    ui.label(egui::RichText::new(crate::i18n::fmt("Syngle Observatory {latest} is available.", &[("latest", &r.version)])).strong());
+                    ui.label(
+                        egui::RichText::new(crate::i18n::fmt("Syngle Observatory {latest} is available.", &[("latest", &r.version)]))
+                            .strong(),
+                    );
                     ui.label(crate::i18n::fmt("You have version {version}.", &[("version", current)]));
                     ui.add_space(4.0);
                     ui.label(egui::RichText::new(tl!("Installed with Homebrew, winget, the AUR or COPR? Update it there.")).small().weak());
@@ -212,7 +215,9 @@ mod tests {
 
     #[test]
     fn release_json_is_read_and_checked() {
-        let r = parse_release(br#"{"tag_name":"v0.2.0","html_url":"https://github.com/BrinceMasr/syngle-observatory/releases/tag/v0.2.0"}"#).unwrap();
+        let r =
+            parse_release(br#"{"tag_name":"v0.2.0","html_url":"https://github.com/BrinceMasr/syngle-observatory/releases/tag/v0.2.0"}"#)
+                .unwrap();
         assert_eq!(r.version, "0.2.0");
         assert!(r.url.ends_with("/v0.2.0"));
         // A page that isn't HTTPS falls back to the releases list.

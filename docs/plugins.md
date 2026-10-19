@@ -4,9 +4,8 @@ Plugins add commands and geoprocessing tools to Syngle Observatory. A plugin is 
 a `plugin.json` manifest, packaged as a `.rgplugin` file. The same file runs in the desktop app,
 on the command line and in the web app.
 
-Browse the registry at **[the plugin registry](https://plugins.example.org)**. Plugin sources,
-the SDK and the registry live in
-[BrinceMasr/syngle-observatory-plugins](https://github.com/BrinceMasr/syngle-observatory-plugins).
+The fork has no plugin registry of its own and publishes no plugin SDK: a command that needs a
+registry takes an explicit address (a `registry.json` URL, or a local file).
 
 ## Using plugins
 

@@ -1104,9 +1104,11 @@ fn plan_notice(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.label(RichText::new(tl!("You're using your ChatGPT plan")).font(semibold(12.5)));
             ui.label(
-                RichText::new(tl!("Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings."))
-                    .small()
-                    .color(t.text_dim),
+                RichText::new(tl!(
+                    "Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings."
+                ))
+                .small()
+                .color(t.text_dim),
             );
             if ui.button(tl!("Got it")).clicked() {
                 app.assistant.welcome = false;

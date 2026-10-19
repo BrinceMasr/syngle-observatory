@@ -1287,7 +1287,9 @@ fn ogc_api(url: &str, v: &serde_json::Value) -> Result<Service, String> {
         service.layers.push(ServiceLayer { name: id.to_string(), title, offer: Offer::Features { url: items }, bbox, tilesets: None });
     }
     if unreadable > 0 {
-        service.notes.push(format!("{unreadable} collections link to their items with an address Syngle Observatory doesn't fetch and are left out"));
+        service.notes.push(format!(
+            "{unreadable} collections link to their items with an address Syngle Observatory doesn't fetch and are left out"
+        ));
     }
     if collections.len() > MAX_LAYERS {
         service.notes.push(format!("only the first {MAX_LAYERS} collections are listed"));

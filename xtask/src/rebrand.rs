@@ -5,8 +5,10 @@
 //!
 //! - the upstream product name `RustGIS` outside the files that exist to name and credit it,
 //! - the upstream addresses (`rustgis.app` and its subdomains),
-//! - the upstream project's repositories (`opengeos/RustGIS`, `opengeos/rustgis*`), and
-//! - the upstream application id (`org.rustgis…`).
+//! - the upstream project's repositories (`opengeos/RustGIS`, `opengeos/rustgis*`) outside the
+//!   files that exist to credit it,
+//! - the upstream application id (`org.rustgis…`),
+//! - the upstream publisher (`OpenGeos`) and its store listing (`apps.microsoft.com`).
 //!
 //! What legitimately keeps the upstream name, and why:
 //!
@@ -14,7 +16,8 @@
 //! |---|---|
 //! | `rustgis-model`, `rustgis_engine`, `RUSTGIS_*`, `rustgis-cli` | the Rust package, module, environment-variable and binary names of the ~15 crates; renaming them is a separate refactor with no user-visible effect |
 //! | `.rgis`, `.rgisx` | the document format's extensions, so projects people already have still open |
-//! | `NOTICE`, `ATTRIBUTION.md`, `LICENSE`, `README.md` | the Apache-2.0 notices must name the work they came from, and the README's provenance section says once where the fork came from |
+//! | `RustGISError` | the exception class of the inherited `rustgis` Python package: not user-visible |
+//! | `NOTICE`, `ATTRIBUTION.md`, `LICENSE`, `README.md` | the Apache-2.0 notices must name the work they came from, including its repository, and the README's provenance section says once where the fork came from |
 //! | `crates/render/build.rs`'s `assets.rustgis.app/data` | the public-domain Natural Earth sample data the build fetches; the fork hosts no data mirror |
 //!
 //! This file is skipped, since it names the banned strings to ban them. Binary files are skipped
@@ -34,20 +37,28 @@ const SAMPLE_DATA: &str = "assets.rustgis.app/data";
 /// Every finding in one line (or one file path): the offending token, with why.
 fn offences(file: &str, line: &str) -> Vec<String> {
     let mut out = Vec::new();
-    // The sample-data address is removed first, so its host alone does not trip the domain check.
-    let scan = line.replace(SAMPLE_DATA, "");
-    if !PROVENANCE.contains(&file) && scan.contains("RustGIS") {
+    let provenance = PROVENANCE.contains(&file);
+    // The sample-data address is removed first, so its host alone does not trip the domain check,
+    // and the Python package's exception class is an identifier, not a product string.
+    let mut scan = line.replace(SAMPLE_DATA, "");
+    scan = scan.replace("RustGISError", "");
+    if !provenance && scan.contains("RustGIS") {
         out.push("RustGIS (upstream product name)".into());
     }
-    for address in ["rustgis.app", "rustgis.com"] {
+    for address in ["rustgis.app", "rustgis.com", "apps.microsoft.com"] {
         if scan.contains(address) {
             out.push(format!("{address} (upstream address)"));
         }
     }
-    for repo in ["opengeos/RustGIS", "opengeos/rustgis"] {
-        if scan.contains(repo) {
-            out.push(format!("{repo} (upstream repository)"));
+    if !provenance {
+        for repo in ["opengeos/RustGIS", "opengeos/rustgis"] {
+            if scan.contains(repo) {
+                out.push(format!("{repo} (upstream repository)"));
+            }
         }
+    }
+    if scan.contains("OpenGeos") {
+        out.push("OpenGeos (upstream publisher)".into());
     }
     if scan.contains("org.rustgis") {
         out.push("org.rustgis (upstream application id)".into());
@@ -118,6 +129,10 @@ mod tests {
         assert!(allowed("NOTICE", "a hard fork of RustGIS (https://github.com/opengeos/RustGIS)"));
         assert!(allowed("ATTRIBUTION.md", "the RustGIS sample data"));
         assert!(allowed("README.md", "A hard fork of RustGIS"));
+        // The Python package's exception class is an identifier of the inherited package.
+        assert!(allowed("apps/rustgis-python/src/lib.rs", "create_exception!(_rustgis, RustGISError, PyException);"));
+        // The sample data's real source, in the table that credits every asset.
+        assert!(allowed("ATTRIBUTION.md", "from [rustgis-assets](https://github.com/opengeos/rustgis-assets)"));
         // The build-time sample data fetch is the one upstream address left.
         assert!(allowed("crates/render/build.rs", "const BASE: &str = \"https://assets.rustgis.app/data\";"));
     }
@@ -131,6 +146,8 @@ mod tests {
         assert!(banned("Cargo.toml", "repository = \"https://github.com/opengeos/RustGIS\""));
         assert!(banned("packaging/x.sh", "appid=org.rustgis.RustGIS"));
         assert!(banned("apps/rustgis-web/manifest.webmanifest", "\"name\": \"RustGIS\""));
+        assert!(banned("docs/installation.md", "`winget install OpenGeos.Syngle Observatory`"));
+        assert!(banned("docs/index.md", "(https://apps.microsoft.com/detail/9ppjw8h561lq)"));
     }
 
     #[test]

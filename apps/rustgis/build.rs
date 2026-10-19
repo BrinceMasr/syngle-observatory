@@ -51,7 +51,7 @@ BEGIN
       VALUE "FileDescription", "Syngle Observatory"
       VALUE "FileVersion", "{version}"
       VALUE "InternalName", "rustgis"
-      VALUE "LegalCopyright", "Copyright the upstream RustGIS contributors and Syngle. Apache-2.0."
+      VALUE "LegalCopyright", "Copyright 2026 Syngle (BrinceMasr), the Syngle Observatory contributors and the upstream project's contributors. Apache-2.0; see NOTICE."
       VALUE "OriginalFilename", "rustgis.exe"
       VALUE "ProductName", "Syngle Observatory"
       VALUE "ProductVersion", "{version}"

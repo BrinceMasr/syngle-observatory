@@ -1,6 +1,6 @@
 # Syngle Observatory and GeoLibre
 
-Syngle Observatory is Syngle's hard fork of RustGIS, and [GeoLibre](https://geolibre.app) is a separate
+Syngle Observatory is Syngle's hard fork of an upstream open-source GIS (credited in the repository's NOTICE file), and [GeoLibre](https://geolibre.app) is a separate
 [opengeos](https://github.com/opengeos) project whose tool suite Syngle Observatory uses, so people
 often ask how they differ and which to use. This
 page answers that: what each is built for, where each is stronger, and how to use them together.

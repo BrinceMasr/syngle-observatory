@@ -117,7 +117,8 @@ mod tests {
     fn a_firewall_block_is_told_plainly_with_its_details() {
         let headers = [("server".to_string(), "cloudflare".to_string()), ("cf-ray".to_string(), "a4c9-BOG".to_string())];
         let page = b"<title>Attention Required! | Cloudflare</title>";
-        let f = Failure::answered("https://example.org/MapServer?f=json&token=secret", 403, &headers, page).sent_as("Syngle Observatory/1.0");
+        let f =
+            Failure::answered("https://example.org/MapServer?f=json&token=secret", 403, &headers, page).sent_as("Syngle Observatory/1.0");
         let (what, next) = plain(&f);
         assert_eq!(what, "The server refused the request.");
         assert!(next.contains("Cloudflare") && next.contains("administrator"), "{next}");

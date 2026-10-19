@@ -1,7 +1,8 @@
 ---
 name: rustgis
 description: |
-  Use Syngle Observatory from an agent: list layers, read features, view the map, run commands and geoprocessing, and save. Trigger for the already-open desktop app (MCP Relay, then rustgis-cli mcp --attach), a headless project, or rustgis-cli MCP in Claude, Codex, Cursor, or VS Code. Installing Syngle Observatory is a trigger, not the task.
+  Use Syngle Observatory from an agent: list layers, read features, view the map, run commands and geoprocessing, and save. Trigger for the already-open desktop app (MCP Relay, then rustgis-cli mcp --attach), a headless project, or rustgis-cli MCP in Claude, Codex, Cursor, or VS Code. The fork publishes no releases: build it
+  from source (docs/installation.md) when it is not present.
 ---
 
 # Syngle Observatory
@@ -14,7 +15,7 @@ which project the user wants to operate on **before** starting the server.
 
 | User's goal | Entry point |
 | --- | --- |
-| Install Syngle Observatory or make its CLI available to the agent | Read [install-from-agent](references/install-from-agent.md); detect the user's platform, install the app and CLI, verify the CLI, then register MCP. |
+| Make the CLI available to the agent | The fork publishes no releases, so there is nothing to install: build it (`cargo build --release -p rustgis-cli`, see [installation](../../docs/installation.md)), confirm it runs, then register MCP with the client. |
 | Manage the map already open in the desktop app | Start **MCP Relay** in the app's Command Search (Ctrl+K), confirm `127.0.0.1:8767`, then register `rustgis-cli mcp --attach`. |
 | Work in a separate headless project | Register `rustgis-cli mcp --sample`, `--project file.rgis`, or repeatable `--data file.geojson`. This is the agent's own project, not the desktop app. |
 | Use the browser app | Open <https://github.com/BrinceMasr/syngle-observatory>. The desktop loopback relay is not a browser-management interface. |
@@ -25,8 +26,8 @@ private project if the relay is unavailable. Do not combine `--attach` with
 
 ## Connect to the open desktop app
 
-1. Ensure the app and `rustgis-cli` are installed on the user's machine. Use the
-   install reference to resolve PATH and MCP client configuration.
+1. Ensure `rustgis-cli` is built on the user's machine (the fork publishes no releases)
+   and resolve PATH and MCP client configuration yourself.
 2. In the open Syngle Observatory desktop app, ask the user to tick **Let your Agents
    Control Syngle Observatory** in the AI Assistant's settings (it also lets attached
    agents use files and the network), or open Command Search (Ctrl+K) and run
@@ -86,10 +87,10 @@ port, start the app command with `ui.mcpRelay {"port": 9000}` and use
 - `view_map` can fetch tiles for web tile layers already in the project.
   Do not describe the default access policy as a complete offline guarantee.
 
-## Installation and client setup reference
+## Client setup reference
 
-Read [references/install-from-agent.md](references/install-from-agent.md) for
-agent-runnable platform detection, package-manager and checked release installs,
-PATH confirmation, Claude/Codex/`mcp.json`/VS Code registration, and the attached
-relay procedure. Canonical upstream documentation:
-<https://github.com/BrinceMasr/syngle-observatory/installation/> and <https://github.com/BrinceMasr/syngle-observatory/mcp/>.
+Build the CLI from source ([installation](../../docs/installation.md)): the fork publishes no
+releases, no store listing and no package-manager packages, so there is nothing to download.
+Then register the MCP server with the client (`claude mcp add`, a Codex or `mcp.json` entry, or VS
+Code) pointing at that binary, and use `rustgis-cli mcp --attach` for the app that is already
+open. See [MCP Server](../../docs/mcp.md).

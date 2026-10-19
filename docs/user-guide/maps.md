@@ -159,10 +159,8 @@ The gallery's **Web Basemaps** need no API key: the OpenFreeMap vector maps (Lib
 Positron, Dark, Fiord) and USGS Imagery. Choosing one replaces the other web basemaps; tick
 **Stack on the current basemaps** above them to add it over the others instead (clicking one
 that already shows then takes it off). For many
-more (OpenStreetMap, Esri, NASA and others), follow **Install the Basemaps plugin** under them,
-which opens the Plugin Manager at the
-[Basemaps plugin](https://plugins.example.org/catalog/basemaps/); it adds a tab of public
-basemaps. Add any other with **Add Tile Layer…** at the bottom of the Basemap gallery.
+more (OpenStreetMap, Esri, NASA and others), install a basemaps plugin from a registry you
+point the Plugin Manager at; it adds a tab of public basemaps. Add any other with **Add Tile Layer…** at the bottom of the Basemap gallery.
 The gallery lists the map's tile layers: show or hide them, change their opacity and order, or
 remove them. The Layers pane lists them too, under the map's layers and above the basemap: tick
 one to show or hide it, and right-click it for its opacity, **Blend** mode, order and **Remove**.

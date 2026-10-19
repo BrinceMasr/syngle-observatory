@@ -453,7 +453,9 @@ fn mcp_register(args: &[String]) -> Result<(), String> {
             if !status.success() {
                 return Err(format!("claude mcp add failed ({status})"));
             }
-            eprintln!("rustgis-cli: registered {name} ({url}) with Claude Code; Syngle Observatory serves it while agents are turned on in the app");
+            eprintln!(
+                "rustgis-cli: registered {name} ({url}) with Claude Code; Syngle Observatory serves it while agents are turned on in the app"
+            );
             Ok(())
         }
         Some(other) => {

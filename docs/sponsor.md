@@ -20,7 +20,8 @@ time, sponsorship is the most direct way to keep it moving.
 
 These upstream sponsorship links go to [Qiusheng Wu](https://github.com/giswqs), maintainer of the
 [opengeos](https://github.com/opengeos) ecosystem including [GeoLibre](https://geolibre.app) and the
-upstream RustGIS project; Syngle Observatory is a fork and is not maintained by him. Syngle's own
+upstream project this fork came from; Syngle Observatory is a fork and is not maintained by him.
+Syngle's own
 support channel is the fork's issue tracker.
 
 ## What your sponsorship supports
@@ -28,13 +29,11 @@ support channel is the fork's issue tracker.
 - **Development time**: new features from the
   [roadmap](https://github.com/BrinceMasr/syngle-observatory/blob/main/ROADMAP.md), bug fixes, and keeping
   up with fast-moving dependencies such as egui, wgpu and the GeoLibre tool suite.
-- **Shipping to every platform**: the Apple developer account, code signing and notarization
-  behind the macOS app, the Microsoft Store listing, and building the Windows and Linux
-  [packages](installation.md), which the project pays for whether or not anyone sponsors it.
-- **Hosting**: [brincemasr.github.io/syngle-observatory](https://github.com/BrinceMasr/syngle-observatory), the [web app](https://github.com/BrinceMasr/syngle-observatory), the
-  [plugin registry](https://plugins.example.org), the
-  [download mirror](https://github.com/BrinceMasr/syngle-observatory/releases) and the sample data and fonts at
-  the Noto CJK repository.
+- **Shipping**: the fork publishes no installers, no store listing, no package-manager
+  packages and no website, so there is nothing to pay for there; the cost of the work is
+  development time and review.
+- **Nothing to host**: the fork hosts no website, plugin registry, download mirror or asset
+  host; the sample data it embeds at build time comes from its upstream source.
 - **Documentation**: the [User Guide](user-guide/index.md) and examples that make the app usable
   without training.
 - **Support**: triaging issues, answering questions and reviewing community pull requests.

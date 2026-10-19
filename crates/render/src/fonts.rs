@@ -131,7 +131,9 @@ pub fn valid_font(bytes: &[u8], index: u32) -> bool {
 /// Font License), not the upstream app's asset host.
 pub fn cjk_font_url(region: CjkRegion) -> &'static str {
     match region {
-        CjkRegion::SimplifiedChinese => "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+        CjkRegion::SimplifiedChinese => {
+            "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf"
+        }
         CjkRegion::Japanese => "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf",
         CjkRegion::Korean => "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Korean/NotoSansCJKkr-Regular.otf",
     }

@@ -5,7 +5,7 @@ site_author = "Syngle (BrinceMasr)"
 site_url = "https://brincemasr.github.io/syngle-observatory/"
 repo_url = "https://github.com/BrinceMasr/syngle-observatory"
 repo_name = "BrinceMasr/syngle-observatory"
-copyright = "Copyright &copy; 2026 Syngle (BrinceMasr); RustGIS is &copy; its upstream contributors"
+copyright = "Copyright &copy; 2026 Syngle (BrinceMasr); the upstream project this fork came from is &copy; its contributors"
 extra_css = ["stylesheets/extra.css"]
 
 nav = [

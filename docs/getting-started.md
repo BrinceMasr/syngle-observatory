@@ -2,7 +2,8 @@
 
 ## Open the app
 
-- **In the browser**: open [brincemasr.github.io/syngle-observatory](https://github.com/BrinceMasr/syngle-observatory). Nothing to install.
+- **In the browser**: build the canvas-only view (`trunk build --release --features canvas-only`
+  in `apps/rustgis-web`) and serve it; the fork hosts no website.
 - **On the desktop**: [install](installation.md) Syngle Observatory and start it. It opens the World Atlas
   sample: countries, cities, rivers and lakes from Natural Earth.
 - **From source**:

@@ -49,7 +49,7 @@ Tools for working across maps and views, and for setting up the app the way you 
 - **Help**: choose the ribbon's tabs and the Quick Access Toolbar's buttons, open the user guide,
   and watch the **Diagnostic Monitor** (frame rate, draw time, data size).
 - **Plugins**: **Plugins › Plugin Manager** installs, updates and removes [plugins](../plugins.md)
-  from the registry at [the plugin registry](https://plugins.example.org) or from a file.
+  from a registry you point it at, or from a file.
 - **Language**: **Settings › Language** switches the interface among
   [16 languages](../i18n.md) and chooses the [worldview](maps.md#worldview) of the built-in
   borders.

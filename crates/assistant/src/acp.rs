@@ -314,7 +314,8 @@ impl Session {
             (Some(INIT), Phase::Initializing) => {
                 let version = result.get("protocolVersion").and_then(Value::as_u64).unwrap_or(0);
                 if version != PROTOCOL_VERSION {
-                    let report = format!("{} speaks ACP version {version}; Syngle Observatory speaks version {PROTOCOL_VERSION}.", self.label);
+                    let report =
+                        format!("{} speaks ACP version {version}; Syngle Observatory speaks version {PROTOCOL_VERSION}.", self.label);
                     events.extend(self.finish_with(report, true));
                     return;
                 }

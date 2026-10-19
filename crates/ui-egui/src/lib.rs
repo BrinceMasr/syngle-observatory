@@ -1038,7 +1038,10 @@ impl RustGisApp {
             return self.run("layer.addDataBytes", p);
         }
         let Ok(text) = std::str::from_utf8(bytes) else {
-            let e = crate::i18n::fmt("{name} is not a text file: Syngle Observatory opens GeoJSON, CSV, GeoTIFF and .rgis here", &[("name", name)]);
+            let e = crate::i18n::fmt(
+                "{name} is not a text file: Syngle Observatory opens GeoJSON, CSV, GeoTIFF and .rgis here",
+                &[("name", name)],
+            );
             self.session.notify(e.clone(), true);
             return Err(e);
         };
@@ -2117,7 +2120,9 @@ impl RustGisApp {
                 if self.services.download.is_some() {
                     let text = serde_json::to_string_pretty(&l).map_err(|e| e.to_string())?;
                     self.download(&format!("{}.rgislayout", l.name), text.into_bytes());
-                } else if let Some(path) = dialogs::pick_save(&format!("{}.rgislayout", l.name), &["rgislayout"], tl!("Syngle Observatory layout")) {
+                } else if let Some(path) =
+                    dialogs::pick_save(&format!("{}.rgislayout", l.name), &["rgislayout"], tl!("Syngle Observatory layout"))
+                {
                     return self.run("layout.save", json!({"layout": li, "path": path}));
                 }
             }
@@ -2169,8 +2174,12 @@ impl RustGisApp {
                     "map" => ("map.import", &["rgismap", "rgismpk", "rgis", "rgisx", "rgispkg"], "Syngle Observatory maps and projects"),
                     "layer" => ("layer.addLayerFile", &["rgislyr"], "Syngle Observatory layer file"),
                     "styles" => ("style.add", &["rgisstyle"], "Syngle Observatory styles"),
-                    "ramps" => ("ramp.add", &["rgisramp", "xml", "qml", "txt", "clr", "cpt"], "Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)"),
-                    "importStyles" => ("style.import", &["rgislyr", "rgismap", "rgis", "rgisx"], "Syngle Observatory layers, maps and projects"),
+                    "ramps" => {
+                        ("ramp.add", &["rgisramp", "xml", "qml", "txt", "clr", "cpt"], "Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)")
+                    }
+                    "importStyles" => {
+                        ("style.import", &["rgislyr", "rgismap", "rgis", "rgisx"], "Syngle Observatory layers, maps and projects")
+                    }
                     "template" => ("project.fromTemplate", &["rgistemplate"], "Syngle Observatory project template"),
                     "task" => ("task.import", &["rgistask"], "Syngle Observatory task"),
                     "bookmarks" => ("bookmark.import", &["rgisbookmarks"], "Syngle Observatory bookmarks"),
@@ -2413,7 +2422,11 @@ impl RustGisApp {
             }
             "ui.learn" => {
                 // Only web pages: the URL can come from a script or command search.
-                let url = p.get("url").and_then(Value::as_str).unwrap_or("https://github.com/BrinceMasr/syngle-observatory/user-guide/").to_string();
+                let url = p
+                    .get("url")
+                    .and_then(Value::as_str)
+                    .unwrap_or("https://github.com/BrinceMasr/syngle-observatory/user-guide/")
+                    .to_string();
                 if !(url.starts_with("https://") || url.starts_with("http://")) {
                     return Err("ui.learn opens web pages (http or https) only".into());
                 }

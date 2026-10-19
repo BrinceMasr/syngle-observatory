@@ -13,18 +13,10 @@ else about you or your data is sent with them.
 
 ## Website analytics
 
-The websites we host, the documentation at [brincemasr.github.io/syngle-observatory](https://github.com/BrinceMasr/syngle-observatory) and the web app at
-[brincemasr.github.io/syngle-observatory](https://github.com/BrinceMasr/syngle-observatory), use Google Analytics 4 to count page visits and see
-which pages are used. Google receives your IP address, the page you are on, the referring page and
-general device and browser information, and sets its own cookies in your browser. It is governed
-by [Google's privacy policy](https://policies.google.com/privacy).
+The fork hosts no website and no web app, and none of its builds load analytics, so there is no
+page visit to count. If you host a build yourself, any analytics are yours to configure.
 
-Analytics never see the data you work with: layers, files, projects and coordinates are processed
-in your browser and are not sent to Google. The web app reports its address trimmed to the site and
-path (`https://github.com/BrinceMasr/syngle-observatory/`), without the query string. The documentation reports the full
-page address, which names the page you are reading and, after a search, the words you searched for.
+Nothing the fork builds reports the data you work with: layers, files, projects and coordinates
+stay on your machine.
 
-You can block analytics with a content blocker or your browser's tracking protection; the sites
-work normally without them. Analytics run only on the sites we host: the measurement ID is added
-when those sites are deployed, so the desktop app, the command line and any copy you build
-yourself never load them.
+The desktop app, the command line, the engine and the canvas view never load analytics.

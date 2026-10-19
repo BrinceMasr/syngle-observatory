@@ -506,8 +506,10 @@ fn package_project(s: &Session) -> Result<Vec<u8>, String> {
         *m = embedded_map(m, &mut budget);
     }
     let text = serde_json::to_string(&p).map_err(|e| e.to_string())?;
-    let readme =
-        format!("{} — a Syngle Observatory project package.\nOpen it with Syngle Observatory (Project › Open), or unzip it for {}.rgis.\n", p.name, p.name);
+    let readme = format!(
+        "{} — a Syngle Observatory project package.\nOpen it with Syngle Observatory (Project › Open), or unzip it for {}.rgis.\n",
+        p.name, p.name
+    );
     rustgis_data::zip::write(&[
         (format!("{}.{}", safe(&p.name), crate::project::EXTENSION), text.into_bytes()),
         ("README.txt".into(), readme.into_bytes()),

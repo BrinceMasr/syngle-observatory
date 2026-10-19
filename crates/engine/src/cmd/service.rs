@@ -182,7 +182,8 @@ fn vet(mut svc: Service, caps: &str) -> Service {
     });
     let dropped = before - svc.layers.len();
     if dropped > 0 {
-        svc.notes.push(format!("{dropped} layers point to addresses Syngle Observatory won't fetch for a service on the web and are left out"));
+        svc.notes
+            .push(format!("{dropped} layers point to addresses Syngle Observatory won't fetch for a service on the web and are left out"));
     }
     svc
 }
@@ -482,8 +483,9 @@ fn catalog_search(s: &mut Session, p: &Value) -> CmdResult {
         .collect();
     let mut out = json!({"matched": page.matched, "count": records.len(), "next": page.next, "records": records, "request": request});
     if dropped > 0 {
-        out["notes"] =
-            json!([format!("{dropped} links point to addresses Syngle Observatory won't fetch for a catalogue on the web and are left out")]);
+        out["notes"] = json!([format!(
+            "{dropped} links point to addresses Syngle Observatory won't fetch for a catalogue on the web and are left out"
+        )]);
     }
     Ok(out)
 }

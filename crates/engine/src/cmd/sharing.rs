@@ -221,7 +221,8 @@ pub fn share_bytes(s: &mut Session, kind: &str, p: &Value) -> Result<(String, Ve
                         .map(move |(k, v)| json!({"step": i + 1, "tool": st.tool, "name": k, "default": v}))
                 })
                 .collect();
-            let tool = json!({"format": "Syngle Observatory web tool", "version": 1, "name": m.name, "steps": m.steps, "parameters": params});
+            let tool =
+                json!({"format": "Syngle Observatory web tool", "version": 1, "name": m.name, "steps": m.steps, "parameters": params});
             Ok((m.name.clone(), serde_json::to_vec_pretty(&tool).map_err(|e| e.to_string())?, m.name.clone()))
         }
         "webScene" => {

@@ -761,7 +761,8 @@ mod native {
     }
 
     /// The User-Agent every request goes with.
-    const USER_AGENT: &str = concat!("Syngle Observatory/", env!("CARGO_PKG_VERSION"), " (+https://github.com/BrinceMasr/syngle-observatory)");
+    const USER_AGENT: &str =
+        concat!("Syngle Observatory/", env!("CARGO_PKG_VERSION"), " (+https://github.com/BrinceMasr/syngle-observatory)");
 
     /// A request that never got an answer: what kind of failure, for the user (#509).
     fn unanswered(e: ureq::Error) -> Failure {

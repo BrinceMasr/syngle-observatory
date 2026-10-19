@@ -873,7 +873,10 @@ mod native {
                 .ok_or_else(|| Error::new(Recovery::SignIn, "not signed in to ChatGPT"))?
         };
         if !c.plan_allowed() {
-            return Err(Error::new(Recovery::Consent, "Syngle Observatory isn't allowed to use your ChatGPT plan; sign in again and allow it"));
+            return Err(Error::new(
+                Recovery::Consent,
+                "Syngle Observatory isn't allowed to use your ChatGPT plan; sign in again and allow it",
+            ));
         }
         if c.expires_soon(now()) { refresh(path, &c, send) } else { Ok(c) }
     }
@@ -957,7 +960,10 @@ mod native {
         let saved = read_credentials(path)?;
         check_account(account, &saved)?;
         if !c.plan_allowed() || !saved.plan_allowed() {
-            return Err(Error::new(Recovery::Consent, "Syngle Observatory isn't allowed to use your ChatGPT plan; sign in again and allow it"));
+            return Err(Error::new(
+                Recovery::Consent,
+                "Syngle Observatory isn't allowed to use your ChatGPT plan; sign in again and allow it",
+            ));
         }
         Ok(())
     }
@@ -1224,12 +1230,17 @@ mod native {
             });
             return match result {
                 Ok(c) if !c.plan_allowed() => {
-                    let why = "Syngle Observatory wasn't allowed to use your ChatGPT plan. Sign in again and allow it to use the assistant.";
+                    let why =
+                        "Syngle Observatory wasn't allowed to use your ChatGPT plan. Sign in again and allow it to use the assistant.";
                     respond(&mut stream, 200, &page("Sign-in incomplete", why));
                     Ok(c)
                 }
                 Ok(c) => {
-                    respond(&mut stream, 200, &page("Signed in", "Syngle Observatory can now use your ChatGPT plan. You can close this tab."));
+                    respond(
+                        &mut stream,
+                        200,
+                        &page("Signed in", "Syngle Observatory can now use your ChatGPT plan. You can close this tab."),
+                    );
                     Ok(c)
                 }
                 Err(e) => {

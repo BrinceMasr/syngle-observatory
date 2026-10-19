@@ -5,11 +5,11 @@ Syngle Observatory's source code (see the repository's `AGENTS.md` for that).
 
 | Skill | What it teaches |
 | --- | --- |
-| [`rustgis/`](rustgis/SKILL.md) | Install Syngle Observatory for the user, register `rustgis-cli` as an MCP server, and manage the project already open in the desktop app through its MCP Relay. |
+| [`rustgis/`](rustgis/SKILL.md) | Register `rustgis-cli` as an MCP server (built from source: the fork publishes no releases) and manage the project already open in the desktop app through its MCP Relay. |
 
 ## Install the skill
 
-Copy the entire `rustgis` directory, including `references/`, into your agent's
+Copy the entire `rustgis` directory into your agent's
 skills directory. From a checkout of this repository, for Claude Code:
 
 ```sh

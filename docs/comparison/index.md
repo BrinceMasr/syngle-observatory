@@ -23,7 +23,7 @@ sibling? [Syngle Observatory and GeoLibre](geolibre.md) compares the two in deta
 
 ## Syngle Observatory and GeoLibre
 
-Syngle Observatory is Syngle's hard fork of RustGIS; GeoLibre is a separate
+Syngle Observatory is Syngle's hard fork of an upstream open-source GIS (credited in the repository's NOTICE file); GeoLibre is a separate
 [opengeos](https://github.com/opengeos) project. They share the same suite of over 1,000 GeoLibre and Whitebox
 geoprocessing tools, natively on the desktop and on WebAssembly in the browser.
 

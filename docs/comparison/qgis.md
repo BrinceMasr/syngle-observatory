@@ -46,10 +46,10 @@ The same World Atlas data, styled the same way, in each app.
   AppImage, `.deb`/`.rpm`, Homebrew, winget, the AUR, Fedora COPR). QGIS installers bundle a
   Python interpreter, Qt, GDAL, GRASS and more, and run to hundreds of megabytes. See
   [Installation](../installation.md).
-- **In the browser.** The whole app, not a viewer, is compiled to WebAssembly and runs at
-  [brincemasr.github.io/syngle-observatory](https://github.com/BrinceMasr/syngle-observatory): add files, style them, run the 1,000+ GeoLibre and
-  Whitebox tools, build layouts and export, with the data staying on your device. You can serve
-  the static build yourself. QGIS has no official browser version; QGIS Server and qgis2web
+- **In the browser.** The fork's Rust view compiles to WebAssembly and its map draws in a page
+  (WebGPU, with a WebGL2 fallback), with the data staying on your device: add files, style them,
+  run the 1,000+ GeoLibre and Whitebox tools, and export. You serve the build yourself; the fork
+  hosts no website. QGIS has no official browser version; QGIS Server and qgis2web
   publish maps made on the desktop.
 - **Everything is a command.** Every ribbon button, shortcut and pane action is a command with an
   id and JSON parameters. The same ids run from [`rustgis-cli`](../cli.md), the

@@ -1589,7 +1589,9 @@ fn read_shapefile_parts(parts: ShapefileParts, name: &str) -> Result<(Dataset, R
     integral_numeric_to_integer(&mut ds);
     let e = ds.extent();
     if !e.is_empty() && (e.min_x < -180.5 || e.max_x > 180.5 || e.min_y < -90.5 || e.max_y > 90.5) {
-        report.messages.push("coordinates are not longitude/latitude; Syngle Observatory reads them as WGS 84 and they may draw out of place".into());
+        report
+            .messages
+            .push("coordinates are not longitude/latitude; Syngle Observatory reads them as WGS 84 and they may draw out of place".into());
     }
     if report.skipped > 0 {
         report.messages.push(format!("{} shapes were unreadable or unsupported", report.skipped));
