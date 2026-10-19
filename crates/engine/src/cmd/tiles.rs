@@ -40,6 +40,7 @@ pub const NETWORK: &[&str] = &[
     "portal.add",
     "nationalMap.add",
     "fieldsOfTheWorld.add",
+    "portal.files",
 ];
 
 pub fn commands() -> Vec<C> {

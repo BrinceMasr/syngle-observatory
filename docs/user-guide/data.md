@@ -210,8 +210,8 @@ databases.
 ## Web Data
 
 **Home › Web Data** gathers public web services and catalogs: the ones that cover the whole world
-in one alphabetical list, and those that cover one country in a submenu named after it. Each is
-described below.
+in one alphabetical list, and those that cover one country in a submenu named after it. Each
+opens in the Web Data pane on the right, beside the map it searches, and is described below.
 
 ## STAC catalogs
 
@@ -426,7 +426,8 @@ portal and lists, for each, the resources RustGIS can add, the best format first
 **Only where the map is** keeps to datasets covering the map's view. A file is added by its address
 (`portal.add`, read in place when it can be, as **Add Data From URL…** does); a service opens
 **Add From Service…** connected to it, to pick its layer (`portal.add` takes the first layer with
-features unless `"layer"` names one). A search lists up to 50 datasets.
+features unless `"layer"` names one, or an ArcGIS map or image service's whole map). A search
+lists up to 50 datasets.
 
 ```sh
 rustgis-cli run --cmd 'portal.search={"portal":"socrata","url":"data.cityofnewyork.us","query":"parks"}'
@@ -437,6 +438,43 @@ An address a portal lists is judged as one found in a document on the web: it ma
 the local network. Both commands reach the network, so the AI Assistant asks before it runs them,
 and plugins need the network permission. A dataset's licence is the portal's: its page (the
 **Page** link) says what it is.
+
+### Web services
+
+Several **Home › Web Data** entries open the same search on one service, with its own choices
+(`portal.search` with the `"portal"` in brackets):
+
+| Entry | What it finds | Added as |
+|---|---|---|
+| **ArcGIS Portal…** (`arcgis-portal`) | Public items on [ArcGIS Online](https://www.arcgis.com), or on the portal whose address is given: feature, map, image and vector tile services, and GeoJSON files | The service (Add From Service), or the file |
+| **Earthdata GIS…** (`earthdata-gis`) | NASA's [Earthdata GIS](https://gis.earthdata.nasa.gov/portal) portal: Earth science imagery, maps and features | The service |
+| **GeoLens…** (`geolens`) | A [GeoLens](https://getgeolens.com) server's vector datasets (`https://datasets.geolibre.app` by default) | Features, the first 1,000 |
+| **Hugging Face…** (`huggingface`) | Datasets on [Hugging Face](https://huggingface.co/datasets) by name, or one by `owner/name`; **Browse Files** (`portal.files`) lists its GeoTIFFs, GeoParquet, GeoJSON, FlatGeobuf, GeoPackage, PMTiles, LiDAR and other files (public, not gated) | The file |
+| **Ocean Data Platform…** (`ocean-data`) | [HUB Ocean](https://app.hubocean.earth)'s marine datasets, searched by words | Features, up to 10,000 |
+| **OpenAerialMap…** (`openaerialmap`) | Drone and aerial images on [OpenAerialMap](https://openaerialmap.org) where the map is, newest first | A COG, read in place |
+| **France › IGN LiDAR HD…** (`ign-lidar`) | [IGN](https://geoservices.ign.fr/lidarhd)'s 1 km LiDAR HD tiles where the map is (a view of at most 2 square degrees) | A COPC point cloud, read in place |
+| **United States › US Federal GIS…**, **US State GIS…**, **US Local GIS…** | The public GIS portals of 24 federal agencies (by department), every state and the District of Columbia, and 146 counties and cities (by state): pick a group and a portal; an ArcGIS organisation's public items (`arcgis-portal` with `"org"`), or a Socrata site | The service, or the file |
+| **United States › USGS 3DEP DEM…** (`usgs-dem`) | USGS elevation models from [The National Map](https://apps.nationalmap.gov) where the map is: 1 m, 1/9, 1/3 (the default) or 1 arc-second, or Alaska's 5 m (`"dataset"`), each tile's newest current edition | A GeoTIFF, read in place |
+
+Results are cards, as in GeoLibre: a picture when the service has one, what the item is, who
+shared it and when, and **Details** (its description, id and extent), **Portal** (its page),
+**Zoom** (to its extent) and **Add**. A web map's **Add** lists its layers to add one by one. ArcGIS
+portals keep a search to **All**, **Imagery**, **Maps**, **Features** or **Web maps**, list their
+newest items when opened, and page with **Load more**.
+
+The search by place (OpenAerialMap, LiDAR HD, 3DEP) is always where the map is, and its words, when
+given, keep to the images or tiles that have them: OpenAerialMap's to 200 images where the map is
+at a time (**Load more** looks at older ones), LiDAR HD's to the first 50 tiles. A Hugging Face
+dataset lists its first 1,000 files, and the Ocean Data Platform's catalogue is read whole (a few
+hundred datasets) and searched in RustGIS. In the web app, the Ocean Data Platform's features are
+read through GeoLibre's relay (`tiles.geolibre.app`), the platform answering only its own site, so
+those requests pass through it.
+
+```sh
+rustgis-cli run --cmd 'portal.search={"portal":"usgs-dem","bbox":[-122.25,46.15,-122.15,46.25]}'
+rustgis-cli run --cmd 'portal.files={"dataset":"giswqs/geospatial"}'
+rustgis-cli run --sample --cmd 'portal.add={"url":"https://data.geopf.fr/telechargement/download/LiDARHD-NUALID/NUALHD_1-0__LAZ_LAMB93_KE_2025-06-06/LHD_FXX_0652_6864_PTS_LAMB93_IGN69.copc.laz","name":"LiDAR HD 0652-6864"}'
+```
 
 ## S3 buckets
 

@@ -10,7 +10,9 @@ use rustgis_engine::map::{Basemap, RasterRenderer, Renderer, Resampling, Stretch
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, regular, semibold};
-use crate::widgets::{CONTENT_H, LABEL_H, big, big_form_menu, big_menu, col, group, menu_item, small, small_form_menu, small_menu, text_w};
+use crate::widgets::{
+    CONTENT_H, LABEL_H, big, big_form_menu, big_menu, col, group, menu_item, small, small_form_menu, small_menu, submenu_row, text_w,
+};
 use crate::{RightPane, RustGisApp, icons};
 
 pub const TABS: [&str; 10] = ["Home", "Data", "Style", "Edit", "Analyze", "View", "Publish", "Plugins", "Settings", "Help"];
@@ -524,20 +526,35 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
 /// alphabetical list (a service fits one place, where a list by topic would leave it in several).
 /// Services covering one country go in a submenu named after it.
 fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
-    menu_item(ui, app, "", "Boundaries…", "ui.dialog", json!({"name": "boundaries"}));
-    menu_item(ui, app, "", "Fields of the World…", "ui.dialog", json!({"name": "fieldsOfTheWorld"}));
-    menu_item(ui, app, "", "NASA Earthdata…", "ui.dialog", json!({"name": "nasaEarthdata"}));
-    menu_item(ui, app, "", "Natural Earth…", "ui.dialog", json!({"name": "naturalEarth"}));
-    menu_item(ui, app, "", "OpenStreetMap…", "ui.dialog", json!({"name": "osm"}));
-    menu_item(ui, app, "", "Overture Maps…", "ui.dialog", json!({"name": "overture"}));
+    let svc = |id: &str| json!({"service": id});
+    let pane = |name: &str| json!({"name": name});
+    menu_item(ui, app, "", "ArcGIS Portal…", "ui.searchOpenData", svc("arcgis-portal"));
+    menu_item(ui, app, "", "Boundaries…", "ui.dialog", pane("boundaries"));
+    menu_item(ui, app, "", "Earthdata GIS…", "ui.searchOpenData", svc("earthdata-gis"));
+    menu_item(ui, app, "", "Fields of the World…", "ui.dialog", pane("fieldsOfTheWorld"));
+    menu_item(ui, app, "", "GeoLens…", "ui.searchOpenData", svc("geolens"));
+    menu_item(ui, app, "", "Hugging Face…", "ui.searchOpenData", svc("huggingface"));
+    menu_item(ui, app, "", "NASA Earthdata…", "ui.dialog", pane("nasaEarthdata"));
+    menu_item(ui, app, "", "Natural Earth…", "ui.dialog", pane("naturalEarth"));
+    menu_item(ui, app, "", "Ocean Data Platform…", "ui.searchOpenData", svc("ocean-data"));
+    menu_item(ui, app, "", "OpenAerialMap…", "ui.searchOpenData", svc("openaerialmap"));
+    menu_item(ui, app, "", "OpenStreetMap…", "ui.dialog", pane("osm"));
+    menu_item(ui, app, "", "Overture Maps…", "ui.dialog", pane("overture"));
     menu_item(ui, app, "", "Search Open Data…", "ui.searchOpenData", Value::Null);
-    menu_item(ui, app, "", "Source Cooperative…", "ui.dialog", json!({"name": "sourcecoop"}));
-    menu_item(ui, app, "", "STAC Search…", "ui.dialog", json!({"name": "stac"}));
+    menu_item(ui, app, "", "Source Cooperative…", "ui.dialog", pane("sourcecoop"));
+    menu_item(ui, app, "", "STAC Search…", "ui.dialog", pane("stac"));
     ui.separator();
-    crate::widgets::submenu_row(ui, "", tl!("United States"), |ui| {
-        menu_item(ui, app, "", "EnviroAtlas…", "ui.dialog", json!({"name": "enviroAtlas"}));
-        menu_item(ui, app, "", "FEMA NFHL…", "ui.dialog", json!({"name": "femaNfhl"}));
-        menu_item(ui, app, "", "The National Map…", "ui.dialog", json!({"name": "nationalMap"}));
+    submenu_row(ui, "", tl!("France"), |ui| {
+        menu_item(ui, app, "", "IGN LiDAR HD…", "ui.searchOpenData", svc("ign-lidar"));
+    });
+    submenu_row(ui, "", tl!("United States"), |ui| {
+        menu_item(ui, app, "", "EnviroAtlas…", "ui.dialog", pane("enviroAtlas"));
+        menu_item(ui, app, "", "FEMA NFHL…", "ui.dialog", pane("femaNfhl"));
+        menu_item(ui, app, "", "The National Map…", "ui.dialog", pane("nationalMap"));
+        menu_item(ui, app, "", "US Federal GIS…", "ui.searchOpenData", svc("us-federal"));
+        menu_item(ui, app, "", "US Local GIS…", "ui.searchOpenData", svc("us-local"));
+        menu_item(ui, app, "", "US State GIS…", "ui.searchOpenData", svc("us-state"));
+        menu_item(ui, app, "", "USGS 3DEP DEM…", "ui.searchOpenData", svc("usgs-dem"));
     });
 }
 

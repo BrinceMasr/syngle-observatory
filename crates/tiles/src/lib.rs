@@ -29,6 +29,7 @@ pub mod sprite;
 pub mod stac;
 pub mod style;
 pub mod template;
+pub mod usgis;
 
 pub use draw::{Drawn, Frame, Label, draw};
 pub use source::{Kind, Spec};
