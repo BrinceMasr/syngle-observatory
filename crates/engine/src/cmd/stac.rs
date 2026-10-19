@@ -9,15 +9,15 @@ use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
     vec![
-        C::new("stac.collections", "List STAC Collections", "Home › Add › STAC Search", collections)
+        C::new("stac.collections", "List STAC Collections", "Home › Add › Web Data › STAC Search", collections)
             .view()
             .params(r#"{"url"?: "a STAC API (default: Earth Search, https://earth-search.aws.element84.com/v1; Planetary Computer: https://planetarycomputer.microsoft.com/api/stac/v1)"}"#),
-        C::new("stac.search", "STAC Search", "Home › Add › STAC Search", search).params(
+        C::new("stac.search", "STAC Search", "Home › Add › Web Data › STAC Search", search).params(
             r#"{"url"?: "a STAC API (default: Earth Search)", "collections"?: id | [ids], "bbox"?: [west, south, east, north] | "view" (the map's extent), "datetime"?: "2024-06-01" | "2024-06-01/2024-06-30", "limit"?: 1–200 (default 10), "maxCloud"?: percent, "footprints"?: bool (adds the items' footprints as a layer, default true)}"#,
         ),
-        C::new("stac.addFootprints", "Add STAC Footprints", "Home › Add › STAC Search", add_footprints_cmd)
+        C::new("stac.addFootprints", "Add STAC Footprints", "Home › Add › Web Data › STAC Search", add_footprints_cmd)
             .params(r#"{"footprints": GeoJSON FeatureCollection (items' footprints, as STAC Search finds them), "name"?: text}"#),
-        C::new("stac.addAsset", "Add STAC Asset", "Home › Add › STAC Search", add_asset).params(
+        C::new("stac.addAsset", "Add STAC Asset", "Home › Add › Web Data › STAC Search", add_asset).params(
             r#"{"item": a STAC item (as stac.search returns it) | "url": an item's address (Planetary Computer assets are signed), "asset"?: key (default: visual, else the first GeoTIFF, else the first data asset), "name"?: text}"#,
         ),
     ]
@@ -103,7 +103,7 @@ fn collections(_s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(target_arch = "wasm32")]
     {
         let _ = api;
-        Err("in the web app, browse STAC with Home › Add Data › STAC Search".into())
+        Err("in the web app, browse STAC with Home › Web Data › STAC Search".into())
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -119,7 +119,7 @@ fn search(s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(target_arch = "wasm32")]
     {
         let _ = (s, url);
-        Err("in the web app, search STAC with Home › Add Data › STAC Search".into())
+        Err("in the web app, search STAC with Home › Web Data › STAC Search".into())
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -149,7 +149,7 @@ fn item(p: &Value) -> Result<Item, String> {
     #[cfg(target_arch = "wasm32")]
     {
         let _ = url;
-        Err("in the web app, add STAC assets with Home › Add Data › STAC Search".into())
+        Err("in the web app, add STAC assets with Home › Web Data › STAC Search".into())
     }
     #[cfg(not(target_arch = "wasm32"))]
     {

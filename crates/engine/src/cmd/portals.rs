@@ -11,17 +11,17 @@ use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
     vec![
-        C::new("osm.download", "Download OpenStreetMap Data", "Home › Add › Add Data", osm_download).params(
+        C::new("osm.download", "Download OpenStreetMap Data", "Home › Add › Web Data", osm_download).params(
             r#"{"bbox"?: [west, south, east, north] | "view" (the map's extent, the default), "view"?: bool (false: a bbox must be given), "preset"?: "buildings"|"roads"|"railways"|"water"|"landuse"|"parks"|"pois"|"boundaries", "tags"?: "key=value, key" (any of them), "url"?: "an Overpass server (default https://overpass-api.de/api/interpreter)", "name"?: text, "answer"?: "the server's JSON answer, when already fetched (the app's background request)"}"#,
         ),
-        C::new("boundaries.add", "Add Administrative Boundaries", "Home › Add › Add Data", boundaries_add).params(
+        C::new("boundaries.add", "Add Administrative Boundaries", "Home › Add › Web Data", boundaries_add).params(
             r#"{"country": "ISO 3166 alpha-3 code (CHE, KEN…)", "level"?: "ADM0" (the country, default) … "ADM5", "name"?: text, "text"?: "the boundaries' GeoJSON, when already fetched (the app's background request)"}"#,
         ),
-        C::new("boundaries.countries", "List geoBoundaries Countries", "Home › Add › Add Data", boundaries_countries).view(),
-        C::new("portal.search", "Search Open Data", "Home › Add › Add Data", portal_search).view().params(
+        C::new("boundaries.countries", "List geoBoundaries Countries", "Home › Add › Web Data", boundaries_countries).view(),
+        C::new("portal.search", "Search Open Data", "Home › Add › Web Data", portal_search).view().params(
             r#"{"query": text, "portal"?: "ckan" (data.gov's catalogue, the default, or any CKAN site) | "socrata" | "arcgis-hub", "url"?: "the portal: a CKAN site (https://open.canada.ca/data), a Socrata site (data.cityofnewyork.us) or an ArcGIS Hub site", "bbox"?: [west, south, east, north] | "view", "view"?: bool (true: where the map is), "limit"?: 1–50 (20)}"#,
         ),
-        C::new("portal.add", "Add Open Data", "Home › Add › Add Data", portal_add).params(
+        C::new("portal.add", "Add Open Data", "Home › Add › Web Data", portal_add).params(
             r#"{"url": "a resource's address, as portal.search lists it", "use"?: "file" (read by address, the default) | "wms" | "wfs" | "arcgis" (a service), "layer"?: "a service's layer (default: its first)", "name"?: text, "portal"?: "the portal's address the resource came from (an address it gives may not reach into the local network)"}"#,
         ),
     ]
@@ -212,5 +212,5 @@ fn fetch(url: &str) -> Result<Vec<u8>, String> {
 
 #[cfg(target_arch = "wasm32")]
 fn fetch(_url: &str) -> Result<Vec<u8>, String> {
-    Err("in the web app, use Home › Add Data › OpenStreetMap…, Boundaries… or Search Open Data…".into())
+    Err("in the web app, use Home › Web Data › OpenStreetMap…, Boundaries… or Search Open Data…".into())
 }

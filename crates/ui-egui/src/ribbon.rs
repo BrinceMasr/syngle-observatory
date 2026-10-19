@@ -439,13 +439,7 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
             // Databases are read through DuckDB, a program the browser can't run.
             #[cfg(not(target_arch = "wasm32"))]
             menu_item(ui, app, "", "Database…", "ui.dialog", json!({"name": "addDatabase"}));
-            menu_item(ui, app, "", "STAC Search…", "ui.dialog", json!({"name": "stac"}));
             menu_item(ui, app, "", "S3…", "ui.dialog", json!({"name": "s3"}));
-            menu_item(ui, app, "", "OpenStreetMap…", "ui.dialog", json!({"name": "osm"}));
-            menu_item(ui, app, "", "Boundaries…", "ui.dialog", json!({"name": "boundaries"}));
-            menu_item(ui, app, "", "Overture Maps…", "ui.dialog", json!({"name": "overture"}));
-            menu_item(ui, app, "", "Source Cooperative…", "ui.dialog", json!({"name": "sourcecoop"}));
-            menu_item(ui, app, "", "Search Open Data…", "ui.searchOpenData", Value::Null);
             menu_item(ui, app, "graphics_layer", "Graphics Layer", "graphics.newLayer", Value::Null);
             ui.separator();
             ui.label(egui::RichText::new(tl!("Sample data (Natural Earth)")).small().weak());
@@ -455,6 +449,7 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
                 menu_item(ui, app, "", label, "layer.addSample", json!({"name": n}));
             }
         });
+        big_menu(ui, app, "web_data", "Web\nData", "Add data from public web services and catalogs.", web_data_menu);
     });
     group(ui, "Selection", |ui| {
         tool_btn(ui, app, "select", "Select", "Click or drag a box to select features. Shift adds, Ctrl removes.", Tool::Select);
@@ -523,6 +518,18 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
             );
         });
     });
+}
+
+/// The Web Data menu: public web services and catalogs, the ones covering the world in one
+/// alphabetical list (a service fits one place, where a list by topic would leave it in several).
+/// Services covering one country go in a submenu named after it.
+fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
+    menu_item(ui, app, "", "Boundaries…", "ui.dialog", json!({"name": "boundaries"}));
+    menu_item(ui, app, "", "OpenStreetMap…", "ui.dialog", json!({"name": "osm"}));
+    menu_item(ui, app, "", "Overture Maps…", "ui.dialog", json!({"name": "overture"}));
+    menu_item(ui, app, "", "Search Open Data…", "ui.searchOpenData", Value::Null);
+    menu_item(ui, app, "", "Source Cooperative…", "ui.dialog", json!({"name": "sourcecoop"}));
+    menu_item(ui, app, "", "STAC Search…", "ui.dialog", json!({"name": "stac"}));
 }
 
 fn basemap_gallery(ui: &mut Ui, app: &mut RustGisApp) {

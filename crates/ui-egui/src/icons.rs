@@ -326,6 +326,10 @@ pub fn paint(painter: &Painter, r: Rect, name: &str, ink: Color32, accent: Color
             p.layers(2.0, 5.0, 0.9);
             p.plus_badge(18.0, 17.5);
         }
+        "web_data" => {
+            p.globe(10.0, 10.0, 7.5);
+            p.plus_badge(18.0, 17.5);
+        }
         "add_folder" | "open" => {
             p.fill(&[(2.0, 6.0), (9.0, 6.0), (11.0, 8.0), (22.0, 8.0), (22.0, 19.0), (2.0, 19.0)], amber);
             p.closed(&[(2.0, 5.0), (9.0, 5.0), (11.0, 7.5), (22.0, 7.5), (22.0, 19.0), (2.0, 19.0)], 1.3, ink);
@@ -1115,6 +1119,7 @@ pub const ALL: &[&str] = &[
     "locate",
     "basemap",
     "add_data",
+    "web_data",
     "add_folder",
     "open",
     "select",

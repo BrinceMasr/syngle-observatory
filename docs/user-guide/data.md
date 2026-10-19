@@ -207,9 +207,21 @@ when you add a table without one, and a project opening sends only a password gi
 session, as for PostGIS. SQL queries (`layer.addSql`, the SQL pane) don't run on MySQL or MariaDB
 databases.
 
+## Web Data
+
+**Home › Web Data** gathers public web services and catalogs: the ones that cover the whole world
+in one alphabetical list, and those that cover one country in a submenu named after it. Each is
+described below.
+
+## Web Data
+
+**Home › Web Data** gathers public web services and catalogs: the ones that cover the whole world
+in one alphabetical list, and those that cover one country in a submenu named after it. Each is
+described below.
+
 ## STAC catalogs
 
-**Home › Add Data › STAC Search…** searches a [STAC](https://stacspec.org) API for imagery and
+**Home › Web Data › STAC Search…** searches a [STAC](https://stacspec.org) API for imagery and
 other assets: by collection, dates, the most cloud cover and (by default) where the map is. The
 default API is Element 84's [Earth Search](https://earth-search.aws.element84.com/v1)
 (Sentinel-2, Landsat, NAIP, Copernicus DEM and Sentinel-1 on AWS); Microsoft's [Planetary
@@ -240,7 +252,7 @@ Assistant](assistant.md) asks before it runs them, and plugins need the network 
 
 ## Overture Maps
 
-**Home › Add Data › Overture Maps…** adds [Overture Maps](https://overturemaps.org)' open data:
+**Home › Web Data › Overture Maps…** adds [Overture Maps](https://overturemaps.org)' open data:
 buildings, places, transportation (segments and connectors), administrative divisions, base
 layers (land use, land, land cover, water, infrastructure, bathymetry) and addresses, from the
 latest release (or one named with `"release"`). Two ways:
@@ -266,7 +278,7 @@ places); the layer says which.
 
 ## Source Cooperative
 
-**Home › Add Data › Source Cooperative…** lists [Source Cooperative](https://source.coop)'s
+**Home › Web Data › Source Cooperative…** lists [Source Cooperative](https://source.coop)'s
 featured products (or an account's), browses a product's folders and adds a file by its address on
 the data proxy (`https://data.source.coop/<account>/<product>/…`): GeoParquet, FlatGeobuf,
 cloud-optimised GeoTIFFs and PMTiles are read in place, other files downloaded.
@@ -299,7 +311,7 @@ it geocodes, and plugins need the network permission.
 
 ## OpenStreetMap and administrative boundaries
 
-**Home › Add Data › OpenStreetMap…** (`osm.download`) downloads OpenStreetMap data where the map
+**Home › Web Data › OpenStreetMap…** (`osm.download`) downloads OpenStreetMap data where the map
 is from an [Overpass](https://overpass-api.de) server: a preset (buildings, roads, railways, water,
 land use, parks, points of interest or administrative boundaries) or tag filters such as
 `amenity=cafe, shop`. The answer becomes up to three layers, points, lines and polygons: closed
@@ -310,7 +322,7 @@ degrees (about 50 × 50 km), and an answer up to 50,000 elements: the public ser
 a larger area is better read from an extract (`.osm.pbf`). `"url"` names another Overpass server
 when the public one is busy.
 
-**Home › Add Data › Boundaries…** (`boundaries.add`) adds a country's administrative boundaries from
+**Home › Web Data › Boundaries…** (`boundaries.add`) adds a country's administrative boundaries from
 [geoBoundaries](https://www.geoboundaries.org) (CC BY 4.0): the country itself (`ADM0`), its states
 or provinces (`ADM1`) and finer divisions down to `ADM5` where they exist, simplified for the map.
 `boundaries.countries` lists the countries.
@@ -324,7 +336,7 @@ the network permission. OpenStreetMap data is © OpenStreetMap contributors (ODb
 
 ## Open-data portals
 
-**Home › Add Data › Search Open Data…** (`portal.search`) finds datasets by text in an open-data
+**Home › Web Data › Search Open Data…** (`portal.search`) finds datasets by text in an open-data
 portal and lists, for each, the resources RustGIS can add, the best format first:
 
 - **data.gov and CKAN catalogues**: [catalog.data.gov](https://catalog.data.gov) by default, or a
