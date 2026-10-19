@@ -345,8 +345,10 @@ impl Portal {
                 u
             }
             Kind::OpenAerialMap => {
-                // Its search takes no words: the newest images where asked, kept to the words after.
-                let mut u = format!("{}/meta?limit={}&page=1&order_by=acquisition_end&sort=desc", self.base, MAX_RESULTS);
+                // Its search takes no words: the newest images where asked, kept to the words after
+                // (from more of them when there are words).
+                let rows = if q.is_empty() { MAX_RESULTS } else { MAX_RESULTS * 4 };
+                let mut u = format!("{}/meta?limit={rows}&page=1&order_by=acquisition_end&sort=desc", self.base);
                 if let Some(b) = bbox {
                     u.push_str(&format!("&bbox={}", bb(b)));
                 }
@@ -430,7 +432,7 @@ impl Portal {
             }
             Kind::OpenAerialMap => {
                 let r = v.get("results").and_then(Value::as_array).ok_or_else(|| self.not_portal())?;
-                r.iter().take(MAX_RESULTS).filter_map(oam_dataset).filter(|d| has_words(d)).collect()
+                r.iter().take(MAX_RESULTS * 4).filter_map(oam_dataset).filter(|d| has_words(d)).take(MAX_RESULTS).collect()
             }
             Kind::UsgsDem => {
                 let r = v.get("items").and_then(Value::as_array).ok_or_else(|| self.not_portal())?;
@@ -745,7 +747,8 @@ fn arcgis_words(q: &str) -> String {
 
 /// A Hugging Face dataset named whole (`owner/name`, or its page's address).
 fn hf_repo(q: &str) -> Option<String> {
-    let q = q.trim().trim_start_matches("https://huggingface.co/datasets/").trim_end_matches('/');
+    let q = q.trim();
+    let q = q.strip_prefix("https://huggingface.co/datasets/").unwrap_or(q).trim_end_matches('/');
     let (owner, name) = q.split_once('/')?;
     let ok = |s: &str| {
         !s.is_empty() && s.len() <= 96 && !s.starts_with('.') && s.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))

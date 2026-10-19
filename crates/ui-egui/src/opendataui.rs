@@ -78,8 +78,9 @@ pub struct State {
     pub catalog: usize,
     /// The 3DEP elevation model searched (in [`DEM_DATASETS`]).
     pub dem: usize,
-    /// The search under way: the portal, its address, the box it keeps to and its words.
-    waiting: Option<(Portal, String, Option<[f64; 4]>, String, Answer)>,
+    /// The search under way: the portal, its address, the box it keeps to, its words and what it
+    /// is on (the US portal picked when it began).
+    waiting: Option<(Portal, String, Option<[f64; 4]>, String, String, Answer)>,
     /// A dataset's files being listed: the dataset (its place in `found`), the portal, the
     /// listing's address.
     listing: Option<(usize, Portal, String, Answer)>,
@@ -129,19 +130,19 @@ impl State {
 /// Lands the search's answer, and a dataset's listing.
 pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
     poll_listing(app, ctx);
-    let Some((_, _, _, _, slot)) = &app.ui.opendata.waiting else { return };
+    let Some((_, _, _, _, _, slot)) = &app.ui.opendata.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
         return;
     };
-    let Some((portal, url, area, query, _)) = app.ui.opendata.waiting.take() else { return };
+    let Some((portal, url, area, query, source, _)) = app.ui.opendata.waiting.take() else { return };
     let st = &mut app.ui.opendata;
     match r.and_then(|b| portal.parse(&url, &b, area, &query)) {
         Ok(found) => {
             st.info = Some(if found.is_empty() {
                 tl!("No datasets with data RustGIS can add").to_string()
             } else {
-                crate::i18n::fmt("{n} datasets on {portal}", &[("n", &found.len().to_string()), ("portal", &st.source(&portal))])
+                crate::i18n::fmt("{n} datasets on {portal}", &[("n", &found.len().to_string()), ("portal", &source)])
             });
             st.found = found;
         }
@@ -199,7 +200,8 @@ pub fn start(app: &mut RustGisApp, p: &serde_json::Value) {
         st.url = u.to_string();
     }
     if let Some(v) = p.get("view").and_then(serde_json::Value::as_bool) {
-        st.here = v;
+        // A search by place is always where the map is.
+        st.here = v || Portal::new(Some(st.portal), None).is_ok_and(|p| p.needs_place());
     }
     if let Some(q) = text("query").filter(|q| !q.is_empty()) {
         st.query = q.to_string();
@@ -249,7 +251,8 @@ fn search(app: &mut RustGisApp) {
             let st = &mut app.ui.opendata;
             st.found.clear();
             st.listing = None;
-            st.waiting = Some((portal, url, area, query, slot));
+            let source = st.source(&portal);
+            st.waiting = Some((portal, url, area, query, source, slot));
         }
         Err(e) => app.ui.opendata.error = Some(e),
     }
@@ -346,10 +349,16 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
         }
         let place = Portal::new(Some(st.portal), None).is_ok_and(|p| p.needs_place());
         ui.label(tl!("Search"));
+        // A Socrata site among the US portals is searched by words only.
+        let needs = {
+            let p = params(st);
+            Portal::new(p["portal"].as_str(), p["url"].as_str()).is_ok_and(|p| p.needs_query())
+        };
         ui.horizontal(|ui| {
             let hint = match svc.map(|s| s.id) {
                 Some("huggingface") => tl!("a name, or owner/name such as giswqs/geospatial"),
                 _ if place => tl!("words to keep to (optional)"),
+                Some(_) if needs => tl!("words (this portal needs some)"),
                 Some(_) => tl!("words (optional)"),
                 None => tl!("parks, bike lanes, flood zones…"),
             };
