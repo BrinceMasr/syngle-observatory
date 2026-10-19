@@ -404,6 +404,10 @@ fn named_layers_style(spec: &Spec, source: Value, names: &[String]) -> Value {
     json!({"version": 8, "sources": {"vector": source}, "layers": layers})
 }
 
+/// The most of a layer's own style layers drawn: `rustgis_map::tiles::MAX_STYLE_LAYER_COUNT`
+/// lets a layer keep as many (the engine's tests check the two agree).
+pub const MAX_OWN_STYLE_LAYERS: usize = 256;
+
 /// The style a layer's own style layers make (`spec.style_layers`), every layer drawing from
 /// `source`; `None` without them (or when they don't read).
 fn own_style(spec: &Spec, source: &Value) -> Option<Value> {
@@ -411,8 +415,7 @@ fn own_style(spec: &Spec, source: &Value) -> Option<Value> {
         return None;
     }
     let Ok(Value::Array(mut layers)) = serde_json::from_str::<Value>(&spec.style_layers) else { return None };
-    // As many as `rustgis_map::tiles::checked_style_layers` lets a layer keep.
-    layers.truncate(256);
+    layers.truncate(MAX_OWN_STYLE_LAYERS);
     for l in &mut layers {
         if let Some(o) = l.as_object_mut() {
             o.insert("source".into(), json!("vector"));

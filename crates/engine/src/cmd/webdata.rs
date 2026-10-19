@@ -433,12 +433,21 @@ fn fields_add(s: &mut Session, p: &Value) -> CmdResult {
     // Looks that would draw over one another: the year's both, or the same part, goes.
     let url = fields_url(year);
     let both = format!("Fields of the World {year}");
+    // Kept to put back if the new one can't be added (the tile layer limit).
+    let before = s.map().tiles.clone();
     s.map_mut().tiles.retain(|t| !(t.url == url && t.overlay && (t.name == both || t.name == name || (density && fields))));
-    let mut r = super::tiles::add(
+    let added = super::tiles::add(
         s,
-        &json!({"url": fields_url(year), "kind": "pmtiles", "name": name, "overlay": true, "maxZoom": 16,
+        &json!({"url": url, "kind": "pmtiles", "name": name, "overlay": true, "maxZoom": 16,
             "attribution": "Fields of the World (CC BY 4.0)", "styleLayers": fields_style(density, fields, min_score)}),
-    )?;
+    );
+    let mut r = match added {
+        Ok(r) => r,
+        Err(e) => {
+            s.map_mut().tiles = before;
+            return Err(e);
+        }
+    };
     // The view's Web Mercator zoom (known on the Web Mercator map and the globe, whose camera
     // counts Web Mercator metres; another projection's units differ).
     let mercator = matches!(s.map().projection, rustgis_map::globe::Projection::WebMercator | rustgis_map::globe::Projection::Globe);
@@ -469,6 +478,11 @@ mod tests {
             hill.contains("/exportImage?") && hill.contains("&renderingRule=%7B%22rasterFunction%22%3A%22Hillshade%20Gray%22%7D"),
             "{hill}"
         );
+    }
+
+    #[test]
+    fn style_layer_limits_agree() {
+        assert_eq!(rustgis_map::tiles::MAX_STYLE_LAYER_COUNT, crate::render::rustgis_tiles::source::MAX_OWN_STYLE_LAYERS);
     }
 
     #[test]
