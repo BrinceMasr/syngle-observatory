@@ -77,17 +77,24 @@ fn picked(st: &State) -> &'static EmbeddingDataset {
 /// Picks a dataset (`ui.dialog {"name": "embeddings", "dataset": …}`).
 pub fn pick(app: &mut RustGisApp, id: &str) -> Result<(), String> {
     let d = emb::dataset(id).ok_or_else(|| format!("unknown dataset '{id}' (embeddings.datasets lists them)"))?;
-    let st = &mut app.ui.embeddings;
-    if st.dataset != d.id {
-        st.dataset = d.id;
-        st.found.clear();
-        st.info = None;
-        st.error = None;
+    app.ui.embeddings.select(d);
+    Ok(())
+}
+
+impl State {
+    /// Picks a dataset: its results and messages go, and the year keeps to its years.
+    fn select(&mut self, d: &'static EmbeddingDataset) {
+        if self.dataset == d.id {
+            return;
+        }
+        self.dataset = d.id;
+        self.found.clear();
+        self.info = None;
+        self.error = None;
         if let Some((a, b)) = d.years {
-            st.year = st.year.clamp(a, b);
+            self.year = self.year.clamp(a, b);
         }
     }
-    Ok(())
 }
 
 /// The map's extent, in longitude/latitude.
@@ -359,14 +366,8 @@ pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
         egui::ComboBox::from_id_salt("emb_dataset").selected_text(shown).width(w).show_ui(ui, |ui| {
             for d in emb::DATASETS.iter() {
                 let label = d.name.split(" (").next().unwrap_or(d.name);
-                if ui.selectable_label(st.dataset == d.id, label).clicked() && st.dataset != d.id {
-                    st.dataset = d.id;
-                    st.found.clear();
-                    st.info = None;
-                    st.error = None;
-                    if let Some((a, b)) = d.years {
-                        st.year = st.year.clamp(a, b);
-                    }
+                if ui.selectable_label(st.dataset == d.id, label).clicked() {
+                    st.select(d);
                 }
             }
         });

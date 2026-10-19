@@ -769,7 +769,13 @@ pub fn read_vectors(file: &Arc<Remote>, extent: &Extent, column: &str, max_group
     for (g, inside) in &found {
         let rg = reader.get_row_group(*g).map_err(err)?;
         let rows = usize::try_from(rg.metadata().num_rows()).unwrap_or(0).min(MAX_GROUP_ROWS);
-        let lists = read_lists(rg.as_ref(), vec_col, rows)?;
+        let mut take = vec![false; rows];
+        for (r, _) in inside {
+            if let Some(t) = take.get_mut(*r) {
+                *t = true;
+            }
+        }
+        let lists = read_lists(rg.as_ref(), vec_col, &take)?;
         for (r, p) in inside {
             let Some(v) = lists.get(*r) else { continue };
             if out.dims == 0 && !v.is_empty() && v.len() <= MAX_DIMS {
@@ -784,15 +790,17 @@ pub fn read_vectors(file: &Arc<Remote>, extent: &Extent, column: &str, max_group
     Ok(out)
 }
 
-/// Reads every one of `n` rows of a list column of numbers, each row's values (empty for a null
-/// or empty list).
-fn read_lists(rg: &dyn RowGroupReader, col: usize, n: usize) -> Result<Vec<Vec<f32>>> {
+/// Reads a list column of numbers over the rows of a row group (`take.len()` of them): each row's
+/// values for the rows `take` marks, empty for the others (whose values are passed over, not
+/// kept) and for a null or empty list.
+fn read_lists(rg: &dyn RowGroupReader, col: usize, take: &[bool]) -> Result<Vec<Vec<f32>>> {
+    let n = take.len();
     let desc = rg.metadata().column(col).column_descr_ptr();
     let max_def = desc.max_def_level();
     let mut out: Vec<Vec<f32>> = Vec::with_capacity(n.min(1 << 20));
     let (mut defs, mut reps) = (Vec::new(), Vec::new());
-    // Values over the row group: bounded, so a crafted file can't fill memory.
-    let mut budget = 1usize << 26;
+    // Values kept over the row group: bounded, so a crafted file can't fill memory.
+    let mut budget = 1usize << 24;
     macro_rules! lists {
         ($r:expr, $conv:expr) => {{
             let mut values = Vec::new();
@@ -806,15 +814,19 @@ fn read_lists(rg: &dyn RowGroupReader, col: usize, n: usize) -> Result<Vec<Vec<f
                     break;
                 }
                 left = left.saturating_sub(records);
-                budget = budget.checked_sub(values.len()).ok_or_else(|| DataError::Format("GeoParquet: lists too long to read".into()))?;
                 let mut it = values.drain(..);
+                let mut kept = false;
                 for (d, r) in defs.iter().zip(&reps).take(levels) {
                     if *r == 0 {
+                        kept = take.get(out.len()).copied().unwrap_or(false);
                         out.push(Vec::new());
                     }
                     if *d == max_def
-                        && let (Some(v), Some(last)) = (it.next(), out.last_mut())
+                        && let Some(v) = it.next()
+                        && kept
+                        && let Some(last) = out.last_mut()
                     {
+                        budget = budget.checked_sub(1).ok_or_else(|| DataError::Format("GeoParquet: lists too long to read".into()))?;
                         last.push($conv(v));
                     }
                 }

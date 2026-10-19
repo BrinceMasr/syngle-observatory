@@ -249,9 +249,14 @@ fn https(href: &str) -> String {
     }
 }
 
-/// The year of a timestamp (milliseconds, or microseconds when that large, since 1970).
+/// The year of a timestamp since 1970: milliseconds, or microseconds or nanoseconds when that
+/// large (none of them is a year past 5000 in a smaller unit).
 fn year_of(t: i64) -> i32 {
-    let ms = if t.unsigned_abs() > 100_000_000_000_000 { t / 1000 } else { t };
+    let ms = match t.unsigned_abs() {
+        a if a > 100_000_000_000_000_000 => t / 1_000_000,
+        a if a > 100_000_000_000_000 => t / 1000,
+        _ => t,
+    };
     let days = ms.div_euclid(86_400_000);
     // Howard Hinnant's civil_from_days.
     let z = days + 719_468;
@@ -419,8 +424,8 @@ pub fn mgrs_tile(lon: f64, lat: f64) -> Option<String> {
 }
 
 /// The MGRS tiles a box meets (sampled on a grid finer than a tile), each with the part of the box
-/// it holds; at most a few dozen.
-pub fn mgrs_tiles(bbox: [f64; 4]) -> Vec<(String, [f64; 4])> {
+/// it holds, nearest the box's centre first: at most a few dozen, and whether that is all of them.
+pub fn mgrs_tiles(bbox: [f64; 4]) -> (Vec<(String, [f64; 4])>, bool) {
     let [w, s, e, n] = bbox;
     // About every 20 km, at most 48 a side.
     let step = |a: f64, b: f64| ((b - a) / 0.2).ceil().clamp(1.0, 48.0) as usize;
@@ -430,20 +435,26 @@ pub fn mgrs_tiles(bbox: [f64; 4]) -> Vec<(String, [f64; 4])> {
         for i in 0..=nx {
             let (x, y) = (w + (e - w) * i as f64 / nx as f64, s + (n - s) * j as f64 / ny as f64);
             let Some(t) = mgrs_tile(x, y) else { continue };
-            let full = out.len() >= MAX_MGRS;
+            // At most 49² samples: every tile they name is kept, then the nearest.
             match out.iter_mut().find(|(k, _)| *k == t) {
                 Some((_, b)) => *b = [b[0].min(x), b[1].min(y), b[2].max(x), b[3].max(y)],
-                None if !full => out.push((t, [x, y, x, y])),
-                None => {}
+                None => out.push((t, [x, y, x, y])),
             }
         }
     }
-    out
+    let (cx, cy) = ((w + e) / 2.0, (s + n) / 2.0);
+    let d = |b: &[f64; 4]| ((b[0] + b[2]) / 2.0 - cx).powi(2) + ((b[1] + b[3]) / 2.0 - cy).powi(2);
+    out.sort_by(|a, b| d(&a.1).total_cmp(&d(&b.1)));
+    let all = out.len() <= MAX_MGRS;
+    out.truncate(MAX_MGRS);
+    (out, all)
 }
 
-/// The Earth Index files a box may have (named from its MGRS tiles, not checked).
-pub fn earth_index_candidates(bbox: [f64; 4]) -> Vec<Tile> {
-    mgrs_tiles(bbox)
+/// The Earth Index files a box may have (named from its MGRS tiles, not checked), and whether
+/// they are all of them.
+pub fn earth_index_candidates(bbox: [f64; 4]) -> (Vec<Tile>, bool) {
+    let (tiles, all) = mgrs_tiles(bbox);
+    let tiles = tiles
         .into_iter()
         .map(|(t, b)| Tile {
             dataset: "earth-index",
@@ -455,7 +466,8 @@ pub fn earth_index_candidates(bbox: [f64; 4]) -> Vec<Tile> {
             bbox: b,
             footprint: Vec::new(),
         })
-        .collect()
+        .collect();
+    (tiles, all)
 }
 
 /// Finds Earth Index's files in a box: its MGRS tiles whose file exists (each asked for its
@@ -465,9 +477,9 @@ pub fn search_earth_index(bbox: [f64; 4], done: Box<dyn FnOnce(Result<Found, Str
         Ok(b) => b,
         Err(e) => return done(Err(e)),
     };
-    let tiles = earth_index_candidates(bbox);
+    let (tiles, all) = earth_index_candidates(bbox);
     if tiles.is_empty() {
-        return done(Ok((Vec::new(), true)));
+        return done(Ok((Vec::new(), all)));
     }
     struct Probe {
         left: usize,
@@ -505,7 +517,7 @@ pub fn search_earth_index(bbox: [f64; 4], done: Box<dyn FnOnce(Result<Found, Str
                     drop(s);
                     done(match failed {
                         Some(e) if found.is_empty() => Err(e),
-                        _ => Ok((found, true)),
+                        _ => Ok((found, all)),
                     });
                 }
             }),
@@ -605,7 +617,9 @@ pub fn pca_colors(values: &[f32], dims: usize) -> Vec<[u8; 3]> {
         let mut v: Vec<f64> = (0..dims).map(|d| 1.0 + ((d * 7 + k * 13) % 5) as f64).collect();
         let mut eigen = 0.0;
         for _ in 0..100 {
-            let next: Vec<f64> = (0..dims).map(|a| (0..dims).map(|b| cov.get(a * dims + b).copied().unwrap_or(0.0) * v[b]).sum()).collect();
+            let next: Vec<f64> = (0..dims)
+                .map(|a| (0..dims).map(|b| cov.get(a * dims + b).copied().unwrap_or(0.0) * v.get(b).copied().unwrap_or(0.0)).sum())
+                .collect();
             let norm = next.iter().map(|x| x * x).sum::<f64>().sqrt();
             if norm == 0.0 || !norm.is_finite() {
                 break;
@@ -621,7 +635,7 @@ pub fn pca_colors(values: &[f32], dims: usize) -> Vec<[u8; 3]> {
         for a in 0..dims {
             for b in 0..dims {
                 if let Some(s) = cov.get_mut(a * dims + b) {
-                    *s -= eigen * v[a] * v[b];
+                    *s -= eigen * v.get(a).copied().unwrap_or(0.0) * v.get(b).copied().unwrap_or(0.0);
                 }
             }
         }
@@ -711,10 +725,13 @@ mod tests {
         assert!(mgrs_tile(0.0, 85.0).is_none() && mgrs_tile(f64::NAN, 0.0).is_none());
         // Band X reaches 84° N (northern Greenland, Svalbard).
         assert_eq!(mgrs_tile(-40.0, 82.0).map(|t| t[2..3].to_string()).as_deref(), Some("X"));
-        let t = mgrs_tiles([-84.0, 35.9, -83.8, 36.0]);
+        let (t, all) = mgrs_tiles([-84.0, 35.9, -83.8, 36.0]);
         assert_eq!(t.first().map(|(k, _)| k.as_str()), Some("17SKV"));
-        // A huge box names a bounded number of tiles.
-        assert!(mgrs_tiles([-180.0, -80.0, 180.0, 84.0]).len() <= MAX_MGRS);
+        assert!(all);
+        // A huge box names a bounded number of tiles, the nearest its centre, and says so.
+        let (t, all) = mgrs_tiles([-10.0, -10.0, 10.0, 10.0]);
+        assert!(t.len() == MAX_MGRS && !all);
+        assert!(t.first().is_some_and(|(k, _)| k.starts_with("31N") || k.starts_with("31M")), "{t:?}");
         assert_eq!(earth_index_url("17SKV"), format!("{EARTH_INDEX_BASE}/2024/17SKV_2024-01-01_2025-01-01.parquet"));
     }
 
@@ -722,6 +739,7 @@ mod tests {
     fn years_and_addresses() {
         assert_eq!(year_of(1_609_459_200_000), 2021);
         assert_eq!(year_of(1_609_459_200_000_000), 2021);
+        assert_eq!(year_of(1_609_459_200_000_000_000), 2021);
         assert_eq!(year_of(-1), 1969);
         assert_eq!(https("s3://us-west-2.opendata.source.coop/tge-labs/aef/x.tiff"), "https://data.source.coop/tge-labs/aef/x.tiff");
         let look = aef_look([1, 16, 99], f32::NAN);

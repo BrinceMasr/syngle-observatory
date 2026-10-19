@@ -48,6 +48,8 @@ pub fn template(url: &str) -> String {
     format!("{SCHEME}{{z}}/{{x}}/{{y}}@{url}")
 }
 
+/// The most looks' stretches a file keeps.
+const MAX_LOOKS: usize = 64;
 /// The most bands a [`Look`] names.
 const MAX_LOOK_BANDS: usize = 3;
 /// The highest band number a [`Look`] may name.
@@ -172,10 +174,10 @@ impl Info {
     /// fourth, for its own), or one, grey.
     pub fn shown(&self, look: &Look) -> Vec<usize> {
         let n = self.layout.bands.max(1);
+        // Bands the file has, as many as asked (one or three); otherwise the file's own look.
         let picked: Vec<usize> = look.bands.iter().copied().filter(|b| *b < n).collect();
         match picked.len() {
-            3 => picked,
-            1 | 2 => picked.into_iter().take(1).collect(),
+            1 | 3 if picked.len() == look.bands.len() => picked,
             _ if self.rgb && self.alpha => vec![0, 1, 2, 3],
             _ if self.rgb => vec![0, 1, 2],
             _ => vec![0],
@@ -466,9 +468,13 @@ fn with_stretch(info: Arc<Info>, file: String, look: Look, then: StretchThen) {
     let n = info.layout.levels.get(coarsest).map(|l| l.tiles() as usize).unwrap_or(0);
     // Too many tiles to read for it: the values' full range for the type, or 0–255.
     if n == 0 || n > MAX_STATS_TILES {
+        // (Floats have no such range: 0–255 is a rough default for them.)
         let r = match info.layout.data_type {
             "Int8" => (-128.0, 127.0),
+            "Int16" => (-32768.0, 32767.0),
             "UInt16" => (0.0, 65535.0),
+            "Int32" => (-2_147_483_648.0, 2_147_483_647.0),
+            "UInt32" => (0.0, 4_294_967_295.0),
             _ => (0.0, 255.0),
         };
         let r = (shown_value(r.0, look.aef), shown_value(r.1, look.aef));
@@ -492,7 +498,13 @@ fn with_stretch(info: Arc<Info>, file: String, look: Look, then: StretchThen) {
     let done = move |r: Result<Vec<(f32, f32)>, String>| {
         let waiting = i.stretching.lock().unwrap_or_else(|e| e.into_inner()).remove(&key).unwrap_or_default();
         if let Ok(s) = &r {
-            i.stretch.lock().unwrap_or_else(|e| e.into_inner()).insert(key, s.clone());
+            let mut kept = i.stretch.lock().unwrap_or_else(|e| e.into_inner());
+            // A few looks kept a file (a script trying many is hostile input): past them, the
+            // others are read again when asked for.
+            if kept.len() >= MAX_LOOKS {
+                kept.clear();
+            }
+            kept.insert(key, s.clone());
         }
         for w in waiting {
             w(r.clone());
