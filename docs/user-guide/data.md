@@ -221,7 +221,7 @@ default API is Element 84's [Earth Search](https://earth-search.aws.element84.co
 (Sentinel-2, Landsat, NAIP, Copernicus DEM and Sentinel-1 on AWS); Microsoft's [Planetary
 Computer](https://planetarycomputer.microsoft.com/api/stac/v1) is offered beside it, and any
 STAC API with item search works. **Collections** lists what the API offers, and **Find Items** shows up to 50 items as cards
-(with "Showing 50 of 1,234 items" when the API says how many match) and draws their footprints as
+(with "Showing 50 of 1234 items" when the API says how many match) and draws their footprints as
 a layer. Each card has the item's preview picture when it has one, its id, a collection · date ·
 cloud cover line, and **Zoom** (to the item), the asset to add, **Add** and **Details** (the item's
 properties). The asset chosen at first is `visual` (true colour) when there is one, else the first
@@ -254,7 +254,9 @@ Planet Open Data, Portolan or Vantor Open Data from its list) and the **Collecti
 **Catalog**: its child catalogs and collections are listed, and picking one shows its own children
 (an **↑** entry goes back up; **Browse** reads the list again). **Find Items** walks the catalog from
 the one picked, several documents at a time, and keeps the items that match the dates, the most
-cloud cover and, with **Only where the map is** ticked, the map's extent. A collection whose data
+cloud cover and, with **Only where the map is** ticked, the map's extent. It lists the first 50 items it finds that match, sorted by date (the walk goes in the catalog's
+order, so in a large catalog these aren't the earliest or latest: pick a catalog further down for
+others). Undated items, and items without a footprint, are kept. A collection whose data
 are its own assets (as many Portolan collections' GeoParquet and PMTiles files are) is listed as
 an item of its own. A walk reads at most 400 documents and goes at most 8 catalogs deep; when it
 stops early, it says so: pick a catalog further down. Items are added as from an API: a

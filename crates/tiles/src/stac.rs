@@ -68,7 +68,8 @@ pub struct Item {
     /// `self` link, which it could point anywhere); `None` for an item given whole, whose assets
     /// may then only be public web addresses.
     pub origin: Option<String>,
-    /// Its properties, as given (dropped when they are large: they are shown, not used).
+    /// Its properties, to show: the first hundred plain values (not objects or arrays), long
+    /// text cut.
     pub properties: Option<Value>,
 }
 
@@ -609,13 +610,21 @@ pub fn sign_blocking(href: &str) -> Result<String, String> {
 
 /// An item as the commands return it (and read back in `stac.addAsset`).
 pub fn item_json(i: &Item) -> Value {
+    // The date and cloud cover read are always there, whatever properties were kept.
+    let mut props = i.properties.as_ref().and_then(Value::as_object).cloned().unwrap_or_default();
+    if props.get("datetime").is_none_or(Value::is_null) {
+        props.insert("datetime".into(), Value::String(i.datetime.clone()));
+    }
+    if props.get("eo:cloud_cover").is_none_or(Value::is_null) {
+        props.insert("eo:cloud_cover".into(), serde_json::json!(i.cloud));
+    }
     serde_json::json!({
         "type": "Feature",
         "id": i.id,
         "collection": i.collection,
         "bbox": i.bbox,
         "geometry": i.geometry,
-        "properties": i.properties.clone().unwrap_or_else(|| serde_json::json!({"datetime": i.datetime, "eo:cloud_cover": i.cloud})),
+        "properties": props,
         "assets": i.assets.iter().map(|a| (a.key.clone(), serde_json::json!({"href": a.href, "type": a.media_type, "roles": a.roles, "title": a.title}))).collect::<serde_json::Map<_, _>>(),
         "links": i.url.as_ref().map(|u| vec![serde_json::json!({"rel": "self", "href": u})]).unwrap_or_default(),
     })
@@ -779,6 +788,12 @@ mod tests {
         // Written out and read back.
         let again = item_from_json(&item_json(i), i.origin.as_deref()).unwrap();
         assert_eq!(&again, i);
+        // A date read from start_datetime is written out too.
+        let ranged = serde_json::json!({"type": "Feature", "id": "r", "properties": {"start_datetime": "2024-01-01T00:00:00Z", "eo:cloud_cover": null}});
+        let r = item_from_json(&ranged, None).unwrap();
+        let out = item_json(&r);
+        assert_eq!(out["properties"]["datetime"], "2024-01-01T00:00:00Z");
+        assert_eq!(item_from_json(&out, None).unwrap().datetime, r.datetime);
         assert_eq!(footprints_geojson(&items)["features"].as_array().unwrap().len(), 1);
         assert!(parse_items(b"{}", "https://x.org").is_err());
     }

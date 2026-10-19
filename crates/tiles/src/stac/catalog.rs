@@ -133,10 +133,13 @@ impl Filter {
 
     /// Whether an item is kept (`phase` is its `phase` property, if it has one).
     fn keeps(&self, item: &Item, phase: Option<&str>) -> bool {
-        if let (Some([w, s, e, n]), Some([iw, is, ie, inn])) = (self.bbox, item.bbox)
-            && (iw > e || ie < w || is > n || inn < s)
-        {
-            return false;
+        if let (Some([w, s, e, n]), Some([iw, is, ie, inn])) = (self.bbox, item.bbox) {
+            let across = |a: f64, b: f64| ie >= a && iw <= b;
+            // A box over the antimeridian (west east of east) is two: up to 180° and from -180°.
+            let meets = if w <= e { across(w, e) } else { across(w, 180.0) || across(-180.0, e) };
+            if !meets || is > n || inn < s {
+                return false;
+            }
         }
         if let (Some(max), Some(c)) = (self.max_cloud, item.cloud)
             && c > max
@@ -172,7 +175,14 @@ pub fn instant(s: &str) -> Option<i64> {
         return None;
     }
     let (y, m, d) = (num(0, 4)?, num(5, 2)?, num(8, 2)?);
-    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let month_days = match m {
+        2 if leap => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    if !(1..=12).contains(&m) || !(1..=month_days).contains(&d) {
         return None;
     }
     let days = days_from_civil(y, m, d);
@@ -546,7 +556,16 @@ mod tests {
         assert_eq!(instant("2024-06-02T12:30:00+02:00"), instant("2024-06-02T10:30:00Z"));
         assert_eq!(instant("2024-06-02T10:30:00.123456Z"), instant("2024-06-02T10:30:00Z"));
         assert_eq!(instant("2024-03-01T00:00:00Z").zip(instant("2024-02-28")).map(|(a, b)| a - b), Some(2 * 86_400));
-        for bad in ["", "2024", "2024-13-01", "2024-06-02T25:00:00Z", "2024-06-02T10:30:00+0200", "yesterday", "2024-06-02X"] {
+        assert!(instant("2024-02-29").is_some() && instant("2023-02-29").is_none());
+        // A box over the antimeridian.
+        let fiji = Filter { bbox: Some([170.0, -20.0, -170.0, -10.0]), ..Default::default() };
+        let at = |w: f64, e: f64| {
+            let v = feature("f", [w, -18.0, e, -17.0], "", "");
+            fiji.keeps(&crate::stac::item_from_json(&v, Some("https://x.org/f.json")).unwrap(), None)
+        };
+        assert!(at(178.0, 179.0) && at(-179.0, -178.0) && !at(0.0, 1.0));
+        for bad in ["", "2024", "2024-13-01", "2024-04-31", "2024-06-02T25:00:00Z", "2024-06-02T10:30:00+0200", "yesterday", "2024-06-02X"]
+        {
             assert_eq!(instant(bad), None, "{bad}");
         }
         assert!(Filter::from_search(&Search { datetime: Some("soon".into()), ..Default::default() }, None).is_err());

@@ -166,7 +166,7 @@ fn search_static(s: &mut Session, p: &Value, root: &str) -> CmdResult {
     }
     let note = (!ignored.is_empty()).then(|| {
         format!(
-            "{} ignored: a static catalog is walked in its own order (items come by date); give a collection's collection.json as url",
+            "{} ignored: a static catalog is walked in its own order (the first items found that match, then sorted by date); give a collection's collection.json as url",
             ignored.join(" and ")
         )
     });

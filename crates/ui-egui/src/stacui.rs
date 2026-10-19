@@ -273,7 +273,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
     let Some((asked, _)) = app.ui.stac.waiting.take() else { return };
     let st = &mut app.ui.stac;
     st.error = None;
-    st.info = None;
+    let previous = st.info.take();
     match asked {
         Asked::Collections => match r.and_then(|b| stac::parse_collections(&b)) {
             Ok(c) => {
@@ -306,8 +306,13 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
         },
         Asked::Link(url) => landed_link(app, &url, r),
         Asked::Children(url) => match r.and_then(|b| catalog::parse_children(&b, &url)) {
-            // A search's count, landed first, is kept.
-            Ok(c) if st.walk.is_some() || !st.items.is_empty() => st.children = c,
+            // A search's count (or a walk's progress), landed first, is kept.
+            Ok(c)
+                if st.walk.is_some() || (!st.items.is_empty() && previous.as_deref().is_some_and(|i| i != tl!("Reading the catalog…"))) =>
+            {
+                st.info = previous;
+                st.children = c;
+            }
             Ok(c) => {
                 st.info = Some(if c.is_empty() {
                     tl!("No catalogs below this one: Find Items lists its items").to_string()
@@ -364,6 +369,8 @@ fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
         )
     } else if walk.failed > 0 && walk.items().len() < 50 {
         i18n::fmt("Showing {n} items ({f} documents couldn't be read)", &[("n", &n), ("f", &walk.failed.to_string())])
+    } else if walk.cut && walk.items().len() < 50 {
+        i18n::fmt("Showing {n} items (some catalogs were too deep or too large to read: pick a catalog further down)", &[("n", &n)])
     } else {
         i18n::fmt("Showing {n} items (more match: narrow the search)", &[("n", &n)])
     });
@@ -575,6 +582,8 @@ fn show_footprints(app: &mut RustGisApp) {
 /// children.
 fn browse(app: &mut RustGisApp, to: Option<(String, String)>) {
     let st = &mut app.ui.stac;
+    // A walk of the last node is dropped: its items aren't this one's.
+    st.walk = None;
     match to {
         Some((title, url)) => {
             let above = std::mem::replace(&mut st.node_title, title);
@@ -589,6 +598,7 @@ fn browse(app: &mut RustGisApp, to: Option<(String, String)>) {
 /// Goes back up a static catalog to the node at `depth` in the trail.
 fn browse_up(app: &mut RustGisApp, depth: usize) {
     let st = &mut app.ui.stac;
+    st.walk = None;
     let Some((title, url)) = st.trail.get(depth).cloned() else { return };
     st.trail.truncate(depth);
     (st.node_title, st.node) = (title, url);
