@@ -4,7 +4,7 @@
 
 use egui::{Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
 use rustgis_engine::data::time::Unit;
-use rustgis_engine::map::time::{TimeSlider, histogram, instants, time_fields};
+use rustgis_engine::map::time::{TimeSlider, has_dates, histogram, instants, time_fields};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, regular, semibold};
@@ -51,13 +51,15 @@ pub fn toggle(app: &mut RustGisApp) -> Result<Value, String> {
         }
         return Ok(Value::Null);
     }
+    // A layer with real dates, not just numbers that look like years (bind those from the layer's
+    // menu or the bar's Layers menu).
     let m = app.session.map();
-    let dated = |id: u32| m.layer(id).is_some_and(|l| !l.is_raster() && !time_fields(&l.dataset).is_empty());
+    let dated = |id: u32| m.layer(id).is_some_and(|l| !l.is_raster() && has_dates(&l.dataset));
     let layer = app
         .session
         .active_layer
         .filter(|id| dated(*id))
-        .or_else(|| m.layers.iter().find(|l| !l.is_raster() && !time_fields(&l.dataset).is_empty()).map(|l| l.id))
+        .or_else(|| m.layers.iter().find(|l| !l.is_raster() && has_dates(&l.dataset)).map(|l| l.id))
         .ok_or("no layer has a field of dates: add one that has, or a tile layer whose address has a date (map.addTiles)")?;
     app.time.hidden = false;
     app.run("time.bind", json!({"layer": layer}))

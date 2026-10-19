@@ -177,6 +177,19 @@ pub struct TimeBinding {
     /// The rows that window keeps, worked out when it was applied.
     #[serde(skip)]
     shown: Arc<Vec<bool>>,
+    /// Each row's moment, with the rows, fields and field it was read from: kept while they are
+    /// the same, so moving the slider doesn't read the dates again.
+    #[serde(skip)]
+    moments: Option<Arc<Moments>>,
+}
+
+/// A binding's moments and what they were read from.
+#[derive(Debug)]
+struct Moments {
+    features: rustgis_data::Features,
+    fields: Vec<rustgis_data::Field>,
+    field: String,
+    moments: Option<Vec<Option<f64>>>,
 }
 
 impl TimeBinding {
@@ -187,10 +200,22 @@ impl TimeBinding {
     /// Sets the window and works out the rows it keeps.
     pub fn apply(&mut self, ds: &Dataset, window: Option<(f64, f64)>) {
         self.window = window;
-        self.shown = Arc::new(match window {
-            Some(w) => rows_in(ds, &self.field, w),
-            None => Vec::new(),
-        });
+        let Some(w) = window else {
+            self.shown = Arc::new(Vec::new());
+            return;
+        };
+        let fresh =
+            self.moments.as_ref().is_some_and(|m| m.features.shares(&ds.features) && m.fields == ds.fields && m.field == self.field);
+        if !fresh {
+            self.moments = Some(Arc::new(Moments {
+                features: ds.features.clone(),
+                fields: ds.fields.clone(),
+                field: self.field.clone(),
+                moments: dated(ds, &self.field),
+            }));
+        }
+        let m = self.moments.as_ref().and_then(|m| m.moments.as_deref());
+        self.shown = Arc::new(keep(m, ds.features.len(), w));
     }
 
     /// The rows in the window (`None`: there is none, and every row shows). The rows worked out
@@ -204,12 +229,26 @@ impl TimeBinding {
 }
 
 /// The rows of `ds` whose `field` names a moment in `[from, to)` (a moment, when they are one).
-pub fn rows_in(ds: &Dataset, field: &str, (from, to): (f64, f64)) -> Vec<bool> {
+pub fn rows_in(ds: &Dataset, field: &str, window: (f64, f64)) -> Vec<bool> {
+    keep(dated(ds, field).as_deref(), ds.features.len(), window)
+}
+
+/// Each row's moment in `field`, or `None` when the field is gone (renamed, deleted) or holds no
+/// dates.
+fn dated(ds: &Dataset, field: &str) -> Option<Vec<Option<f64>>> {
     let n = ds.features.len();
-    // A field gone (renamed, deleted) or holding no dates filters nothing.
-    let Some(fi) = ds.field_index(field) else { return vec![true; n] };
-    let Some((kind, _)) = time::detect((0..n).map(|r| ds.value(r, fi)), 500) else { return vec![true; n] };
-    (0..n).map(|r| time::instant(ds.value(r, fi), kind).is_some_and(|t| if from == to { t == from } else { t >= from && t < to })).collect()
+    let fi = ds.field_index(field)?;
+    let (kind, _) = time::detect((0..n).map(|r| ds.value(r, fi)), 500)?;
+    Some((0..n).map(|r| time::instant(ds.value(r, fi), kind)).collect())
+}
+
+/// The rows whose moment is in `[from, to)` (the moment itself, when they are one); every row
+/// when there are no moments to filter by (`None`).
+fn keep(moments: Option<&[Option<f64>]>, n: usize, (from, to): (f64, f64)) -> Vec<bool> {
+    match moments {
+        Some(m) => m.iter().map(|t| t.is_some_and(|t| if from == to { t == from } else { t >= from && t < to })).collect(),
+        None => vec![true; n],
+    }
 }
 
 /// Each row's moment in `field` (`None` where it has none).
@@ -245,6 +284,14 @@ pub fn field_span(ds: &Dataset, field: &str) -> Option<(f64, f64)> {
         None => Some((t, t)),
         Some((a, b)) => Some((t.min(a), t.max(b))),
     })
+}
+
+/// Whether `ds` has a field of dates other than whole numbers that read as years (which may be
+/// heights or counts): one worth turning the slider on for unasked.
+pub fn has_dates(ds: &Dataset) -> bool {
+    let n = ds.features.len();
+    (0..ds.fields.len())
+        .any(|fi| time::detect((0..n).map(|r| ds.value(r, fi)), 500).is_some_and(|(kind, share)| share >= 0.6 && kind != time::Kind::Year))
 }
 
 /// The fields of `ds` that hold dates, best first, with the share of values that read as one

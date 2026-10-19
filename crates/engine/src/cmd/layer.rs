@@ -1884,6 +1884,18 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
         }
         return super::tiles::add(s, &q);
     }
+    // A dated address (one file per date, `{date:YYYY}`) is read in place, following the time
+    // slider: a GeoTIFF on the web, before anything fetches the address as it is.
+    if rustgis_data::time::is_template(url) {
+        let web = lower.starts_with("https://") || lower.starts_with("http://");
+        return if is_tiff_url(url) && web {
+            add_cog(s, p, url)
+        } else {
+            Err(format!(
+                "{url}: dated addresses work for cloud-optimised GeoTIFFs on the web (http, https) here, and for tile layers (map.addTiles)"
+            ))
+        };
+    }
     // A FlatGeobuf or GeoParquet: read in place by range when it has a spatial index (or a bbox
     // covering), otherwise downloaded whole.
     if rustgis_data::source::is_remote_name(url) && !super::b(p, "whole").unwrap_or(false) {
@@ -1903,15 +1915,6 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
     }
     // A GeoTIFF: read in place when it is cloud-optimised (tiled), otherwise downloaded whole.
     let tiff = is_tiff_url(url);
-    // A dated address (one file per date, `{date:YYYY}`) is read in place, following the time
-    // slider.
-    if rustgis_data::time::is_template(url) {
-        return if tiff {
-            add_cog(s, p, url)
-        } else {
-            Err(format!("{url}: dated addresses work for cloud-optimised GeoTIFFs here, and for tile layers (map.addTiles)"))
-        };
-    }
     #[cfg(target_arch = "wasm32")]
     {
         // Nothing may wait here: a GeoTIFF is taken to be cloud-optimised (the layer says if not).

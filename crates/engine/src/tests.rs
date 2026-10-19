@@ -9359,6 +9359,13 @@ fn time_slider_survives_saving_cumulative_edits_and_bad_parameters() {
     t.active_layer = t.map().layer_by_name("Events").map(|l| l.id);
     t.run("edit.setValue", &json!({"row": 7, "field": "when", "value": "2015-02-14"})).unwrap();
     assert_eq!(shown(&t), ["e0", "e1", "e2", "e3", "e7"]);
+    // Whole numbers that look like years (heights here) aren't taken for dates unasked; a layer
+    // with real dates is.
+    assert!(rustgis_map::time::has_dates(&t.map().layers[0].dataset));
+    let text = r#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":null,"properties":{"elev":1500}},{"type":"Feature","geometry":null,"properties":{"elev":2210}}]}"#;
+    let (heights, _) = rustgis_data::io::read_geojson(text, "Peaks").unwrap();
+    assert!(!rustgis_map::time::has_dates(&heights));
+    assert_eq!(rustgis_map::time::time_fields(&heights).len(), 1, "still offered when asked");
     // A field that is gone filters nothing.
     t.run("edit.deleteField", &json!({"field": "when"})).unwrap();
     assert_eq!(shown(&t).len(), 8);
@@ -9380,6 +9387,11 @@ fn time_slider_fills_dated_tile_addresses_and_exports_its_steps() {
     let mut off = timed_events();
     assert!(off.run("map.addTiles", &json!({"url": "https://example.com/{date:YYYY}/{z}/{x}/{y}.png"})).is_err());
     assert!(off.map().tiles.is_empty() && off.map().time.is_none());
+    // Dated addresses only for GeoTIFFs on the web, refused before anything is fetched.
+    for url in ["https://example.com/{YYYY}.parquet", "s3://bucket/{YYYY}.tif"] {
+        let e = off.run("layer.addUrl", &json!({"url": url, "start": 2000})).unwrap_err();
+        assert!(e.contains("dated addresses"), "{e}");
+    }
     // Three days of daily imagery step by the day the address names, not by the hour.
     let mut short = timed_events();
     short
