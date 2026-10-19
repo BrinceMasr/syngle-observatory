@@ -531,11 +531,20 @@ fn wmts(url: &str, root: &Node) -> Service {
         let matrix = format!("{prefix}{{z}}");
         // A time dimension: the template with `{Time}` is preferred, which takes the time asked
         // for (its default otherwise); without one, a template with no `{Time}` is.
-        let time =
-            children(&layer, "Dimension").find(|d| child_text(d, "Identifier").is_some_and(|i| i.eq_ignore_ascii_case("time"))).map(|d| {
-                let default = child_text(&d, "Default").and_then(|t| checked_time(&t).ok()).unwrap_or_else(|| "default".into());
-                let values = children(&d, "Value").take(MAX_TIME_VALUES).map(|v| text_of(&v)).filter(|v| v.len() <= 100).collect();
-                LayerTime { default, values }
+        // Its default: the one given, else the last time its values list (a range's end); with
+        // neither, the layer is drawn without a time.
+        let time = children(&layer, "Dimension")
+            .find(|d| child_text(d, "Identifier").is_some_and(|i| i.eq_ignore_ascii_case("time")))
+            .and_then(|d| {
+                let values: Vec<String> =
+                    children(&d, "Value").take(MAX_TIME_VALUES).map(|v| text_of(&v)).filter(|v| v.len() <= 100).collect();
+                let listed = values.iter().rev().find_map(|v| {
+                    let mut parts = v.split('/');
+                    let first = parts.next().unwrap_or("");
+                    checked_time(parts.next().unwrap_or(first)).ok()
+                });
+                let default = child_text(&d, "Default").and_then(|t| checked_time(&t).ok()).or(listed)?;
+                Some(LayerTime { default, values })
             });
         let templates: Vec<String> = children(&layer, "ResourceURL")
             .filter(|r| r.attribute("resourceType") == Some("tile"))
@@ -2174,8 +2183,12 @@ mod tests {
             coast.offer,
             Offer::Tiles { template: "https://gibs.example.org/Coast/default/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png".into() }
         );
-        // A default that isn't a time never reaches an address: the service's own `default`.
-        assert_eq!(s.layers[2].time.as_ref().unwrap().default, "default");
+        // A default that isn't a time never reaches an address: with no time listed either, the
+        // layer has no time.
+        assert_eq!(s.layers[2].time, None);
+        let listed = GIBS.replace("<Default>../../x?y</Default>", "<Default>?</Default><Value>2020-01-01/2020-02-01/P1D</Value>");
+        let s = parse("https://gibs.example.org/wmts/1.0.0/WMTSCapabilities.xml", listed.as_bytes()).unwrap();
+        assert_eq!(s.layers[2].time.as_ref().map(|t| t.default.as_str()), Some("2020-02-01"));
         assert!(checked_time("2024-06-01").is_ok() && checked_time("2024-06-01T10:00:00Z").is_ok());
         assert!(checked_time("default").is_ok());
         for bad in ["", "..", ".", "../x", "2024-06-01/../..", "a b", "x?y=1", "latest", &"9".repeat(50)] {

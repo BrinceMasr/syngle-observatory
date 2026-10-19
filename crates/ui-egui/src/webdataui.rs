@@ -97,7 +97,12 @@ fn listing(app: &mut RustGisApp, url: &str, kind: &'static str) -> Look {
 /// Forgets the services' documents that failed, so they're asked for again: a panel reopened
 /// retries what a passing network error (or a busy server) refused.
 pub fn forget_failed(app: &mut RustGisApp) {
-    app.ui.web_services.docs.retain(|_, d| !matches!(d, Doc::Failed(_)));
+    forget_failed_under(app, "");
+}
+
+/// Forgets the failed documents whose addresses start with `prefix` (one service's).
+fn forget_failed_under(app: &mut RustGisApp, prefix: &str) {
+    app.ui.web_services.docs.retain(|url, d| !(matches!(d, Doc::Failed(_)) && url.starts_with(prefix)));
 }
 
 /// Adds a service's layer now, or once its document is read.
@@ -115,12 +120,12 @@ fn poll(app: &mut RustGisApp) {
         match listing(app, &url, kind) {
             Look::Loading => app.ui.web_services.adding.push((url, kind, layer, name, date)),
             Look::Failed(e) => app.ui.web_services.note = Some((false, e)),
-            Look::Ready(text, v) => {
+            Look::Ready(doc, v) => {
                 // The date goes only to a layer that changes with time, and names it.
-                let timed = layers_of(&v).iter().any(|l| text_of(l, "name") == layer && l.get("time").is_some());
+                let timed = layers_of(&v).iter().any(|l| text(l, "name") == layer && l.get("time").is_some());
                 let dated = kind == "wmts" && timed && !date.is_empty();
                 let name = if dated { format!("{name} {date}") } else { name };
-                let mut p = json!({"url": url, "type": kind, "layer": layer, "name": name, "text": text.as_str()});
+                let mut p = json!({"url": url, "type": kind, "layer": layer, "name": name, "text": doc.as_str()});
                 if dated {
                     p["time"] = json!(date);
                 }
@@ -227,10 +232,6 @@ fn status(app: &mut RustGisApp, ui: &mut egui::Ui, look: Option<&Look>) {
 
 fn layers_of(v: &Value) -> &[Value] {
     v.get("layers").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
-}
-
-fn text_of<'a>(v: &'a Value, k: &str) -> &'a str {
-    text(v, k)
 }
 
 fn text<'a>(v: &'a Value, k: &str) -> &'a str {
@@ -377,7 +378,7 @@ pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
             // A search reads every folder, then lists the services whose names match.
             let mut found = 0;
             let mut loading = false;
-            let mut failed = 0;
+            let mut failed: Vec<&str> = Vec::new();
             for folder in &folders {
                 match listing(app, folder, "arcgis") {
                     Look::Ready(_, v) => {
@@ -391,18 +392,18 @@ pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
                         }
                     }
                     Look::Loading => loading = true,
-                    Look::Failed(_) => failed += 1,
+                    Look::Failed(_) => failed.push(folder.rsplit('/').next().unwrap_or(folder)),
                 }
             }
-            if failed > 0 {
-                ui.horizontal(|ui| {
+            if !failed.is_empty() {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(
-                        RichText::new(crate::i18n::fmt("{n} folders didn't load and aren't searched", &[("n", &failed.to_string())]))
+                        RichText::new(crate::i18n::fmt("Not searched, as they didn't load: {folders}", &[("folders", &failed.join(", "))]))
                             .small()
                             .weak(),
                     );
                     if ui.small_button(tl!("Retry")).clicked() {
-                        forget_failed(app);
+                        forget_failed_under(app, ENVIROATLAS);
                     }
                 });
             }
@@ -590,7 +591,7 @@ pub fn national_map(app: &mut RustGisApp, ui: &mut egui::Ui) {
         if shown.is_empty() {
             continue;
         }
-        egui::CollapsingHeader::new(RichText::new(format!("{}  ({})", tl!(category), shown.len())).strong())
+        egui::CollapsingHeader::new(RichText::new(format!("{}  ({})", category_label(category), shown.len())).strong())
             .id_salt(("nm", category))
             .default_open(true)
             .show(ui, |ui| {
@@ -610,6 +611,21 @@ pub fn national_map(app: &mut RustGisApp, ui: &mut egui::Ui) {
         done(app, r.map(|v| text(&v, "name").to_string()));
     }
     status(app, ui, None);
+}
+
+/// A National Map category, translated (each name a literal, so the catalogs pick it up).
+fn category_label(category: &str) -> &str {
+    match category {
+        "Basemaps" => tl!("Basemaps"),
+        "Hydrography" => tl!("Hydrography"),
+        "Elevation" => tl!("Elevation"),
+        "Imagery" => tl!("Imagery"),
+        "Cartography" => tl!("Cartography"),
+        "Hazards" => tl!("Hazards"),
+        "Other Data" => tl!("Other Data"),
+        "Indexes" => tl!("Indexes"),
+        other => other,
+    }
 }
 
 fn layers_of_key<'a>(v: &'a Value, k: &str) -> &'a [Value] {

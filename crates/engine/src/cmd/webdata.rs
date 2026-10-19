@@ -433,21 +433,14 @@ fn fields_add(s: &mut Session, p: &Value) -> CmdResult {
     // Looks that would draw over one another: the year's both, or the same part, goes.
     let url = fields_url(year);
     let both = format!("Fields of the World {year}");
-    // Kept to put back if the new one can't be added (the tile layer limit).
-    let before = s.map().tiles.clone();
-    s.map_mut().tiles.retain(|t| !(t.url == url && t.overlay && (t.name == both || t.name == name || (density && fields))));
-    let added = super::tiles::add(
+    // The same part again is replaced by `tiles::add` (same name); once the new layer is in, both
+    // and its parts, which draw over one another, don't stay together.
+    let mut r = super::tiles::add(
         s,
         &json!({"url": url, "kind": "pmtiles", "name": name, "overlay": true, "maxZoom": 16,
             "attribution": "Fields of the World (CC BY 4.0)", "styleLayers": fields_style(density, fields, min_score)}),
-    );
-    let mut r = match added {
-        Ok(r) => r,
-        Err(e) => {
-            s.map_mut().tiles = before;
-            return Err(e);
-        }
-    };
+    )?;
+    s.map_mut().tiles.retain(|t| !(t.url == url && t.overlay && t.name != name && (t.name == both || (density && fields))));
     // The view's Web Mercator zoom (known on the Web Mercator map and the globe, whose camera
     // counts Web Mercator metres; another projection's units differ).
     let mercator = matches!(s.map().projection, rustgis_map::globe::Projection::WebMercator | rustgis_map::globe::Projection::Globe);
