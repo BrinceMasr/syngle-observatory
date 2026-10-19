@@ -525,12 +525,28 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
 /// Services covering one country go in a submenu named after it.
 fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
     menu_item(ui, app, "", "Boundaries…", "ui.dialog", json!({"name": "boundaries"}));
+    menu_item(ui, app, "", "Fields of the World…", "ui.dialog", json!({"name": "fieldsOfTheWorld"}));
+    menu_item(ui, app, "", "NASA Earthdata…", "ui.addService", json!({"url": NASA_GIBS, "type": "wmts"}));
+    menu_item(ui, app, "", "Natural Earth…", "ui.dialog", json!({"name": "naturalEarth"}));
     menu_item(ui, app, "", "OpenStreetMap…", "ui.dialog", json!({"name": "osm"}));
     menu_item(ui, app, "", "Overture Maps…", "ui.dialog", json!({"name": "overture"}));
     menu_item(ui, app, "", "Search Open Data…", "ui.searchOpenData", Value::Null);
     menu_item(ui, app, "", "Source Cooperative…", "ui.dialog", json!({"name": "sourcecoop"}));
     menu_item(ui, app, "", "STAC Search…", "ui.dialog", json!({"name": "stac"}));
+    ui.separator();
+    crate::widgets::submenu_row(ui, "", tl!("United States"), |ui| {
+        menu_item(ui, app, "", "EnviroAtlas…", "ui.addService", json!({"url": ENVIROATLAS, "type": "arcgis"}));
+        menu_item(ui, app, "", "FEMA NFHL…", "ui.addService", json!({"url": FEMA_NFHL, "type": "arcgis"}));
+        menu_item(ui, app, "", "The National Map…", "ui.dialog", json!({"name": "nationalMap"}));
+    });
 }
+
+/// NASA's Global Imagery Browse Services: daily satellite imagery and more, in Web Mercator.
+const NASA_GIBS: &str = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml";
+/// US EPA EnviroAtlas: its ArcGIS services directory, browsed by folder.
+const ENVIROATLAS: &str = "https://enviroatlas.epa.gov/arcgis/rest/services";
+/// FEMA's National Flood Hazard Layer, as an ArcGIS map service (its WMS is often unreachable).
+const FEMA_NFHL: &str = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer";
 
 fn basemap_gallery(ui: &mut Ui, app: &mut RustGisApp) {
     let t = Tokens::get(ui.ctx());

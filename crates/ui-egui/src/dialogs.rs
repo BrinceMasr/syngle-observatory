@@ -72,6 +72,9 @@ impl Dialogs {
             "boundaries" => "boundaries",
             "overture" => "overture",
             "sourcecoop" => "sourcecoop",
+            "naturalEarth" => "naturalEarth",
+            "nationalMap" => "nationalMap",
+            "fieldsOfTheWorld" => "fieldsOfTheWorld",
             "opendata" => "opendata",
             "zarr" => "zarr",
             "exportLayer" => "exportLayer",
@@ -119,6 +122,10 @@ impl Dialogs {
             // A file name can't hold a folder separator, which a project name may.
             "saveProject" => self.text = format!("{}.rgis", s.project.name.replace(['/', '\\'], "-")),
             "exportLayer" => self.mode = "geojson",
+            "fieldsOfTheWorld" => {
+                self.a = rustgis_engine::cmd::webdata::FIELDS_YEARS.end().to_string();
+                self.mode = "both";
+            }
             // A table of addresses is what's usually geocoded: picked by its id (`flag` says the
             // choice is a table), since names can repeat.
             "geocode" => {
@@ -158,6 +165,9 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
         "boundaries" => "Administrative Boundaries",
         "overture" => "Overture Maps",
         "sourcecoop" => "Source Cooperative",
+        "naturalEarth" => "Natural Earth",
+        "nationalMap" => "The National Map",
+        "fieldsOfTheWorld" => "Fields of the World",
         "opendata" => "Search Open Data",
         "zarr" => "Add Zarr Variable",
         "exportLayer" => "Export Features",
@@ -182,7 +192,7 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
         .show(ctx, |ui| {
         ui.set_width(match which {
             "coordinateSystem" | "zarr" => 660.0,
-            "addTiles" | "addUrl" | "addService" | "stac" | "s3" | "sourcecoop" | "opendata" => 560.0,
+            "addTiles" | "addUrl" | "addService" | "stac" | "s3" | "sourcecoop" | "naturalEarth" | "nationalMap" | "opendata" => 560.0,
             _ => 440.0,
         });
         ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
@@ -221,7 +231,12 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
             "osm" => crate::portalsui::osm(app, ui),
             "boundaries" => crate::portalsui::boundaries(app, ui),
             "overture" => crate::catalogsui::overture(app, ui),
-            "sourcecoop" => crate::catalogsui::sourcecoop(app, ui),
+            "sourcecoop" | "naturalEarth" => crate::catalogsui::sourcecoop(app, ui),
+            // In a window (until the Web Data pane), which doesn't scroll by itself.
+            "nationalMap" => {
+                egui::ScrollArea::vertical().max_height(460.0).show(ui, |ui| crate::webdataui::national_map(app, ui));
+            }
+            "fieldsOfTheWorld" => crate::webdataui::fields_of_the_world(app, ui),
             "opendata" => crate::opendataui::dialog(app, ui),
             "zarr" => close = crate::zarrui::dialog(app, ui),
             "exportLayer" => close = export_layer(app, ui),
@@ -627,7 +642,7 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
         crate::cswui::form(app, ui, kinds);
         return false;
     }
-    ui.label(egui::RichText::new(tl!("A map, feature or coverage service's address: WMS, WMTS, WFS, WCS, OGC API Features or Tiles, or an ArcGIS FeatureServer, MapServer, ImageServer or VectorTileServer.")).weak());
+    ui.label(egui::RichText::new(tl!("A map, feature or coverage service's address: WMS, WMTS, WFS, WCS, OGC API Features or Tiles, or an ArcGIS FeatureServer, MapServer, ImageServer or VectorTileServer (or a services directory, to browse).")).weak());
     let mut connect = false;
     egui::Grid::new("service").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
         ui.label(tl!("Address"));
@@ -654,6 +669,9 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     // The service: connecting, an error, or its layers.
     let mut add: Option<Value> = None;
     let mut import = None;
+    // A directory's folder or service to open, or Back to the directory before.
+    let mut open: Option<String> = None;
+    let mut back = false;
     if let Some(conn) = &app.ui.service {
         ui.separator();
         if let Some(e) = &conn.error {
@@ -680,6 +698,27 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
             for n in v.get("notes").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str) {
                 ui.label(egui::RichText::new(n).small().weak());
             }
+            // A long list is filtered by words; a directory's services lead back to it.
+            let browse = &mut app.ui.service_browse;
+            if !browse.back.is_empty() || layers.len() > 12 {
+                ui.horizontal(|ui| {
+                    if !browse.back.is_empty() && ui.button(tl!("Back")).clicked() {
+                        back = true;
+                    }
+                    if layers.len() > 12 {
+                        ui.label(tl!("Filter"));
+                        ui.add(egui::TextEdit::singleline(&mut browse.filter).hint_text(tl!("words in the name")).desired_width(260.0));
+                    }
+                });
+            }
+            // Layers that change with time (NASA GIBS's) are added at a date.
+            if layers.iter().any(|l| l.get("time").is_some()) {
+                ui.horizontal(|ui| {
+                    ui.label(tl!("Date"));
+                    ui.add(egui::TextEdit::singleline(&mut browse.time).hint_text(tl!("latest")).desired_width(120.0));
+                    ui.label(egui::RichText::new(tl!("YYYY-MM-DD, for the layers that change with time")).small().weak());
+                });
+            }
             if grouped && layers.iter().any(|l| l["offer"]["type"] == "features") {
                 ui.horizontal(|ui| {
                     ui.label(tl!("Name"));
@@ -694,23 +733,35 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
                     }
                 });
             }
-            if layers.len() > SHOWN_LAYERS {
+            let words: Vec<String> = app.ui.service_browse.filter.split_whitespace().map(str::to_lowercase).collect();
+            let text = |l: &Value, k: &str| l.get(k).and_then(Value::as_str).unwrap_or("").to_lowercase();
+            let matching: Vec<&Value> =
+                layers.iter().filter(|l| words.iter().all(|w| text(l, "title").contains(w.as_str()) || text(l, "name").contains(w.as_str()))).collect();
+            if matching.len() > SHOWN_LAYERS {
                 ui.label(
                     egui::RichText::new(crate::i18n::fmt("The first {n} are listed.", &[("n", &SHOWN_LAYERS.to_string())])).small().weak(),
                 );
             }
             egui::ScrollArea::vertical().max_height(280.0).show(ui, |ui| {
-                for l in layers.iter().take(SHOWN_LAYERS) {
+                for l in matching.into_iter().take(SHOWN_LAYERS) {
                     ui.horizontal(|ui| {
-                        if !(grouped && l["offer"]["type"] == "features") && ui.small_button(tl!("Add")).clicked() {
+                        let kind = l.get("offer").and_then(|o| o.get("type")).and_then(Value::as_str);
+                        if kind == Some("service") {
+                            if ui.small_button(tl!("Open")).clicked() {
+                                open = l.get("offer").and_then(|o| o.get("url")).and_then(Value::as_str).map(str::to_string);
+                            }
+                        } else if !(grouped && kind == Some("features")) && ui.small_button(tl!("Add")).clicked() {
                             add = Some(l.clone());
                         }
                         let name = l.get("name").and_then(Value::as_str).unwrap_or("");
                         ui.label(l.get("title").and_then(Value::as_str).unwrap_or(name)).on_hover_text(name);
-                        let what = match l.get("offer").and_then(|o| o.get("type")).and_then(Value::as_str) {
+                        let what = match kind {
                             Some("features") => tl!("features"),
                             Some("style") => tl!("style"),
                             Some("coverage") => tl!("coverage"),
+                            Some("service") if name.ends_with('/') => tl!("folder"),
+                            Some("service") => tl!("service"),
+                            _ if l.get("time").is_some() => tl!("map by date"),
                             _ => tl!("map"),
                         };
                         ui.label(egui::RichText::new(what).small().weak());
@@ -729,6 +780,26 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
         && let Err(e) = app.run("ui.importService", p)
     {
         app.dialogs.error = Some(e);
+    }
+    // Into a directory's folder or service, keeping the way back; or back out of it.
+    let here = app.ui.service.as_ref().map(|c| (c.url.clone(), c.kind));
+    if let (Some(url), Some(here)) = (open, here.clone()) {
+        let mut way = std::mem::take(&mut app.ui.service_browse.back);
+        way.push(here);
+        app.dialogs.info = None;
+        let r = app.run("ui.addService", json!({"url": url, "type": "arcgis"}));
+        app.ui.service_browse.back = way;
+        if let Err(e) = r {
+            app.dialogs.error = Some(e);
+        }
+    } else if back && let Some((url, kind)) = app.ui.service_browse.back.pop() {
+        let way = std::mem::take(&mut app.ui.service_browse.back);
+        app.dialogs.info = None;
+        let r = app.run("ui.addService", json!({"url": url, "type": kind}));
+        app.ui.service_browse.back = way;
+        if let Err(e) = r {
+            app.dialogs.error = Some(e);
+        }
     }
     if app.ui.service_import.is_some() {
         ui.horizontal(|ui| {
@@ -761,6 +832,10 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
             let mut p = json!({"url": url, "layer": name, "text": text, "documents": conn.documents, "source_url": l.get("source_url")});
             if kind != "auto" {
                 p["type"] = json!(kind);
+            }
+            let time = app.ui.service_browse.time.trim();
+            if l.get("time").is_some() && !time.is_empty() {
+                p["time"] = json!(time);
             }
             match l.get("tilesets").and_then(Value::as_str) {
                 // An OGC API layer: its tileset's advertised template is read first, off the
