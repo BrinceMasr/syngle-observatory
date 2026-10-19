@@ -230,7 +230,8 @@ GeoTIFF, else the first point cloud, else the first data asset. A cloud-optimise
 
 The commands do the same: `stac.collections` (`"url"`), `stac.search` (`"collections"`,
 `"bbox"` as `[west, south, east, north]` or `"view"`, `"datetime"` such as
-`2024-06-01/2024-06-30`, `"limit"`, `"maxCloud"`, `"footprints"`), and `stac.addAsset` with
+`2024-06-01/2024-06-30`, `"limit"`, `"maxCloud"`, `"footprints"`, and `"properties": true` for
+every property of each item rather than its date and cloud cover), and `stac.addAsset` with
 an item `stac.search` returned (`"item"`) or an item's address (`"url"`) and `"asset"`:
 
 ```sh

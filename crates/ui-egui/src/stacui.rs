@@ -156,6 +156,8 @@ pub struct State {
     pub chosen: Vec<String>,
     /// The item whose properties are shown.
     pub details: Option<usize>,
+    /// Whether `info` is a search's count (kept when a catalog's children land after it).
+    counted: bool,
     /// Items' preview pictures, by address.
     thumbs: std::collections::HashMap<String, Thumb>,
     /// The footprints layer of the last search.
@@ -186,6 +188,7 @@ impl Default for State {
             items: Vec::new(),
             chosen: Vec::new(),
             details: None,
+            counted: false,
             thumbs: Default::default(),
             footprints: None,
             waiting: None,
@@ -213,16 +216,26 @@ enum Thumb {
 const MAX_THUMBS: usize = 256;
 /// The longest side of a preview picture, in pixels.
 const THUMB_SIDE: u32 = 128;
+/// The most bytes a preview picture may have.
+const THUMB_BYTES: usize = 2 << 20;
+/// The most preview pictures decoded in one frame (the rest wait for the next).
+const THUMBS_PER_FRAME: usize = 4;
 
 /// Lands preview pictures: decoded (bounded in size) and made textures.
 fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
     let mut loading = false;
+    let mut decoded = 0;
     for (url, t) in app.ui.stac.thumbs.iter_mut() {
         let Thumb::Loading(slot) = t else { continue };
+        if decoded >= THUMBS_PER_FRAME {
+            loading = true;
+            break;
+        }
         let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
             loading = true;
             continue;
         };
+        decoded += 1;
         *t = match r.and_then(|b| crate::mapview::decode_picture(&b)) {
             Ok(img) => {
                 let (w, h) = (img.width().max(1), img.height().max(1));
@@ -257,7 +270,13 @@ fn want_thumbs(st: &mut State) {
                 Some(item.origin.as_deref().unwrap_or("https://item.invalid/")),
             )
             .is_ok();
-        st.thumbs.insert(a.href.clone(), if ok { Thumb::Loading(fetch(&a.href)) } else { Thumb::Failed });
+        let picture = || {
+            let slot: Answer = Slot::default();
+            let land = slot.clone();
+            cache::download_limited(&a.href, THUMB_BYTES, Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)));
+            slot
+        };
+        st.thumbs.insert(a.href.clone(), if ok { Thumb::Loading(picture()) } else { Thumb::Failed });
     }
 }
 
@@ -291,6 +310,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
                     None => i18n::fmt("Showing {n} items", &[("n", &n)]),
                 });
                 st.details = None;
+                st.counted = true;
                 st.chosen = items.iter().map(|i| i.pick(None).map(|a| a.key.clone()).unwrap_or_default()).collect();
                 st.items = items;
                 show_footprints(app);
@@ -307,9 +327,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
         Asked::Link(url) => landed_link(app, &url, r),
         Asked::Children(url) => match r.and_then(|b| catalog::parse_children(&b, &url)) {
             // A search's count (or a walk's progress), landed first, is kept.
-            Ok(c)
-                if st.walk.is_some() || (!st.items.is_empty() && previous.as_deref().is_some_and(|i| i != tl!("Reading the catalog…"))) =>
-            {
+            Ok(c) if st.walk.is_some() || (st.counted && !st.items.is_empty()) => {
                 st.info = previous;
                 st.children = c;
             }
@@ -375,6 +393,7 @@ fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
         i18n::fmt("Showing {n} items (more match: narrow the search)", &[("n", &n)])
     });
     st.details = None;
+    st.counted = true;
     let items = walk.into_items();
     st.chosen = items.iter().map(|i| i.pick(None).map(|a| a.key.clone()).unwrap_or_default()).collect();
     st.items = items;
@@ -616,6 +635,7 @@ fn fetch_children(app: &mut RustGisApp) {
         return;
     }
     st.info = Some(tl!("Reading the catalog…").to_string());
+    st.counted = false;
     st.waiting = Some((Asked::Children(url.clone()), fetch(&url)));
 }
 

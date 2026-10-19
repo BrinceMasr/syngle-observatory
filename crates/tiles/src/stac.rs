@@ -608,10 +608,17 @@ pub fn sign_blocking(href: &str) -> Result<String, String> {
     Ok(sign(href, &token))
 }
 
-/// An item as the commands return it (and read back in `stac.addAsset`).
+/// An item as the commands return it (and read back in `stac.addAsset`), with its date and
+/// cloud cover as its properties: small, for the command line and the AI Assistant.
 pub fn item_json(i: &Item) -> Value {
+    item_json_with(i, false)
+}
+
+/// [`item_json`], with every property kept when `all` (`stac.search`'s `"properties": true`).
+pub fn item_json_with(i: &Item, all: bool) -> Value {
     // The date and cloud cover read are always there, whatever properties were kept.
-    let mut props = i.properties.as_ref().and_then(Value::as_object).cloned().unwrap_or_default();
+    let kept = i.properties.as_ref().and_then(Value::as_object).filter(|_| all);
+    let mut props = kept.cloned().unwrap_or_default();
     if props.get("datetime").is_none_or(Value::is_null) {
         props.insert("datetime".into(), Value::String(i.datetime.clone()));
     }
@@ -792,6 +799,12 @@ mod tests {
         let ranged = serde_json::json!({"type": "Feature", "id": "r", "properties": {"start_datetime": "2024-01-01T00:00:00Z", "eo:cloud_cover": null}});
         let r = item_from_json(&ranged, None).unwrap();
         let out = item_json(&r);
+        // Only the date and cloud cover, unless every property is asked for.
+        assert_eq!(item_json(i)["properties"].as_object().map(|p| p.len()), Some(2));
+        let mut wide = i.clone();
+        wide.properties = Some(serde_json::json!({"gsd": 10, "platform": "sentinel-2a"}));
+        assert_eq!(item_json_with(&wide, true)["properties"]["platform"], "sentinel-2a");
+        assert!(item_json(&wide)["properties"].get("platform").is_none());
         assert_eq!(out["properties"]["datetime"], "2024-01-01T00:00:00Z");
         assert_eq!(item_from_json(&out, None).unwrap().datetime, r.datetime);
         assert_eq!(footprints_geojson(&items)["features"].as_array().unwrap().len(), 1);

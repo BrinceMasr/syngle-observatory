@@ -13,7 +13,7 @@ pub fn commands() -> Vec<C> {
             .view()
             .params(r#"{"url"?: "a STAC API (default: Earth Search, https://earth-search.aws.element84.com/v1; Planetary Computer: https://planetarycomputer.microsoft.com/api/stac/v1), or a static catalog's catalog.json or collection.json (its child catalogs and collections are listed)"}"#),
         C::new("stac.search", "STAC Search", "Home › Add › Web Data › STAC Search", search).params(
-            r#"{"url"?: "a STAC API (default: Earth Search), or a static catalog's catalog.json or collection.json (walked from there, at most 400 documents)", "collections"?: id | [ids] (APIs), "bbox"?: [west, south, east, north] | "view" (the map's extent), "datetime"?: "2024-06-01" | "2024-06-01/2024-06-30", "limit"?: 1–200 (default 10), "maxCloud"?: percent, "sortby"?: "eo:cloud_cover" | "-datetime" (APIs that sort), "phase"?: "pre" | "post" (static catalogs of events), "footprints"?: bool (adds the items' footprints as a layer, default true)}"#,
+            r#"{"url"?: "a STAC API (default: Earth Search), or a static catalog's catalog.json or collection.json (walked from there, at most 400 documents)", "collections"?: id | [ids] (APIs), "bbox"?: [west, south, east, north] | "view" (the map's extent), "datetime"?: "2024-06-01" | "2024-06-01/2024-06-30", "limit"?: 1–200 (default 10), "maxCloud"?: percent, "sortby"?: "eo:cloud_cover" | "-datetime" (APIs that sort), "phase"?: "pre" | "post" (static catalogs of events), "properties"?: bool (every property of each item, not only its date and cloud cover; default false), "footprints"?: bool (adds the items' footprints as a layer, default true)}"#,
         ),
         C::new("stac.addFootprints", "Add STAC Footprints", "Home › Add › Web Data › STAC Search", add_footprints_cmd)
             .params(r#"{"footprints": GeoJSON FeatureCollection (items' footprints, as STAC Search finds them), "name"?: text}"#),
@@ -138,7 +138,9 @@ fn search(s: &mut Session, p: &Value) -> CmdResult {
     {
         let bytes = crate::render::rustgis_tiles::cache::download_blocking(&url)?;
         let (items, next) = stac::parse_items(&bytes, &url)?;
-        let mut out = json!({"count": items.len(), "items": items.iter().map(stac::item_json).collect::<Vec<_>>(), "next": next});
+        let all = b(p, "properties").unwrap_or(false);
+        let mut out =
+            json!({"count": items.len(), "items": items.iter().map(|i| stac::item_json_with(i, all)).collect::<Vec<_>>(), "next": next});
         if b(p, "footprints").unwrap_or(true)
             && let Some(id) = add_footprints(s, &items, "STAC footprints")?
         {
@@ -182,7 +184,8 @@ fn search_static(s: &mut Session, p: &Value, root: &str) -> CmdResult {
         let complete = walk.complete();
         let (read, failed) = (walk.reads, walk.failed);
         let items = walk.into_items();
-        let mut out = json!({"count": items.len(), "items": items.iter().map(stac::item_json).collect::<Vec<_>>(),
+        let all = b(p, "properties").unwrap_or(false);
+        let mut out = json!({"count": items.len(), "items": items.iter().map(|i| stac::item_json_with(i, all)).collect::<Vec<_>>(),
             "complete": complete, "read": read, "failed": failed});
         if let Some(n) = note {
             out["note"] = json!(n);

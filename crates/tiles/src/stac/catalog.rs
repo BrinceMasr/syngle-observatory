@@ -320,14 +320,13 @@ impl Walk {
         };
         match v.get("type").and_then(Value::as_str) {
             Some("Feature") => self.keep(&v, url),
-            Some("Catalog" | "Collection") => {
-                if v.get("type").and_then(Value::as_str) == Some("Collection") {
-                    // A collection whose data are its own assets (as Portolan's are), not items'.
-                    if links(&v, "item", url).is_empty()
-                        && let Some(c) = collection_item(&v, url)
-                    {
-                        self.keep(&c, url);
-                    }
+            Some(kind @ ("Catalog" | "Collection")) => {
+                // A collection whose data are its own assets (as Portolan's are), not items'.
+                if kind == "Collection"
+                    && links(&v, "item", url).is_empty()
+                    && let Some(c) = collection_item(&v, url)
+                {
+                    self.keep(&c, url);
                 }
                 if depth >= MAX_DEPTH {
                     self.cut |= v.get("links").and_then(Value::as_array).is_some_and(|l| !l.is_empty());
@@ -486,11 +485,11 @@ mod tests {
                 Child { title: "Bravo".into(), url: "https://x.org/b/collection.json".into() },
             ]
         );
-        for bad in [&b"[]"[..], b"<html>", br#"{"type": "Feature"}"#, br#"{"type": "Catalog", "links": 7}"#] {
-            assert!(
-                parse_children(bad, "https://x.org/c.json").is_err() || parse_children(bad, "https://x.org/c.json").unwrap().is_empty()
-            );
+        for bad in [&b"[]"[..], b"<html>", br#"{"type": "Feature"}"#, br#"{"id": "untyped"}"#] {
+            assert!(parse_children(bad, "https://x.org/c.json").is_err(), "{}", String::from_utf8_lossy(bad));
         }
+        // A catalog whose links aren't a list has no children.
+        assert_eq!(parse_children(br#"{"type": "Catalog", "links": 7}"#, "https://x.org/c.json"), Ok(vec![]));
         assert_eq!(label_of("https://x.org/events/catalog.json"), "events");
         assert_eq!(label_of("https://x.org/events/a.json"), "a");
     }
