@@ -8,6 +8,13 @@ description = "Syngle Observatory L2: maps, layers, symbology, labeling, camera 
 [lints]
 workspace = true
 
+[features]
+# Spike A (#43): raise the view-read windows from the shipped 100,000/250,000 (and 30,000/60,000
+# remote) to 1,000,000, so the "pan with 1M points" target is measured with every feature drawn.
+# Off by default; #77 revisits the shipped limits. Forwards to `rustgis-data`'s cap (500,000 in the
+# browser), which would otherwise sample the view instead of holding it.
+spike = ["rustgis-data/spike"]
+
 [dependencies]
 rustgis-geom = { workspace = true }
 rustgis-data = { workspace = true }

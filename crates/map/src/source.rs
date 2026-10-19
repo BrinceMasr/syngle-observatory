@@ -23,14 +23,30 @@ pub const STREAM_ABOVE: u64 = 100_000;
 
 /// The most features a view reads.
 ///
-/// Spike A (#43) build: raised from the shipped 100,000 / 250,000 so the "pan with 1M points" target
-/// can be measured with all 1,000,000 features drawn, instead of the window the shipped limits allow.
-/// This is the spike's only change to the fork's own crates; the shipped build was measured before it
-/// (branch `spike/43-engine-wasm`, the `dist/web-stock` artefact).
-pub const VIEW_LIMIT: usize = 1_000_000;
+/// The shipped window is 100,000 in the browser and 250,000 on the desktop.
+///
+/// The `spike` feature raises it to 1,000,000, so the "pan with 1M points" target (spike A, #43) can
+/// be measured with all of them drawn rather than sampled. Off by default: the shipped build keeps
+/// the window above, and #77 revisits it.
+pub const VIEW_LIMIT: usize = if cfg!(feature = "spike") {
+    1_000_000
+} else if cfg!(target_arch = "wasm32") {
+    100_000
+} else {
+    250_000
+};
 
 /// The most features a view reads from a file by its web address (each one is fetched).
-pub const REMOTE_VIEW_LIMIT: usize = 1_000_000;
+///
+/// The shipped window is 30,000 in the browser and 60,000 on the desktop; the `spike` feature raises
+/// it like [`VIEW_LIMIT`]'s.
+pub const REMOTE_VIEW_LIMIT: usize = if cfg!(feature = "spike") {
+    1_000_000
+} else if cfg!(target_arch = "wasm32") {
+    30_000
+} else {
+    60_000
+};
 
 /// A streamed layer's source.
 #[derive(Clone, Default, Serialize, Deserialize)]

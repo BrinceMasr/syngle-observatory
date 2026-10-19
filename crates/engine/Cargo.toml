@@ -29,6 +29,9 @@ rustgis-geolibre = { workspace = true, optional = true }
 
 [features]
 geolibre = ["dep:rustgis-geolibre"]
+# Spike A (#43): carry the raised view-read windows through to `rustgis-map`, so a spike build of an
+# app can measure the "pan with 1M points" target. Off by default; #77 revisits the shipped limits.
+spike = ["rustgis-map/spike"]
 
 [dev-dependencies]
 # Writing sample GeoPackages.

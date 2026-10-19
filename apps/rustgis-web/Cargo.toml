@@ -12,6 +12,9 @@ publish = false
 # fork's egui chrome (header, ribbon, tabs, panes, dialogs, status bar). SyngleCode's React UI is
 # the chrome; build with `trunk build --release --features canvas-only --dist ../../dist/canvas`.
 canvas-only = []
+# Spike A (#43): the raised view-read windows, for measuring the "pan with 1M points" target; build
+# with `trunk build --release --features canvas-only,spike`. Off by default; #77 revisits the limits.
+spike = ["rustgis-engine/spike"]
 [lints]
 workspace = true
 
