@@ -6,8 +6,8 @@
 //! `embeddings.*` commands, so the change is undoable like any other.
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::cache;
 use rustgis_engine::render::rustgis_tiles::embeddings::{self as emb, EmbeddingDataset, Found, Tile, tessera};
+use rustgis_engine::render::rustgis_tiles::{cache, cog};
 use serde_json::json;
 
 use crate::{RustGisApp, Slot};
@@ -174,7 +174,8 @@ fn show_footprints(app: &mut RustGisApp) {
         return;
     }
     let fc = emb::footprints_geojson(&st.found);
-    let name = format!("{} {}", picked(st).name.split(" (").next().unwrap_or("Embeddings"), tl!("tiles"));
+    // A layer's name, like other data: not translated.
+    let name = format!("{} tiles", picked(st).name.split(" (").next().unwrap_or("Embeddings"));
     match app.run("stac.addFootprints", json!({"footprints": fc, "name": name})) {
         Ok(r) => app.ui.embeddings.footprints = r["layer"].as_u64().and_then(|i| u32::try_from(i).ok()),
         Err(e) => app.ui.embeddings.error = Some(e),
@@ -302,20 +303,23 @@ fn data_slot() -> (Slot<Result<Vec<u8>, String>>, Land) {
 fn restyle(app: &mut RustGisApp) {
     let st = &app.ui.embeddings;
     let (bands, s) = (st.aef_bands.map(|b| b + 1), st.stretch);
-    let names: Vec<String> = app
+    // AlphaEarth's layers: COGs shown dequantised as AlphaEarth's, by their place in the stack
+    // (names may repeat).
+    let shown: Vec<usize> = app
         .session
         .map()
         .tiles
         .iter()
-        .filter(|t| t.kind == rustgis_engine::map::TileKind::Cog && t.url.contains("/tge-labs/aef/"))
-        .map(|t| t.name.clone())
+        .enumerate()
+        .filter(|(_, t)| t.kind == rustgis_engine::map::TileKind::Cog && cog::split(&t.url).1.aef)
+        .map(|(i, _)| i)
         .collect();
-    if names.is_empty() {
+    if shown.is_empty() {
         app.ui.embeddings.info = Some(tl!("No AlphaEarth layer on the map").to_string());
         return;
     }
-    for name in names {
-        let p = json!({"name": name, "bands": bands, "range": [-s, s], "dequantize": "aef"});
+    for index in shown {
+        let p = json!({"index": index, "bands": bands, "range": [-s, s], "dequantize": "aef"});
         if let Err(e) = app.run("map.setTiles", p) {
             app.ui.embeddings.error = Some(e);
         }
@@ -495,7 +499,8 @@ fn about(ui: &mut egui::Ui, t: &crate::theme::Tokens, d: &EmbeddingDataset) {
                 )))
                 .wrap(),
             );
-            let cover = if d.license.is_empty() { tl!(d.coverage).to_string() } else { format!("{} · {}", tl!(d.coverage), d.license) };
+            // The catalog's facts are data, kept as the dataset states them (not translated).
+            let cover = if d.license.is_empty() { d.coverage.to_string() } else { format!("{} · {}", d.coverage, d.license) };
             ui.add(egui::Label::new(dim(cover)).wrap());
             ui.horizontal_wrapped(|ui| {
                 ui.hyperlink_to(tl!("Data"), d.data_url);

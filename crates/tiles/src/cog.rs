@@ -159,6 +159,9 @@ pub struct Info {
     /// they are dequantised (the file's own bands' set once the coarsest overview is read, before
     /// the file is ready; others' as a look first needs them).
     stretch: Mutex<HashMap<(Vec<usize>, bool), Vec<(f32, f32)>>>,
+    /// The stretches being read, with who waits for each: read once, however many map tiles
+    /// ask for it first.
+    stretching: Mutex<HashMap<(Vec<usize>, bool), Vec<StretchThen>>>,
     /// The file's own bands shown as red, green, blue (or one, grey), and alpha.
     rgb: bool,
     alpha: bool,
@@ -406,6 +409,7 @@ fn stats(url: String, header: Sparse, layout: Layout, done: Box<dyn FnOnce(Resul
         min_zoom: 0,
         max_zoom,
         stretch: Mutex::new(HashMap::new()),
+        stretching: Mutex::new(HashMap::new()),
         rgb,
         alpha,
     });
@@ -429,6 +433,12 @@ fn stats(url: String, header: Sparse, layout: Layout, done: Box<dyn FnOnce(Resul
     );
 }
 
+/// The image the stretch is read from: the coarsest at least 256 pixels wide (GDAL writes
+/// overviews down to a pixel, too few to take percentiles of), else the full image.
+fn stats_level(layout: &Layout) -> usize {
+    layout.levels.iter().rposition(|l| l.width >= 256 && l.height >= 256).unwrap_or(0)
+}
+
 /// The (low, high) values of a band's 2nd and 98th percentiles.
 fn percentiles(mut v: Vec<f32>) -> (f32, f32) {
     v.retain(|x| x.is_finite());
@@ -443,14 +453,16 @@ fn percentiles(mut v: Vec<f32>) -> (f32, f32) {
 
 /// Calls `then` with a look's stretch: given, known, or read from the coarsest overview (a few
 /// tiles of the bands shown) and kept.
-fn with_stretch(info: Arc<Info>, file: String, look: Look, then: Box<dyn FnOnce(Result<Vec<(f32, f32)>, String>) + Send>) {
+type StretchThen = Box<dyn FnOnce(Result<Vec<(f32, f32)>, String>) + Send>;
+
+fn with_stretch(info: Arc<Info>, file: String, look: Look, then: StretchThen) {
     let shown = info.shown(&look);
     if let Some(s) = info.stretch_for(&look, &shown) {
         then(Ok(s));
         return;
     }
     let colour: Vec<usize> = shown.iter().copied().take(3).collect();
-    let coarsest = info.layout.levels.len().saturating_sub(1);
+    let coarsest = stats_level(&info.layout);
     let n = info.layout.levels.get(coarsest).map(|l| l.tiles() as usize).unwrap_or(0);
     // Too many tiles to read for it: the values' full range for the type, or 0–255.
     if n == 0 || n > MAX_STATS_TILES {
@@ -465,8 +477,27 @@ fn with_stretch(info: Arc<Info>, file: String, look: Look, then: Box<dyn FnOnce(
         then(Ok(s));
         return;
     }
+    // Read once: later asks wait for the read under way.
+    let key = (colour.clone(), look.aef);
+    {
+        let mut reading = info.stretching.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(waiting) = reading.get_mut(&key) {
+            waiting.push(then);
+            return;
+        }
+        reading.insert(key.clone(), vec![then]);
+    }
     let tiles: Vec<u32> = (0..n as u32).collect();
     let i = info.clone();
+    let done = move |r: Result<Vec<(f32, f32)>, String>| {
+        let waiting = i.stretching.lock().unwrap_or_else(|e| e.into_inner()).remove(&key).unwrap_or_default();
+        if let Ok(s) = &r {
+            i.stretch.lock().unwrap_or_else(|e| e.into_inner()).insert(key, s.clone());
+        }
+        for w in waiting {
+            w(r.clone());
+        }
+    };
     fetch_bands(
         info,
         file,
@@ -487,10 +518,9 @@ fn with_stretch(info: Arc<Info>, file: String, look: Look, then: Box<dyn FnOnce(
                         )
                     })
                     .collect();
-                i.stretch.lock().unwrap_or_else(|e| e.into_inner()).insert((colour, look.aef), s.clone());
-                then(Ok(s))
+                done(Ok(s))
             }
-            Err(e) => then(Err(e)),
+            Err(e) => done(Err(e)),
         }),
     );
 }
@@ -932,6 +962,15 @@ mod tests {
         assert_eq!(template("https://x.org/a.tif"), "cog:{z}/{x}/{y}@https://x.org/a.tif");
         assert_eq!(parse_url("cog:3/2/1@https://x.org/a.tif"), Some((3, 2, 1, "https://x.org/a.tif".into())));
         assert!(parse_url("cog:99/0/0@x").is_none() && parse_url("cog:1/0/0@").is_none() && !is_tile("pmtiles:1/0/0@x"));
+    }
+
+    #[test]
+    fn stretch_read_from_an_overview_large_enough() {
+        let file = rustgis_data::raster::cog::example(1024, 64);
+        let rustgis_data::raster::cog::Parse::Done(l) = cog::layout(&Sparse::default().with(0, file)).unwrap() else { panic!() };
+        // Overviews down to 64 pixels: the 256-pixel one is read.
+        assert_eq!(l.levels.last().map(|l| l.width), Some(64));
+        assert_eq!(l.levels[stats_level(&l)].width, 256);
     }
 
     #[test]

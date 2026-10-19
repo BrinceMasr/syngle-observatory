@@ -337,6 +337,10 @@ fn set(s: &mut Session, p: &Value) -> CmdResult {
     let m = s.map_mut();
     let n = m.tiles.len();
     let Some(t) = m.tiles.get_mut(i) else { return Err("no tile layer at that index".into()) };
+    // Refused before anything changes.
+    if look.is_some() && t.kind != TileKind::Cog {
+        return Err("bands, range and dequantize are for a cloud-optimised GeoTIFF's layer".into());
+    }
     if let Some(v) = b(p, "visible") {
         t.visible = v;
     }
@@ -350,9 +354,6 @@ fn set(s: &mut Session, p: &Value) -> CmdResult {
         t.name = r.chars().take(120).collect();
     }
     if let Some(look) = look {
-        if t.kind != TileKind::Cog {
-            return Err("bands, range and dequantize are for a cloud-optimised GeoTIFF's layer".into());
-        }
         let (_, old) = cog::split(&t.url);
         t.url = cog::with_look(&t.url, &look(old));
     }
@@ -398,6 +399,9 @@ mod tests {
         assert!(s.run("map.addTiles", &json!({"url": "file:///etc/passwd"})).is_err());
         assert!(s.run("map.addTiles", &json!({"url": "https://a/{z}", "kind": "nope"})).is_err());
         assert!(s.run("map.removeTiles", &json!({"index": 7})).is_err());
+        // A look is for a COG's layer: refused for others, which are left as they were.
+        assert!(s.run("map.setTiles", &json!({"index": 0, "opacity": 0.2, "bands": [1, 2, 3]})).is_err());
+        assert_ne!(s.map().tiles[0].opacity, 0.2);
         assert!(s.run("map.removeTiles", &json!({})).is_ok());
         assert!(s.map().tiles.is_empty());
         // Saved and read back with the project.
