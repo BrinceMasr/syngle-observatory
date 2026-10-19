@@ -664,11 +664,10 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
             ui.label(tl!("Catalog"));
             ui.horizontal(|ui| {
                 let shown = if st.node.is_empty() { tl!("all of it").to_string() } else { st.node_title.clone() };
-                egui::ComboBox::from_id_salt("stac_node")
-                    .selected_text(shown)
-                    .width((ui.available_width() - 90.0).max(120.0))
-                    .height(360.0)
-                    .show_ui(ui, |ui| {
+                // Its text is cut to the room left beside Browse.
+                let w = (ui.available_width() - 110.0).max(120.0);
+                ui.allocate_ui(vec2(w, 30.0), |ui| {
+                    egui::ComboBox::from_id_salt("stac_node").truncate().selected_text(shown).width(w).height(360.0).show_ui(ui, |ui| {
                         for (i, (title, _)) in st.trail.iter().enumerate() {
                             let title = if title.is_empty() { tl!("all of it").to_string() } else { title.clone() };
                             if ui.selectable_label(false, format!("↑ {title}")).clicked() {
@@ -681,6 +680,7 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
                             }
                         }
                     });
+                });
                 list = ui.add_enabled(!busy, egui::Button::new(tl!("Browse"))).clicked();
             });
             ui.end_row();
@@ -695,17 +695,19 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
                     );
                 } else {
                     let shown = if st.collection.is_empty() { tl!("any").to_string() } else { st.collection.clone() };
-                    egui::ComboBox::from_id_salt("stac_collection")
-                        .selected_text(shown)
-                        .width((ui.available_width() - 110.0).max(100.0))
-                        .height(320.0)
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut st.collection, String::new(), tl!("any"));
-                            for (id, title) in &st.collections {
-                                let label = if title.is_empty() { id.clone() } else { format!("{id} — {title}") };
-                                ui.selectable_value(&mut st.collection, id.clone(), label);
-                            }
-                        });
+                    let w = (ui.available_width() - 110.0).max(100.0);
+                    ui.allocate_ui(vec2(w, 30.0), |ui| {
+                        egui::ComboBox::from_id_salt("stac_collection").truncate().selected_text(shown).width(w).height(320.0).show_ui(
+                            ui,
+                            |ui| {
+                                ui.selectable_value(&mut st.collection, String::new(), tl!("any"));
+                                for (id, title) in &st.collections {
+                                    let label = if title.is_empty() { id.clone() } else { format!("{id} — {title}") };
+                                    ui.selectable_value(&mut st.collection, id.clone(), label);
+                                }
+                            },
+                        );
+                    });
                 }
                 list = ui.add_enabled(!busy, egui::Button::new(tl!("Collections"))).clicked();
             });
