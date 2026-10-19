@@ -28,8 +28,8 @@ const MAX_ASSETS: usize = 100;
 const MAX_TEXT: usize = 2000;
 /// The most coordinates a footprint keeps.
 const MAX_FOOTPRINT: usize = 20_000;
-/// The longest properties kept with an item, as JSON text.
-const MAX_PROPERTIES: usize = 32 << 10;
+/// The most properties kept with an item.
+const MAX_PROPERTIES: usize = 100;
 
 /// A collection an API offers.
 #[derive(Clone, Debug, PartialEq)]
@@ -345,7 +345,22 @@ fn item(f: &Value, from: Option<&str>) -> Option<Item> {
         })
         .collect();
     assets.sort_by(|a, b| a.key.cmp(&b.key));
-    let properties = props.filter(|p| p.is_object() && p.to_string().len() <= MAX_PROPERTIES).cloned();
+    let properties = props.and_then(Value::as_object).map(|p| {
+        // Shown, not used: the first hundred plain values, short text kept whole and long text cut.
+        let kept: serde_json::Map<String, Value> = p
+            .iter()
+            .filter(|(_, v)| !v.is_object() && !v.is_array())
+            .take(MAX_PROPERTIES)
+            .map(|(k, v)| {
+                let v = match v {
+                    Value::String(t) if t.len() > 200 => Value::String(t.chars().take(200).collect()),
+                    other => other.clone(),
+                };
+                (k.chars().take(100).collect(), v)
+            })
+            .collect();
+        Value::Object(kept)
+    });
     Some(Item {
         id,
         collection: text(f.get("collection")),

@@ -381,7 +381,7 @@ fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
 pub fn open_preset(app: &mut RustGisApp, preset: Option<Preset>, p: &serde_json::Value) -> Result<(), String> {
     app.dialogs.open("stac", &app.session)?;
     if let Some(preset) = preset
-        && app.ui.stac.preset != Some(preset)
+        && shown_preset(&app.ui.stac) != Some(preset)
     {
         // A fresh dialog, keeping the last footprints (removed when the next ones come).
         let footprints = app.ui.stac.footprints.take();
@@ -644,6 +644,10 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
                         if ui.selectable_label(st.api == url, tl!(label)).clicked() && st.api != url {
                             st.api = url.to_string();
                             st.collections.clear();
+                            // Nothing of the last catalog's browsing is kept.
+                            (st.node, st.node_title) = (String::new(), String::new());
+                            st.trail.clear();
+                            st.children.clear();
                             api_changed = true;
                         }
                     }

@@ -86,9 +86,11 @@ fn links(v: &Value, rel: &str, from: &str) -> Vec<(String, String)> {
 pub struct Filter {
     /// West, south, east, north: items whose bbox meets it (items without one are kept).
     pub bbox: Option<[f64; 4]>,
-    /// The first and last instants (RFC 3339, either open): items whose date falls between.
-    pub from: Option<String>,
-    pub to: Option<String>,
+    /// The first and last instants, in seconds since 1970 (either open): items whose date falls
+    /// between (undated items, and dates that can't be read, are kept, as items without a bbox
+    /// are).
+    pub from: Option<i64>,
+    pub to: Option<i64>,
     /// The most cloud cover, in percent (items that don't say are kept).
     pub max_cloud: Option<f64>,
     /// `pre` or `post`: an event's imagery from before or after it (`phase`, as Vantor's items
@@ -103,8 +105,13 @@ impl Filter {
             Some(d) => {
                 let d = datetime(d)?;
                 let (a, b) = d.split_once('/').unwrap_or((d.as_str(), d.as_str()));
-                let open = |x: &str| (x != "..").then(|| x.to_string());
-                (open(a), open(b))
+                let bound = |x: &str| -> Result<Option<i64>, String> {
+                    if x == ".." {
+                        return Ok(None);
+                    }
+                    instant(x).map(Some).ok_or_else(|| format!("{x}: not a date and time RustGIS reads"))
+                };
+                (bound(a)?, bound(b)?)
             }
             None => (None, None),
         };
@@ -142,19 +149,73 @@ impl Filter {
                 return false;
             }
         }
-        // RFC 3339 instants in UTC compare as text; a date compares by its day.
-        let d = item.datetime.as_str();
-        if !d.is_empty() {
-            let day = |x: &str| x.get(..10).unwrap_or(x).to_string();
-            if self.from.as_deref().is_some_and(|f| day(d) < day(f) || (d.len() > 10 && f.len() > 10 && d < f)) {
-                return false;
-            }
-            if self.to.as_deref().is_some_and(|t| day(d) > day(t) || (d.len() > 10 && t.len() > 10 && d > t)) {
-                return false;
-            }
+        // Compared as instants, whatever their offsets; a bare date is its day's start.
+        if let Some(d) = instant(&item.datetime)
+            && (self.from.is_some_and(|f| d < f) || self.to.is_some_and(|t| d > t))
+        {
+            return false;
         }
         true
     }
+}
+
+/// An RFC 3339 date and time (`2024-06-02T10:30:00.5Z`, `2024-06-02T12:30:00+02:00`) or a bare
+/// date (its start, in UTC) as seconds since 1970; `None` for anything else.
+pub fn instant(s: &str) -> Option<i64> {
+    let s = s.trim();
+    let b = s.as_bytes();
+    let num = |a: usize, n: usize| -> Option<i64> {
+        let t = s.get(a..a + n)?;
+        t.bytes().all(|c| c.is_ascii_digit()).then(|| t.parse().ok()).flatten()
+    };
+    if b.get(4) != Some(&b'-') || b.get(7) != Some(&b'-') {
+        return None;
+    }
+    let (y, m, d) = (num(0, 4)?, num(5, 2)?, num(8, 2)?);
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+        return None;
+    }
+    let days = days_from_civil(y, m, d);
+    if s.len() == 10 {
+        return Some(days * 86_400);
+    }
+    if !matches!(b.get(10), Some(b'T' | b't' | b' ')) || b.get(13) != Some(&b':') || b.get(16) != Some(&b':') {
+        return None;
+    }
+    let (hh, mm, ss) = (num(11, 2)?, num(14, 2)?, num(17, 2)?);
+    if hh > 23 || mm > 59 || ss > 60 {
+        return None;
+    }
+    // A fraction of a second, then the offset.
+    let mut i = 19;
+    if b.get(i) == Some(&b'.') {
+        i += 1;
+        while b.get(i).is_some_and(u8::is_ascii_digit) {
+            i += 1;
+        }
+    }
+    let offset = match b.get(i) {
+        Some(b'Z' | b'z') if i + 1 == b.len() => 0,
+        Some(sign @ (b'+' | b'-')) if i + 6 == b.len() && b.get(i + 3) == Some(&b':') => {
+            let o = num(i + 1, 2)? * 3600 + num(i + 4, 2)? * 60;
+            if *sign == b'+' { o } else { -o }
+        }
+        // No offset: taken as UTC.
+        None => 0,
+        _ => return None,
+    };
+    Some(days * 86_400 + hh * 3600 + mm * 60 + ss - offset)
+}
+
+/// Days since 1970-01-01 of a civil date (proleptic Gregorian), after Howard Hinnant's algorithm.
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let mp = (m + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
 }
 
 /// A walk of a static catalog from one node: the documents still to read, and the items found.
@@ -475,6 +536,19 @@ mod tests {
         run(&mut w, &docs);
         assert_eq!(w.items().iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["a"]);
         assert!(Filter::from_search(&Search::default(), Some("during")).is_err());
+        // Open-ended ranges, and instants with offsets.
+        let to = Filter::from_search(&Search { datetime: Some("../2024-06-30".into()), ..Default::default() }, None).unwrap();
+        assert_eq!((to.from, to.to), (None, instant("2024-06-30T23:59:59Z")));
+        let mut w = Walk::new("https://x.org/ev/collection.json", to, 50);
+        run(&mut w, &docs);
+        assert_eq!(w.items().iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["a", "c"]);
+        assert_eq!(instant("1970-01-01"), Some(0));
+        assert_eq!(instant("2024-06-02T12:30:00+02:00"), instant("2024-06-02T10:30:00Z"));
+        assert_eq!(instant("2024-06-02T10:30:00.123456Z"), instant("2024-06-02T10:30:00Z"));
+        assert_eq!(instant("2024-03-01T00:00:00Z").zip(instant("2024-02-28")).map(|(a, b)| a - b), Some(2 * 86_400));
+        for bad in ["", "2024", "2024-13-01", "2024-06-02T25:00:00Z", "2024-06-02T10:30:00+0200", "yesterday", "2024-06-02X"] {
+            assert_eq!(instant(bad), None, "{bad}");
+        }
         assert!(Filter::from_search(&Search { datetime: Some("soon".into()), ..Default::default() }, None).is_err());
 
         // A limit stops the walk.
