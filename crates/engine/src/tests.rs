@@ -9376,6 +9376,10 @@ fn time_slider_fills_dated_tile_addresses_and_exports_its_steps() {
     assert_eq!(r["url"], "https://example.com/2023-08-01/{z}/{x}/{y}.png");
     let i = s.run("time.info", &Value::Null).unwrap();
     assert_eq!((i["unit"].as_str(), i["steps"].as_u64()), (Some("day"), Some(31)), "{i}");
+    // A dated address with the slider off needs its span.
+    let mut off = timed_events();
+    assert!(off.run("map.addTiles", &json!({"url": "https://example.com/{date:YYYY}/{z}/{x}/{y}.png"})).is_err());
+    assert!(off.map().tiles.is_empty() && off.map().time.is_none());
     // Three days of daily imagery step by the day the address names, not by the hour.
     let mut short = timed_events();
     short
@@ -9386,6 +9390,10 @@ fn time_slider_fills_dated_tile_addresses_and_exports_its_steps() {
         .unwrap();
     let i = short.run("time.info", &Value::Null).unwrap();
     assert_eq!((i["unit"].as_str(), i["steps"].as_u64()), (Some("day"), Some(3)), "{i}");
+    short.run("time.goTo", &json!({"step": 99})).unwrap();
+    assert_eq!(short.map().tiles[0].url, "https://example.com/2023-08-30/{z}/{x}/{y}.png");
+    short.run("time.goTo", &json!({"step": 1})).unwrap();
+    assert_eq!(short.map().tiles[0].url, "https://example.com/2023-08-29/{z}/{x}/{y}.png");
     s.run("time.goTo", &json!({"date": "2023-08-30"})).unwrap();
     assert_eq!(s.map().tiles[0].url, "https://example.com/2023-08-30/{z}/{x}/{y}.png");
     // Kept in the project as its template, filled again when opened.

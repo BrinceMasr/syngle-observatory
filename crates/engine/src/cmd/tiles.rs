@@ -217,23 +217,26 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     Ok(out)
 }
 
-/// The date a dated tile layer starts at: the time slider's step when it is on, else its
-/// `start`, turning the slider on over `start`–`end` (with `unit`, `interval` or `dates`).
+/// The date a dated tile layer starts at: the time slider's step. Its `start` (and `end`,
+/// `unit`, `interval` or `dates`) set the slider up, turning it on when it is off.
 fn dated_start(s: &mut Session, p: &Value) -> Result<f64, String> {
-    if let Some(t) = &s.map().time {
-        return Ok(t.current);
-    }
     let keys = ["start", "end", "unit", "interval", "dates"];
     let mut given: serde_json::Map<String, Value> = keys.iter().filter_map(|k| p.get(*k).map(|v| (k.to_string(), v.clone()))).collect();
+    if given.is_empty() {
+        return s
+            .map()
+            .time
+            .as_ref()
+            .map(|t| t.current)
+            .ok_or_else(|| "this address has dates: give its start (and end), or turn the time slider on first".to_string());
+    }
     // Steps by what the address changes by: a day for `{date:YYYY-MM-DD}`, a year for `{YYYY}`.
     if !given.contains_key("unit")
         && let Some(u) = ps(p, "url").and_then(rustgis_data::time::template_unit)
     {
         given.insert("unit".into(), json!(u.code()));
     }
-    if given.contains_key("start") || given.contains_key("dates") {
-        super::time::set(s, &Value::Object(given))?;
-    }
+    super::time::set(s, &Value::Object(given))?;
     Ok(s.map().time.as_ref().map_or(0.0, |t| t.current))
 }
 

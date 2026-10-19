@@ -172,7 +172,7 @@ pub fn instant(v: &Value, kind: Kind) -> Option<f64> {
     let t = match (kind, x) {
         (Kind::EpochMs, Some(x)) => x,
         (Kind::EpochS, Some(x)) => x * 1000.0,
-        (Kind::Year, Some(x)) if x.fract() == 0.0 => Civil::date(x as i64, 1, 1).ms(),
+        (Kind::Year, Some(x)) if x.fract() == 0.0 && (1000.0..=9999.0).contains(&x) => Civil::date(x as i64, 1, 1).ms(),
         (Kind::Text, None) => parse_text(text(v)?)?,
         // A text field's bare year, or a number in a field of dates.
         (Kind::Text, Some(x)) => match number_kind(x)? {
@@ -182,8 +182,12 @@ pub fn instant(v: &Value, kind: Kind) -> Option<f64> {
         },
         _ => return None,
     };
-    t.is_finite().then_some(t)
+    // Past any calendar a map shows (and where day counts would overflow): not a date.
+    (t.is_finite() && t.abs() <= LIMIT_MS).then_some(t)
 }
+
+/// The latest instant read, either side of 1970: about 950,000 years.
+const LIMIT_MS: f64 = 3.0e16;
 
 /// The kind most of a field's values read as, and the share of the non-empty values that do
 /// (looking at up to `sample` rows).
@@ -466,6 +470,11 @@ mod tests {
         assert_eq!(instant(&Value::Text("1958".into()), Kind::Text), Some(d("1958-01-01")));
         assert_eq!(instant(&Value::Int(86_400), Kind::EpochS), Some(DAY_MS));
         assert_eq!(instant(&Value::Bool(true), Kind::Text), None);
+        // Outliers in a field of years or epoch times read as no date, not a far-off one.
+        for v in [Value::Int(0), Value::Int(20_150_301), Value::Float(1e18)] {
+            assert_eq!(instant(&v, Kind::Year), None, "{v:?}");
+        }
+        assert_eq!(instant(&Value::Float(1e300), Kind::EpochMs), None);
     }
 
     #[test]

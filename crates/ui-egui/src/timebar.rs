@@ -68,7 +68,7 @@ pub fn play(app: &mut RustGisApp) -> Result<Value, String> {
     let Some(t) = app.session.map().time.clone() else { return Err("the time slider is off".into()) };
     if app.time.playing.take().is_none() {
         if t.at_end() && !t.looping {
-            app.run("time.goTo", json!({"date": t.start}))?;
+            app.run("time.goTo", json!({"step": 0}))?;
         }
         app.time.playing = Some(0.0);
         app.time.hidden = false;
@@ -115,7 +115,9 @@ fn counts(app: &mut RustGisApp, t: &TimeSlider, steps: &[f64]) -> Vec<u32> {
     let m = app.session.map();
     let bound: Vec<_> = m.layers.iter().filter_map(|l| l.time.as_ref().map(|b| (l, b.field.clone()))).collect();
     let key = format!(
-        "{}|{:?}|{}",
+        "{}|{}|{}|{:?}|{}",
+        app.session.opened,
+        app.session.changes,
         app.session.project.active_map,
         (steps.first(), steps.last(), steps.len(), t.unit, t.interval),
         bound.iter().map(|(l, f)| format!("{}:{f}:{}:{};", l.id, l.dataset.features.len(), l.geometry_rev)).collect::<String>(),
@@ -161,7 +163,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
         let mut b = ui.new_child(
             egui::UiBuilder::new().max_rect(br.shrink2(vec2(10.0, 4.0))).layout(egui::Layout::left_to_right(egui::Align::Center)),
         );
-        transport(app, &mut b, &t, &steps);
+        transport(app, &mut b, &steps);
         timeline(app, &mut b, &t, &steps, cur, &tk);
     });
 }
@@ -290,9 +292,9 @@ fn layers_menu(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn transport(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64]) {
+fn transport(app: &mut RustGisApp, ui: &mut Ui, steps: &[f64]) {
     let playing = app.time.playing.is_some();
-    small(ui, app, "time_first", "", "Go to the first step.", "time.goTo", json!({"date": t.start}), false);
+    small(ui, app, "time_first", "", "Go to the first step.", "time.goTo", json!({"step": 0}), false);
     small(ui, app, "time_prev", "", "Go back a step.", "time.step", json!({"by": -1}), false);
     small(
         ui,
@@ -305,8 +307,7 @@ fn transport(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64]) {
         playing,
     );
     small(ui, app, "time_next", "", "Go forward a step.", "time.step", json!({"by": 1}), false);
-    let last = steps.last().copied().unwrap_or(t.end);
-    small(ui, app, "time_last", "", "Go to the last step.", "time.goTo", json!({"date": last}), false);
+    small(ui, app, "time_last", "", "Go to the last step.", "time.goTo", json!({"step": steps.len().saturating_sub(1)}), false);
     ui.add_space(6.0);
 }
 
@@ -359,10 +360,8 @@ fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], cu
         && (resp.clicked() || resp.dragged())
     {
         let i = i_of(pos.x);
-        if i != cur
-            && let Some(s) = steps.get(i)
-        {
-            let _ = app.run("time.goTo", json!({"date": s}));
+        if i != cur {
+            let _ = app.run("time.goTo", json!({"step": i}));
         }
     }
     if let Some(pos) = resp.hover_pos() {

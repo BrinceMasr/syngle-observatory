@@ -46,15 +46,23 @@ pub fn commands() -> Vec<C> {
             r#"{"start"?, "end"?: dates (text, a year or milliseconds since 1970), "date"?: the current step, "unit"?: "hour"|"day"|"month"|"year", "interval"?: steps of that many units, "dates"?: [dates] (irregular steps; [] for regular ones), "show"?: "step"|"wide"|"wider"|"cumulative", "before"?, "after"?: steps the window takes in, "cumulative"?: bool, "speed"?: milliseconds a step shows for, "loop"?: bool, "format"?: date format (YYYY, MM, MMM, DD, HH, mm), "off"?: bool (turns the slider off, every feature showing)}"#,
         ),
         C::new("time.goTo", "Go to Date", "View › Time", |s, p| {
-            let t = p.get("date").and_then(time::parse_input).ok_or("date is required (2015-06-01, a year, or milliseconds since 1970)")?;
             let m = s.map_mut();
-            m.time.as_mut().ok_or("the time slider is off")?.go_to(t);
+            let sl = m.time.as_mut().ok_or("the time slider is off")?;
+            // A step by its number (0 = the first; past the end, the last), or a date.
+            let t = match uint(p, "step") {
+                Some(i) => {
+                    let steps = sl.steps();
+                    steps.get((i as usize).min(steps.len().saturating_sub(1))).copied().unwrap_or(sl.start)
+                }
+                None => p.get("date").and_then(time::parse_input).ok_or("date is required (2015-06-01, a year, or milliseconds since 1970), or step")?,
+            };
+            sl.go_to(t);
             m.apply_time();
             Ok(info(s))
         })
         .view()
         .when(need_slider)
-        .params(r#"{"date": date}"#),
+        .params(r#"{"date": date | "step": number (0 = the first)}"#),
         C::new("time.step", "Step Time", "View › Time", |s, p| {
             let by = f(p, "by").unwrap_or(1.0).clamp(-1e6, 1e6) as i64;
             let wrap = b(p, "wrap").unwrap_or(false);
@@ -249,9 +257,8 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
     if steps.is_empty() {
         return Err("no step falls between from and to".into());
     }
-    // A zip holds every frame until it is written; a GIF takes each as it is made.
-    let budget = if gif { 4.0e9 } else { 1.5e9 };
-    if steps.len() > MAX_FRAMES || steps.len() as f64 * w * h > budget {
+    // Rendering blocks while it runs: a bound on the work, as Export Animation has.
+    if steps.len() > MAX_FRAMES || steps.len() as f64 * w * h > 1.5e9 {
         return Err(format!("{} frames at {w:.0} × {h:.0} is too many; narrow from and to, or lower the size", steps.len()));
     }
     let saved_size = s.view_size;
