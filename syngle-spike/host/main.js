@@ -212,11 +212,18 @@ async function loadProject(win, projectText) {
   let detection = null;
   if (args.poll > 0) {
     let attempts = 0;
-    const threshold = Number(args.colourHits || 500);
+    // The RustGIS loading splash carries the same orange as the default point symbology (the logo's
+    // gear ring counts ~3,900 pixels). 15,000 sits well above that and well below the 22,848 a 30k
+    // window paints, so the test cannot fire on the loading screen.
+    const threshold = Number(args.colourHits || 8000);
     for (;;) {
       attempts++;
       const shot = await win.webContents.capturePage(rect);
       const count = colourPixels(shot, colour, 30);
+      if (args["capture-all"]) {
+        // Every poll, so the sequence of states can be looked at rather than inferred.
+        fs.writeFileSync(path.resolve(args.out || "results/run.json").replace(/\.json$/, `-poll${String(attempts).padStart(3, "0")}-${count.hits}.png`), shot.toPNG());
+      }
       if (count.hits >= threshold) {
         started.firstData = Date.now();
         detection = { attempts, colour, count, captureMs: started.firstData - sent.date };

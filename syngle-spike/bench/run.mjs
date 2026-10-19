@@ -24,7 +24,7 @@ function parse(argv) {
     const v = argv[i + 1];
     if (v === undefined || v.startsWith("--")) out[key] = true;
     else {
-      out[key] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v;
+      out[key] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v === "false" || v === "no" ? false : v;
       i++;
     }
   }
