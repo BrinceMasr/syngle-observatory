@@ -1,0 +1,542 @@
+//! Static STAC catalogs: a tree of `catalog.json` and `collection.json` documents linked by
+//! `child` links, with items behind `item` links, served as plain files (Planet's disaster data,
+//! Vantor's events, the catalogs in the Portolan registry). There is no search: the tree is walked
+//! from a node, each document read once, and the items found are filtered here by place, date,
+//! cloud cover and phase. Like the rest of [`super`], this is sans I/O: [`Walk`] says what to
+//! read next and takes the answers. Documents are hostile input: the walk is bounded in documents
+//! read, depth, links followed and items kept.
+
+use std::collections::{HashSet, VecDeque};
+
+use serde_json::{Value, json};
+
+use super::{Item, Search, datetime, is_web, link, resolve, text};
+
+/// The most documents a walk reads.
+pub const MAX_READS: usize = 400;
+/// How deep a walk goes below its start.
+pub const MAX_DEPTH: usize = 8;
+/// The most links read from one document.
+const MAX_LINKS: usize = 5000;
+/// The most documents waiting to be read.
+const MAX_QUEUE: usize = 20_000;
+/// The most documents read at once.
+pub const AT_ONCE: usize = 6;
+/// The most children listed for a catalog.
+const MAX_CHILDREN: usize = 2000;
+
+/// Whether an address names a static catalog's document (a `.json` file) rather than a STAC API.
+pub fn is_static(url: &str) -> bool {
+    let path = url.split(['?', '#']).next().unwrap_or(url).trim_end_matches('/').to_ascii_lowercase();
+    path.ends_with(".json")
+}
+
+/// A catalog or collection below another: its title and address.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Child {
+    pub title: String,
+    pub url: String,
+}
+
+/// A label for a document without a title: its folder's name for a `catalog.json` or
+/// `collection.json`, else its file's name without `.json`.
+pub fn label_of(url: &str) -> String {
+    let path = url.split(['?', '#']).next().unwrap_or(url).trim_end_matches('/');
+    let mut parts = path.rsplit('/');
+    let file = parts.next().unwrap_or("");
+    let lower = file.to_ascii_lowercase();
+    let name = if matches!(lower.as_str(), "catalog.json" | "collection.json") { parts.next().unwrap_or(file) } else { file };
+    let name = name.strip_suffix(".json").unwrap_or(name).replace(['-', '_'], " ");
+    let name = name.trim();
+    if name.is_empty() { url.chars().take(200).collect() } else { name.chars().take(200).collect() }
+}
+
+/// The children (`child` links) of a catalog's document fetched from `from`: web addresses only,
+/// sorted by title.
+pub fn parse_children(bytes: &[u8], from: &str) -> Result<Vec<Child>, String> {
+    let v = super::json(bytes)?;
+    if !v.is_object() || !matches!(v.get("type").and_then(Value::as_str), Some("Catalog" | "Collection")) {
+        return Err("the answer isn't a STAC catalog or collection".into());
+    }
+    let mut seen = HashSet::new();
+    let mut out: Vec<Child> = links(&v, "child", from)
+        .into_iter()
+        .filter(|(url, _)| is_web(url) && crate::address::check(url, Some(from)).is_ok() && seen.insert(url.clone()))
+        .take(MAX_CHILDREN)
+        .map(|(url, title)| Child { title: if title.is_empty() { label_of(&url) } else { title }, url })
+        .collect();
+    out.sort_by_key(|c| c.title.to_lowercase());
+    Ok(out)
+}
+
+/// Every link of a relation, resolved against `from`: (address, title).
+fn links(v: &Value, rel: &str, from: &str) -> Vec<(String, String)> {
+    v.get("links")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .take(MAX_LINKS)
+        .filter(|l| l.get("rel").and_then(Value::as_str) == Some(rel))
+        .filter_map(|l| Some((resolve(from, l.get("href")?.as_str()?)?, text(l.get("title")))))
+        .collect()
+}
+
+/// What a walk keeps of the items it finds.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Filter {
+    /// West, south, east, north: items whose bbox meets it (items without one are kept).
+    pub bbox: Option<[f64; 4]>,
+    /// The first and last instants (RFC 3339, either open): items whose date falls between.
+    pub from: Option<String>,
+    pub to: Option<String>,
+    /// The most cloud cover, in percent (items that don't say are kept).
+    pub max_cloud: Option<f64>,
+    /// `pre` or `post`: an event's imagery from before or after it (`phase`, as Vantor's items
+    /// say; items that don't say are kept).
+    pub phase: Option<String>,
+}
+
+impl Filter {
+    /// The filter a search describes (its collections are the catalog's nodes, not a filter).
+    pub fn from_search(s: &Search, phase: Option<&str>) -> Result<Filter, String> {
+        let (from, to) = match s.datetime.as_deref().map(str::trim).filter(|d| !d.is_empty()) {
+            Some(d) => {
+                let d = datetime(d)?;
+                let (a, b) = d.split_once('/').unwrap_or((d.as_str(), d.as_str()));
+                let open = |x: &str| (x != "..").then(|| x.to_string());
+                (open(a), open(b))
+            }
+            None => (None, None),
+        };
+        if let Some([w, south, e, n]) = s.bbox {
+            let ok = |x: f64, lim: f64| x.is_finite() && (-lim..=lim).contains(&x);
+            if !(ok(w, 180.0) && ok(e, 180.0) && ok(south, 90.0) && ok(n, 90.0) && south < n) {
+                return Err("bbox is [west, south, east, north] in longitude/latitude".into());
+            }
+        }
+        let phase = phase.map(|p| p.trim().to_ascii_lowercase()).filter(|p| !p.is_empty() && p != "any" && p != "all");
+        if let Some(p) = &phase
+            && p != "pre"
+            && p != "post"
+        {
+            return Err(format!("{p}: phase is pre or post"));
+        }
+        Ok(Filter { bbox: s.bbox, from, to, max_cloud: s.max_cloud.filter(|c| c.is_finite()), phase })
+    }
+
+    /// Whether an item is kept (`phase` is its `phase` property, if it has one).
+    fn keeps(&self, item: &Item, phase: Option<&str>) -> bool {
+        if let (Some([w, s, e, n]), Some([iw, is, ie, inn])) = (self.bbox, item.bbox)
+            && (iw > e || ie < w || is > n || inn < s)
+        {
+            return false;
+        }
+        if let (Some(max), Some(c)) = (self.max_cloud, item.cloud)
+            && c > max
+        {
+            return false;
+        }
+        if let (Some(want), Some(p)) = (&self.phase, phase) {
+            let p = p.trim().to_ascii_lowercase();
+            if p.trim_end_matches("-event") != want {
+                return false;
+            }
+        }
+        // RFC 3339 instants in UTC compare as text; a date compares by its day.
+        let d = item.datetime.as_str();
+        if !d.is_empty() {
+            let day = |x: &str| x.get(..10).unwrap_or(x).to_string();
+            if self.from.as_deref().is_some_and(|f| day(d) < day(f) || (d.len() > 10 && f.len() > 10 && d < f)) {
+                return false;
+            }
+            if self.to.as_deref().is_some_and(|t| day(d) > day(t) || (d.len() > 10 && t.len() > 10 && d > t)) {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+/// A walk of a static catalog from one node: the documents still to read, and the items found.
+#[derive(Debug)]
+pub struct Walk {
+    /// Items to read (before more catalogs, so the first found come quickly), with their depth.
+    items: VecDeque<(String, usize)>,
+    /// Catalogs and collections to read, with their depth.
+    folders: VecDeque<(String, usize)>,
+    /// Addresses handed out to read.
+    visited: HashSet<String>,
+    /// Addresses handed out and not yet answered: their depth.
+    asked: Vec<(String, usize)>,
+    filter: Filter,
+    limit: usize,
+    found: Vec<Item>,
+    /// Documents read (or failed).
+    pub reads: usize,
+    /// Documents that couldn't be read or weren't STAC.
+    pub failed: usize,
+    /// Whether some links weren't followed (too deep, too many).
+    pub cut: bool,
+}
+
+impl Walk {
+    /// A walk from the catalog, collection or item at `root`, keeping at most `limit` items.
+    pub fn new(root: &str, filter: Filter, limit: usize) -> Walk {
+        Walk {
+            items: VecDeque::new(),
+            folders: VecDeque::from([(root.trim().to_string(), 0)]),
+            visited: HashSet::new(),
+            asked: Vec::new(),
+            filter,
+            limit: limit.clamp(1, super::MAX_ITEMS),
+            found: Vec::new(),
+            reads: 0,
+            failed: 0,
+            cut: false,
+        }
+    }
+
+    /// The next document to read, if the walk wants one: none once enough items are found, the
+    /// budget is spent or nothing is left (some may still be waiting for their answers).
+    pub fn next_url(&mut self) -> Option<String> {
+        while self.found.len() < self.limit && self.reads + self.asked.len() < MAX_READS {
+            let (url, depth) = self.items.pop_front().or_else(|| self.folders.pop_front())?;
+            if !self.visited.insert(url.clone()) {
+                continue;
+            }
+            self.asked.push((url.clone(), depth));
+            return Some(url);
+        }
+        None
+    }
+
+    /// How many documents are asked for and not yet answered.
+    pub fn waiting(&self) -> usize {
+        self.asked.len()
+    }
+
+    /// Whether the walk is over: nothing waiting, and nothing more it will read.
+    pub fn finished(&self) -> bool {
+        self.asked.is_empty()
+            && (self.found.len() >= self.limit || self.reads >= MAX_READS || (self.items.is_empty() && self.folders.is_empty()))
+    }
+
+    /// Whether everything below the start was read (so the items are all that match).
+    pub fn complete(&self) -> bool {
+        self.finished() && self.items.is_empty() && self.folders.is_empty() && !self.cut && self.failed == 0
+    }
+
+    /// The items found.
+    pub fn items(&self) -> &[Item] {
+        &self.found
+    }
+
+    /// The items found, taken.
+    pub fn into_items(self) -> Vec<Item> {
+        self.found
+    }
+
+    /// Takes the answer for `url` (handed out by [`Walk::next_url`]).
+    pub fn land(&mut self, url: &str, answer: Result<Vec<u8>, String>) {
+        let Some(i) = self.asked.iter().position(|(u, _)| u == url) else { return };
+        let (_, depth) = self.asked.swap_remove(i);
+        self.reads += 1;
+        let Some(v) = answer.ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok()).filter(Value::is_object) else {
+            self.failed += 1;
+            return;
+        };
+        match v.get("type").and_then(Value::as_str) {
+            Some("Feature") => self.keep(&v, url),
+            Some("Catalog" | "Collection") => {
+                if v.get("type").and_then(Value::as_str) == Some("Collection") {
+                    // A collection whose data are its own assets (as Portolan's are), not items'.
+                    if links(&v, "item", url).is_empty()
+                        && let Some(c) = collection_item(&v, url)
+                    {
+                        self.keep(&c, url);
+                    }
+                }
+                if depth >= MAX_DEPTH {
+                    self.cut |= v.get("links").and_then(Value::as_array).is_some_and(|l| !l.is_empty());
+                    return;
+                }
+                for (rel, queue) in [("item", true), ("child", false)] {
+                    for (u, _) in links(&v, rel, url) {
+                        // A document on the web can't send the walk into the local network.
+                        if !is_web(&u) || self.visited.contains(&u) || crate::address::check(&u, Some(url)).is_err() {
+                            continue;
+                        }
+                        if self.items.len() + self.folders.len() >= MAX_QUEUE {
+                            self.cut = true;
+                            break;
+                        }
+                        if queue { self.items.push_back((u, depth + 1)) } else { self.folders.push_back((u, depth + 1)) }
+                    }
+                }
+            }
+            _ => self.failed += 1,
+        }
+    }
+
+    fn keep(&mut self, v: &Value, from: &str) {
+        if self.found.len() >= self.limit {
+            return;
+        }
+        let Some(item) = super::item(v, Some(from)) else {
+            self.failed += 1;
+            return;
+        };
+        let phase = v.get("properties").and_then(|p| p.get("phase")).and_then(Value::as_str);
+        if self.filter.keeps(&item, phase) && !self.found.iter().any(|f| f.id == item.id && f.collection == item.collection) {
+            self.found.push(item);
+        }
+    }
+}
+
+/// A collection's own assets as an item (its extent's first box and start), when it has assets
+/// beyond thumbnails and metadata.
+fn collection_item(v: &Value, from: &str) -> Option<Value> {
+    let assets = v.get("assets")?.as_object()?;
+    let data = assets.values().take(super::MAX_ASSETS).any(|a| {
+        let roles: Vec<&str> = a.get("roles").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
+        let t = a.get("type").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
+        !roles.iter().any(|r| matches!(*r, "thumbnail" | "overview" | "metadata" | "style"))
+            && !t.starts_with("image/png")
+            && !t.starts_with("image/jpeg")
+            && !t.contains("style")
+            && !t.starts_with("text/")
+    });
+    if !data {
+        return None;
+    }
+    let extent = v.get("extent");
+    let bbox = extent.and_then(|e| e.get("spatial")).and_then(|s| s.get("bbox")).and_then(Value::as_array).and_then(|b| b.first()).cloned();
+    let start = extent
+        .and_then(|e| e.get("temporal"))
+        .and_then(|t| t.get("interval"))
+        .and_then(Value::as_array)
+        .and_then(|i| i.first())
+        .and_then(Value::as_array)
+        .and_then(|i| i.first())
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let id = v.get("id").cloned().unwrap_or(Value::Null);
+    let mut links = vec![];
+    if let Some(s) = link(v, "self", from) {
+        links.push(json!({"rel": "self", "href": s}));
+    }
+    Some(json!({
+        "type": "Feature",
+        "id": id,
+        "collection": id,
+        "bbox": bbox,
+        "geometry": null,
+        "properties": {"datetime": start},
+        "assets": assets,
+        "links": links,
+    }))
+}
+
+/// Walks a static catalog from `root` waiting for each document (the command line; the app reads
+/// them off the frame): the walk, finished.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn walk_blocking(root: &str, filter: Filter, limit: usize) -> Walk {
+    let mut w = Walk::new(root, filter, limit);
+    loop {
+        // A few documents at a time, each on its own thread.
+        let urls: Vec<String> = std::iter::from_fn(|| w.next_url()).take(AT_ONCE).collect();
+        if urls.is_empty() {
+            break;
+        }
+        let answers: Vec<(String, Result<Vec<u8>, String>)> = std::thread::scope(|s| {
+            let handles: Vec<_> = urls
+                .into_iter()
+                .map(|u| {
+                    s.spawn(move || {
+                        let r = crate::cache::download_blocking(&u);
+                        (u, r)
+                    })
+                })
+                .collect();
+            handles.into_iter().filter_map(|h| h.join().ok()).collect()
+        });
+        for (u, r) in answers {
+            w.land(&u, r);
+        }
+        // A thread that died leaves its document asked for: it counts as failed.
+        for u in w.asked.iter().map(|(u, _)| u.clone()).collect::<Vec<_>>() {
+            w.land(&u, Err("the read failed".into()));
+        }
+    }
+    w
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Answers a walk from a map of documents (missing ones fail).
+    fn run(w: &mut Walk, docs: &[(&str, Value)]) {
+        while let Some(u) = w.next_url() {
+            let r = docs.iter().find(|(k, _)| *k == u).map(|(_, v)| v.to_string().into_bytes()).ok_or_else(|| "404".to_string());
+            w.land(&u, r);
+        }
+        assert!(w.finished());
+    }
+
+    fn feature(id: &str, bbox: [f64; 4], date: &str, phase: &str) -> Value {
+        json!({"type": "Feature", "id": id, "bbox": bbox, "geometry": null,
+            "properties": {"datetime": date, "phase": phase, "eo:cloud_cover": 10},
+            "assets": {"visual": {"href": format!("./{id}.tif"), "type": "image/tiff; application=geotiff"}}})
+    }
+
+    #[test]
+    fn static_addresses_and_children() {
+        assert!(is_static("https://x.org/catalog.json") && is_static("https://x.org/a/collection.JSON?x=1"));
+        assert!(!is_static("https://x.org/stac/v1") && !is_static("https://x.org/stac/v1/search"));
+        let root = json!({"type": "Catalog", "id": "r", "links": [
+            {"rel": "self", "href": "https://x.org/catalog.json"},
+            {"rel": "child", "href": "./b/collection.json", "title": "Bravo"},
+            {"rel": "child", "href": "https://y.org/Alpha-Event/collection.json"},
+            {"rel": "child", "href": "./b/collection.json", "title": "Again"},
+            {"rel": "child", "href": "file:///etc/passwd"},
+            {"rel": "child"},
+            {"rel": "item", "href": "./i.json"}]});
+        let c = parse_children(root.to_string().as_bytes(), "https://x.org/catalog.json").unwrap();
+        assert_eq!(
+            c,
+            vec![
+                Child { title: "Alpha Event".into(), url: "https://y.org/Alpha-Event/collection.json".into() },
+                Child { title: "Bravo".into(), url: "https://x.org/b/collection.json".into() },
+            ]
+        );
+        for bad in [&b"[]"[..], b"<html>", br#"{"type": "Feature"}"#, br#"{"type": "Catalog", "links": 7}"#] {
+            assert!(
+                parse_children(bad, "https://x.org/c.json").is_err() || parse_children(bad, "https://x.org/c.json").unwrap().is_empty()
+            );
+        }
+        assert_eq!(label_of("https://x.org/events/catalog.json"), "events");
+        assert_eq!(label_of("https://x.org/events/a.json"), "a");
+    }
+
+    #[test]
+    fn walks_filter_and_resolve() {
+        let docs = [
+            (
+                "https://x.org/catalog.json",
+                json!({"type": "Catalog", "id": "root", "links": [
+                {"rel": "child", "href": "./ev/collection.json"},
+                {"rel": "child", "href": "./data/collection.json"},
+                {"rel": "child", "href": "./missing/catalog.json"},
+                {"rel": "child", "href": "./catalog.json"}]}),
+            ),
+            (
+                "https://x.org/ev/collection.json",
+                json!({"type": "Collection", "id": "ev", "links": [
+                {"rel": "item", "href": "a.json"}, {"rel": "item", "href": "b.json"}, {"rel": "item", "href": "c.json"}]}),
+            ),
+            ("https://x.org/ev/a.json", feature("a", [7.0, 46.0, 8.0, 47.0], "2024-06-02T10:00:00Z", "pre-event")),
+            ("https://x.org/ev/b.json", feature("b", [7.0, 46.0, 8.0, 47.0], "2024-07-02T10:00:00Z", "post")),
+            ("https://x.org/ev/c.json", feature("c", [100.0, 0.0, 101.0, 1.0], "2024-06-03T10:00:00Z", "post")),
+            // A collection whose data is its own (Portolan's): one item of its assets.
+            (
+                "https://x.org/data/collection.json",
+                json!({"type": "Collection", "id": "roads",
+                "extent": {"spatial": {"bbox": [[7.5, 46.5, 7.6, 46.6]]}, "temporal": {"interval": [[null, null]]}},
+                "assets": {"thumbnail": {"href": "t.png", "type": "image/png", "roles": ["thumbnail"]},
+                           "visual": {"href": "roads.pmtiles", "type": "application/vnd.pmtiles"}},
+                "links": []}),
+            ),
+        ];
+        let mut w = Walk::new("https://x.org/catalog.json", Filter::default(), 50);
+        run(&mut w, &docs);
+        let ids: Vec<&str> = w.items().iter().map(|i| i.id.as_str()).collect();
+        assert_eq!(ids, ["a", "b", "c", "roads"]);
+        assert_eq!(w.failed, 1, "the missing catalog");
+        assert!(!w.complete());
+        let roads = &w.items()[3];
+        assert_eq!(roads.bbox, Some([7.5, 46.5, 7.6, 46.6]));
+        assert_eq!(roads.pick(None).unwrap().href, "https://x.org/data/roads.pmtiles");
+        assert_eq!(w.items()[0].pick(None).unwrap().href, "https://x.org/ev/a.tif");
+
+        // Place, dates and phase.
+        let s = Search { bbox: Some([7.2, 46.2, 7.55, 46.55]), datetime: Some("2024-06-01/2024-06-30".into()), ..Default::default() };
+        let mut w = Walk::new("https://x.org/catalog.json", Filter::from_search(&s, None).unwrap(), 50);
+        run(&mut w, &docs);
+        let ids: Vec<&str> = w.items().iter().map(|i| i.id.as_str()).collect();
+        assert_eq!(ids, ["a", "roads"]);
+        let mut w = Walk::new("https://x.org/ev/collection.json", Filter::from_search(&Search::default(), Some("post")).unwrap(), 50);
+        run(&mut w, &docs);
+        assert_eq!(w.items().iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["b", "c"]);
+        assert!(w.complete());
+        let mut w = Walk::new("https://x.org/ev/collection.json", Filter::from_search(&Search::default(), Some("pre")).unwrap(), 50);
+        run(&mut w, &docs);
+        assert_eq!(w.items().iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["a"]);
+        assert!(Filter::from_search(&Search::default(), Some("during")).is_err());
+        assert!(Filter::from_search(&Search { datetime: Some("soon".into()), ..Default::default() }, None).is_err());
+
+        // A limit stops the walk.
+        let mut w = Walk::new("https://x.org/catalog.json", Filter::default(), 2);
+        run(&mut w, &docs);
+        assert_eq!(w.items().len(), 2);
+        assert!(!w.complete());
+    }
+
+    #[test]
+    fn hostile_catalogs_are_bounded() {
+        // A catalog linking to ever deeper catalogs: cut at the depth limit.
+        let mut w = Walk::new("https://x.org/0.json", Filter::default(), 50);
+        let mut reads = 0;
+        while let Some(u) = w.next_url() {
+            let n: usize = u.trim_start_matches("https://x.org/").trim_end_matches(".json").parse().unwrap_or(0);
+            let doc = json!({"type": "Catalog", "id": "c", "links": [{"rel": "child", "href": format!("{}.json", n + 1)}]});
+            w.land(&u, Ok(doc.to_string().into_bytes()));
+            reads += 1;
+        }
+        assert!(w.finished() && w.cut && !w.complete());
+        assert_eq!(reads, MAX_DEPTH + 1);
+
+        // A catalog of very many children: the budget of reads ends it.
+        let children: Vec<Value> = (0..MAX_QUEUE + 10).map(|i| json!({"rel": "child", "href": format!("c{i}.json")})).collect();
+        let big = json!({"type": "Catalog", "id": "big", "links": children}).to_string().into_bytes();
+        let mut w = Walk::new("https://x.org/big.json", Filter::default(), 50);
+        let mut reads = 0;
+        while let Some(u) = w.next_url() {
+            let answer = if u.ends_with("big.json") { Ok(big.clone()) } else { Ok(b"{\"type\": \"Catalog\"}".to_vec()) };
+            w.land(&u, answer);
+            reads += 1;
+        }
+        assert_eq!(reads, MAX_READS);
+        assert!(w.finished() && !w.complete());
+
+        // Junk answers, cycles and answers nobody asked for.
+        let mut w = Walk::new("https://x.org/a.json", Filter::default(), 50);
+        w.land("https://x.org/nobody.json", Ok(b"{}".to_vec()));
+        assert_eq!(w.reads, 0);
+        let cycle = json!({"type": "Catalog", "links": [{"rel": "child", "href": "a.json"}, {"rel": "item", "href": "x.json"},
+            {"rel": "item", "href": "s3://b/k.json"}, {"rel": "child", "href": 7}]});
+        while let Some(u) = w.next_url() {
+            let r = match u.as_str() {
+                "https://x.org/a.json" => Ok(cycle.to_string().into_bytes()),
+                _ => Ok(b"\xff\xfe not json".to_vec()),
+            };
+            w.land(&u, r);
+        }
+        assert_eq!((w.reads, w.failed, w.items().len()), (2, 1, 0));
+        // Several asked at once, answered out of order.
+        let mut w = Walk::new("https://x.org/ev/collection.json", Filter::default(), 50);
+        let first = w.next_url().unwrap();
+        w.land(
+            &first,
+            Ok(json!({"type": "Collection", "links": [{"rel": "item", "href": "a.json"}, {"rel": "item", "href": "b.json"}]})
+                .to_string()
+                .into_bytes()),
+        );
+        let (a, b) = (w.next_url().unwrap(), w.next_url().unwrap());
+        assert_eq!(w.waiting(), 2);
+        w.land(&b, Ok(feature("b", [0.0, 0.0, 1.0, 1.0], "", "").to_string().into_bytes()));
+        assert!(!w.finished());
+        w.land(&a, Err("timeout".into()));
+        assert!(w.finished() && w.items().len() == 1);
+    }
+}

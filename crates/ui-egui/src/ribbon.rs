@@ -527,9 +527,17 @@ fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
     menu_item(ui, app, "", "Boundaries…", "ui.dialog", json!({"name": "boundaries"}));
     menu_item(ui, app, "", "OpenStreetMap…", "ui.dialog", json!({"name": "osm"}));
     menu_item(ui, app, "", "Overture Maps…", "ui.dialog", json!({"name": "overture"}));
+    menu_item(ui, app, "", "Planet Open Data…", "ui.stac.planet", Value::Null);
+    menu_item(ui, app, "", "Portolan…", "ui.stac.portolan", Value::Null);
     menu_item(ui, app, "", "Search Open Data…", "ui.searchOpenData", Value::Null);
+    menu_item(ui, app, "", "Sentinel-2 Explorer…", "ui.stac.sentinel2", Value::Null);
     menu_item(ui, app, "", "Source Cooperative…", "ui.dialog", json!({"name": "sourcecoop"}));
-    menu_item(ui, app, "", "STAC Search…", "ui.dialog", json!({"name": "stac"}));
+    menu_item(ui, app, "", "STAC Search…", "ui.stac", Value::Null);
+    menu_item(ui, app, "", "Vantor…", "ui.stac.vantor", Value::Null);
+    ui.separator();
+    crate::widgets::submenu_row(ui, "", tl!("United States"), |ui| {
+        menu_item(ui, app, "", "USGS LiDAR…", "ui.stac.usgsLidar", Value::Null);
+    });
 }
 
 fn basemap_gallery(ui: &mut Ui, app: &mut RustGisApp) {

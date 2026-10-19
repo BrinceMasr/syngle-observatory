@@ -5,6 +5,8 @@
 
 use serde_json::Value;
 
+pub mod catalog;
+
 /// Element 84's Earth Search (Sentinel-2, Landsat, Copernicus DEM and more, on AWS), the default.
 pub const EARTH_SEARCH: &str = "https://earth-search.aws.element84.com/v1";
 /// Microsoft's Planetary Computer, whose assets are signed with a token of their collection's
@@ -77,6 +79,9 @@ pub struct Search {
     pub limit: usize,
     /// The most cloud cover, in percent.
     pub max_cloud: Option<f64>,
+    /// The order of the items: a property, `-` first for descending (`eo:cloud_cover`,
+    /// `-datetime`), for APIs with the sort extension.
+    pub sortby: Option<String>,
 }
 
 /// An API's address from what the user gave: without a trailing `/search` or `/collections`,
@@ -113,6 +118,18 @@ pub fn search_url(api: &str, s: &Search) -> Result<String, String> {
     if let Some(c) = s.max_cloud.filter(|c| c.is_finite()) {
         let c = c.clamp(0.0, 100.0);
         q.push(format!("query={}", encode(&format!(r#"{{"eo:cloud_cover":{{"lte":{c}}}}}"#))));
+    }
+    if let Some(by) = s.sortby.as_deref().map(str::trim).filter(|b| !b.is_empty()) {
+        let (sign, field) = by.strip_prefix('-').map(|f| ("-", f)).unwrap_or(("+", by.trim_start_matches('+')));
+        if field.is_empty() || field.len() > 100 || !field.chars().all(|c| c.is_ascii_alphanumeric() || "_:.-".contains(c)) {
+            return Err(format!("{by}: sortby is a property's name, - first for descending"));
+        }
+        let field = if field.starts_with("properties.") || matches!(field, "id" | "collection") {
+            field.to_string()
+        } else {
+            format!("properties.{field}")
+        };
+        q.push(format!("sortby={}", encode(&format!("{sign}{field}"))));
     }
     Ok(format!("{api}/search?{}", q.join("&")))
 }
@@ -380,6 +397,13 @@ impl Asset {
         let path = self.href.split(['?', '#']).next().unwrap_or("").to_ascii_lowercase();
         t.contains("geotiff") || t.starts_with("image/tiff") || path.ends_with(".tif") || path.ends_with(".tiff")
     }
+
+    /// Whether it is a LiDAR point cloud (LAS, LAZ or COPC).
+    pub fn is_point_cloud(&self) -> bool {
+        let t = self.media_type.to_ascii_lowercase();
+        let path = self.href.split(['?', '#']).next().unwrap_or("").to_ascii_lowercase();
+        t.contains("vnd.las") || t.contains("laszip") || path.ends_with(".laz") || path.ends_with(".las")
+    }
 }
 
 impl Item {
@@ -401,6 +425,7 @@ impl Item {
                 .filter(ok)
                 .find(|a| a.key == "visual")
                 .or_else(|| self.assets.iter().filter(ok).find(|a| a.is_geotiff()))
+                .or_else(|| self.assets.iter().filter(ok).find(|a| a.is_point_cloud()))
                 .or_else(|| self.assets.iter().filter(ok).find(|a| a.roles.iter().any(|r| r == "data")))
         };
         choose(true).or_else(|| choose(false)).ok_or_else(|| format!("{}: no asset RustGIS can add", self.id))
@@ -602,12 +627,17 @@ mod tests {
             datetime: Some("2024-06-01/2024-06-30".into()),
             limit: 999,
             max_cloud: Some(20.0),
+            sortby: None,
         };
         let u = search_url("https://x.org/v1", &s).unwrap();
         assert_eq!(
             u,
             "https://x.org/v1/search?limit=200&collections=sentinel-2-l2a&bbox=7,46,7.1,46.1&datetime=2024-06-01T00%3A00%3A00Z%2F2024-06-30T23%3A59%3A59Z&query=%7B%22eo%3Acloud_cover%22%3A%7B%22lte%22%3A20%7D%7D"
         );
+        let sorted = |by: &str| search_url("https://x.org/v1", &Search { sortby: Some(by.into()), ..Default::default() });
+        assert!(sorted("eo:cloud_cover").unwrap().ends_with("&sortby=%2Bproperties.eo%3Acloud_cover"));
+        assert!(sorted("-datetime").unwrap().ends_with("&sortby=-properties.datetime"));
+        assert!(sorted("a&b=c").is_err() && sorted("-").is_err());
         assert_eq!(datetime("2024-06-01").unwrap(), "2024-06-01T00:00:00Z/2024-06-01T23:59:59Z");
         assert_eq!(datetime("2024-06-01/..").unwrap(), "2024-06-01T00:00:00Z/..");
         assert!(datetime("yesterday").is_err());

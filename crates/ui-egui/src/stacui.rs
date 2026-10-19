@@ -3,11 +3,19 @@
 //! address. Requests go off the frame through the tile cache's downloads (a thread natively,
 //! fetch on the web). A Planetary Computer asset is signed first, with a token fetched the same
 //! way. A `?stac=` link (an item's or a collection's address) opens the dialog on it.
+//!
+//! A static catalog (a `catalog.json` or `collection.json` rather than an API) is browsed: its
+//! child catalogs and collections are picked from a list, and Find Items walks the tree from the
+//! one picked, several documents at a time, filtering the items found here (see
+//! `rustgis_tiles::stac::catalog`). Web Data's services are presets of the dialog ([`Preset`]).
 
 use egui::vec2;
 use rustgis_engine::render::rustgis_tiles::{
     cache,
-    stac::{self, Item},
+    stac::{
+        self, Item,
+        catalog::{self, Child, Walk},
+    },
 };
 use serde_json::json;
 
@@ -29,10 +37,95 @@ enum Asked {
     },
     /// An item's or a collection's document (a `?stac=` link), by its address.
     Link(String),
+    /// A static catalog's document, for its children, by its address.
+    Children(String),
 }
 
-/// The STAC APIs the dialog offers by name: (label, address).
-pub const APIS: [(&str, &str); 2] = [("Earth Search", stac::EARTH_SEARCH), ("Planetary Computer", stac::PLANETARY_COMPUTER)];
+/// Planet's imagery of disasters on Source Cooperative, a static catalog of events.
+pub const PLANET: &str = "https://data.source.coop/planet/disasterdata/catalog.json";
+/// The Portolan registry: a static catalog whose children are the publishers' catalogs.
+pub const PORTOLAN: &str = "https://raw.githubusercontent.com/portolan-sdi/portolan-registry/refs/heads/main/exports/catalogs.json";
+/// Vantor's (formerly Maxar's) open data: a static catalog of events.
+pub const VANTOR: &str = "https://vantor-opendata.s3.amazonaws.com/events/catalog.json";
+
+/// The STAC APIs and static catalogs the dialog offers by name: (label, address).
+pub const APIS: [(&str, &str); 5] = [
+    ("Earth Search", stac::EARTH_SEARCH),
+    ("Planetary Computer", stac::PLANETARY_COMPUTER),
+    ("Planet Open Data", PLANET),
+    ("Portolan", PORTOLAN),
+    ("Vantor Open Data", VANTOR),
+];
+
+/// A Web Data service that is STAC Search opened on one API or catalog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Preset {
+    Planet,
+    Portolan,
+    Sentinel2,
+    Vantor,
+    UsgsLidar,
+}
+
+impl Preset {
+    pub const ALL: [Preset; 5] = [Preset::Planet, Preset::Portolan, Preset::Sentinel2, Preset::Vantor, Preset::UsgsLidar];
+
+    /// Its command's suffix (`ui.stac.planet`…).
+    pub fn id(self) -> &'static str {
+        match self {
+            Preset::Planet => "planet",
+            Preset::Portolan => "portolan",
+            Preset::Sentinel2 => "sentinel2",
+            Preset::Vantor => "vantor",
+            Preset::UsgsLidar => "usgsLidar",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Preset> {
+        Preset::ALL.into_iter().find(|p| p.id().eq_ignore_ascii_case(id))
+    }
+
+    /// The dialog's title.
+    pub fn title(self) -> &'static str {
+        match self {
+            Preset::Planet => "Planet Open Data",
+            Preset::Portolan => "Portolan",
+            Preset::Sentinel2 => "Sentinel-2 Explorer",
+            Preset::Vantor => "Vantor Open Data",
+            Preset::UsgsLidar => "USGS LiDAR",
+        }
+    }
+
+    /// What the dialog says about the service.
+    fn hint(self) -> &'static str {
+        match self {
+            Preset::Planet => {
+                "Planet's imagery of disasters (CC BY-NC), a static STAC catalog on Source Cooperative: pick an event, then Find Items."
+            }
+            Preset::Portolan => {
+                "Open data catalogs registered with Portolan: pick a publisher's catalog, then Find Items for its collections."
+            }
+            Preset::Sentinel2 => {
+                "Sentinel-2 scenes (Collection 1, Level-2A) from Earth Search, clearest first: add the true colour image (visual) or a band."
+            }
+            Preset::Vantor => "Vantor's open imagery of disasters: pick an event and a phase (before or after it), then Find Items.",
+            Preset::UsgsLidar => {
+                "USGS 3DEP LiDAR point clouds (COPC) from the Planetary Computer, where the map is: add a tile's data as a point cloud."
+            }
+        }
+    }
+
+    /// Its API's or catalog's address.
+    fn address(self) -> &'static str {
+        match self {
+            Preset::Planet => PLANET,
+            Preset::Portolan => PORTOLAN,
+            Preset::Vantor => VANTOR,
+            Preset::Sentinel2 => stac::EARTH_SEARCH,
+            Preset::UsgsLidar => stac::PLANETARY_COMPUTER,
+        }
+    }
+}
 
 /// The dialog's choices and results.
 pub struct State {
@@ -44,6 +137,20 @@ pub struct State {
     pub to: String,
     pub use_view: bool,
     pub max_cloud: String,
+    /// The order of an API's items (`eo:cloud_cover`…); empty for the API's own.
+    pub sortby: String,
+    /// The Web Data service the dialog was opened as.
+    pub preset: Option<Preset>,
+    /// A static catalog: the node Find Items walks from (empty for the catalog itself), its
+    /// title, the nodes above it (title, address) and its children.
+    pub node: String,
+    pub node_title: String,
+    pub trail: Vec<(String, String)>,
+    pub children: Vec<Child>,
+    /// `pre`, `post` or empty: an event's imagery before or after it.
+    pub phase: String,
+    /// A static catalog's walk, and the documents being fetched for it.
+    walk: Option<(Walk, Vec<(String, Answer)>)>,
     pub items: Vec<Item>,
     /// The asset chosen for each item.
     pub chosen: Vec<String>,
@@ -64,6 +171,14 @@ impl Default for State {
             to: String::new(),
             use_view: true,
             max_cloud: "20".into(),
+            sortby: String::new(),
+            preset: None,
+            node: String::new(),
+            node_title: String::new(),
+            trail: Vec::new(),
+            children: Vec::new(),
+            phase: String::new(),
+            walk: None,
             items: Vec::new(),
             chosen: Vec::new(),
             footprints: None,
@@ -83,6 +198,7 @@ fn fetch(url: &str) -> Answer {
 
 /// Lands collections and search results.
 pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+    poll_walk(app, ctx);
     let Some((_, slot)) = &app.ui.stac.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
@@ -121,7 +237,143 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
             Err(e) => st.error = Some(e),
         },
         Asked::Link(url) => landed_link(app, &url, r),
+        Asked::Children(url) => match r.and_then(|b| catalog::parse_children(&b, &url)) {
+            // A search's count, landed first, is kept.
+            Ok(c) if st.walk.is_some() || !st.items.is_empty() => st.children = c,
+            Ok(c) => {
+                st.info = Some(if c.is_empty() {
+                    tl!("No catalogs below this one: Find Items lists its items").to_string()
+                } else {
+                    i18n::fmt("{n} catalogs and collections", &[("n", &c.len().to_string())])
+                });
+                st.children = c;
+            }
+            Err(e) => {
+                st.children.clear();
+                st.error = Some(e);
+            }
+        },
     }
+}
+
+/// Drives a static catalog's walk: lands the documents fetched, asks for the next ones (a few at
+/// a time) and, once it is over, shows the items found.
+fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
+    let Some((walk, fetching)) = &mut app.ui.stac.walk else { return };
+    let mut i = 0;
+    while let Some((url, slot)) = fetching.get(i) {
+        let landed = slot.lock().unwrap_or_else(|e| e.into_inner()).take();
+        match landed {
+            Some(r) => {
+                walk.land(url, r);
+                fetching.swap_remove(i);
+            }
+            None => i += 1,
+        }
+    }
+    while fetching.len() < catalog::AT_ONCE {
+        let Some(url) = walk.next_url() else { break };
+        let slot = fetch(&url);
+        fetching.push((url, slot));
+    }
+    if !walk.finished() {
+        app.ui.stac.info = Some(i18n::fmt(
+            "Reading the catalog: {n} documents read, {m} items found…",
+            &[("n", &walk.reads.to_string()), ("m", &walk.items().len().to_string())],
+        ));
+        ctx.request_repaint_after(std::time::Duration::from_millis(100));
+        return;
+    }
+    let Some((walk, _)) = app.ui.stac.walk.take() else { return };
+    let st = &mut app.ui.stac;
+    let n = walk.items().len().to_string();
+    st.info = Some(if walk.complete() {
+        i18n::fmt("{n} items", &[("n", &n)])
+    } else if walk.reads >= catalog::MAX_READS {
+        i18n::fmt(
+            "{n} items (stopped after reading {r} documents: pick a catalog further down)",
+            &[("n", &n), ("r", &walk.reads.to_string())],
+        )
+    } else if walk.failed > 0 && walk.items().len() < 50 {
+        i18n::fmt("{n} items ({f} documents couldn't be read)", &[("n", &n), ("f", &walk.failed.to_string())])
+    } else {
+        i18n::fmt("{n} items (more match: narrow the search)", &[("n", &n)])
+    });
+    let items = walk.into_items();
+    st.chosen = items.iter().map(|i| i.pick(None).map(|a| a.key.clone()).unwrap_or_default()).collect();
+    st.items = items;
+    show_footprints(app);
+}
+
+/// Opens the dialog as a Web Data service (`ui.stac.<preset>`; `ui.stac` alone is STAC Search),
+/// set up for it: a static catalog's children are fetched. `{"catalog": address}` browses to a
+/// catalog or collection below it, `{"phase": "pre" | "post"}` sets the phase and
+/// `{"search": true}` finds items at once.
+pub fn open_preset(app: &mut RustGisApp, preset: Option<Preset>, p: &serde_json::Value) -> Result<(), String> {
+    app.dialogs.open("stac", &app.session)?;
+    if let Some(preset) = preset
+        && app.ui.stac.preset != Some(preset)
+    {
+        // A fresh dialog, keeping the last footprints (removed when the next ones come).
+        let footprints = app.ui.stac.footprints.take();
+        app.ui.stac = State { footprints, preset: Some(preset), api: preset.address().to_string(), ..State::default() };
+        let st = &mut app.ui.stac;
+        match preset {
+            Preset::Planet | Preset::Portolan | Preset::Vantor => {
+                (st.collection, st.max_cloud, st.use_view) = (String::new(), String::new(), false);
+            }
+            Preset::Sentinel2 => {
+                st.collection = "sentinel-2-c1-l2a".into();
+                st.sortby = "eo:cloud_cover".into();
+                st.from = days_ago(90);
+            }
+            Preset::UsgsLidar => {
+                st.collection = "3dep-lidar-copc".into();
+                st.max_cloud = String::new();
+            }
+        }
+        if catalog::is_static(&app.ui.stac.api) {
+            browse(app, None);
+        }
+    } else if preset.is_none() {
+        app.ui.stac.preset = None;
+    }
+    // A catalog or collection below the static catalog's top, by its address.
+    if let Some(url) = p.get("catalog").and_then(serde_json::Value::as_str).map(str::trim).filter(|u| !u.is_empty()) {
+        rustgis_engine::render::rustgis_tiles::address::check(url, None)?;
+        if !catalog::is_static(&app.ui.stac.api) {
+            return Err("catalog is a static STAC catalog's catalog.json or collection.json".into());
+        }
+        browse(app, Some((catalog::label_of(url), url.to_string())));
+    }
+    if let Some(phase) = p.get("phase").and_then(serde_json::Value::as_str) {
+        app.ui.stac.phase = match phase.trim().to_ascii_lowercase().as_str() {
+            "pre" => "pre".into(),
+            "post" => "post".into(),
+            _ => String::new(),
+        };
+    }
+    if p.get("search").and_then(serde_json::Value::as_bool) == Some(true) {
+        find_items(app);
+    }
+    Ok(())
+}
+
+/// The day `n` days before today (UTC), as `YYYY-MM-DD`.
+fn days_ago(n: u64) -> String {
+    let now = web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let days = (now / 86_400).saturating_sub(n) as i64;
+    // Days to a civil date (proleptic Gregorian), after Howard Hinnant's algorithm.
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}")
 }
 
 /// Adds an asset by its address, signing it first when it needs it (a token in hand is used; one
@@ -250,14 +502,69 @@ fn show_footprints(app: &mut RustGisApp) {
     app.map.invalidate();
 }
 
+/// Moves a static catalog's browsing to a node (`None`: the catalog itself) and fetches its
+/// children.
+fn browse(app: &mut RustGisApp, to: Option<(String, String)>) {
+    let st = &mut app.ui.stac;
+    match to {
+        Some((title, url)) => {
+            let above = std::mem::replace(&mut st.node_title, title);
+            let above_url = std::mem::replace(&mut st.node, url);
+            st.trail.push((above, above_url));
+        }
+        None => (st.node, st.node_title, st.trail) = (String::new(), String::new(), Vec::new()),
+    }
+    fetch_children(app);
+}
+
+/// Goes back up a static catalog to the node at `depth` in the trail.
+fn browse_up(app: &mut RustGisApp, depth: usize) {
+    let st = &mut app.ui.stac;
+    let Some((title, url)) = st.trail.get(depth).cloned() else { return };
+    st.trail.truncate(depth);
+    (st.node_title, st.node) = (title, url);
+    fetch_children(app);
+}
+
+/// Fetches the children of the static catalog's node (or of the catalog itself).
+fn fetch_children(app: &mut RustGisApp) {
+    let st = &mut app.ui.stac;
+    st.children.clear();
+    st.error = None;
+    let url = if st.node.is_empty() { st.api.trim().to_string() } else { st.node.clone() };
+    if let Err(e) = rustgis_engine::render::rustgis_tiles::address::check(&url, None) {
+        st.error = Some(e);
+        return;
+    }
+    st.info = Some(tl!("Reading the catalog…").to_string());
+    st.waiting = Some((Asked::Children(url.clone()), fetch(&url)));
+}
+
+/// The preset the dialog is showing, if it is still on its API or catalog.
+fn shown_preset(st: &State) -> Option<Preset> {
+    st.preset.filter(|p| st.api.trim().trim_end_matches('/') == p.address())
+}
+
+/// The dialog's title: the Web Data service's, or STAC Search.
+pub fn title(app: &RustGisApp) -> &'static str {
+    shown_preset(&app.ui.stac).map(Preset::title).unwrap_or("STAC Search")
+}
+
 /// The dialog.
 pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
-    let busy = app.ui.stac.waiting.is_some();
+    let busy = app.ui.stac.waiting.is_some() || app.ui.stac.walk.is_some();
+    let is_static = catalog::is_static(&app.ui.stac.api);
     let mut list = false;
     let mut search = false;
+    let mut go_to: Option<(String, String)> = None;
+    let mut go_up: Option<usize> = None;
+    let mut api_changed = false;
+    if let Some(p) = shown_preset(&app.ui.stac) {
+        ui.label(egui::RichText::new(tl!(p.hint())).weak());
+    }
     egui::Grid::new("stac").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
         let st = &mut app.ui.stac;
-        ui.label(tl!("STAC API"));
+        ui.label(if is_static { tl!("STAC catalog") } else { tl!("STAC API") });
         ui.horizontal(|ui| {
             let named = APIS.iter().find(|(_, u)| *u == st.api.trim_end_matches('/')).map(|(l, _)| tl!(*l).to_string());
             egui::ComboBox::from_id_salt("stac_api").selected_text(named.unwrap_or_else(|| tl!("Other").to_string())).width(150.0).show_ui(
@@ -267,30 +574,58 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
                         if ui.selectable_label(st.api == url, tl!(label)).clicked() && st.api != url {
                             st.api = url.to_string();
                             st.collections.clear();
+                            api_changed = true;
                         }
                     }
                 },
             );
-            ui.add(egui::TextEdit::singleline(&mut st.api).desired_width(230.0));
+            // A catalog typed in is browsed with Browse, from its top.
+            if ui.add(egui::TextEdit::singleline(&mut st.api).desired_width(230.0)).changed() {
+                (st.node, st.node_title) = (String::new(), String::new());
+                st.trail.clear();
+                st.children.clear();
+            }
         });
         ui.end_row();
-        ui.label(tl!("Collection"));
-        ui.horizontal(|ui| {
-            if st.collections.is_empty() {
-                ui.add(egui::TextEdit::singleline(&mut st.collection).hint_text(tl!("any")).desired_width(270.0));
-            } else {
-                let shown = if st.collection.is_empty() { tl!("any").to_string() } else { st.collection.clone() };
-                egui::ComboBox::from_id_salt("stac_collection").selected_text(shown).width(270.0).height(320.0).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut st.collection, String::new(), tl!("any"));
-                    for (id, title) in &st.collections {
-                        let label = if title.is_empty() { id.clone() } else { format!("{id} — {title}") };
-                        ui.selectable_value(&mut st.collection, id.clone(), label);
+        if is_static {
+            ui.label(tl!("Catalog"));
+            ui.horizontal(|ui| {
+                let shown = if st.node.is_empty() { tl!("all of it").to_string() } else { st.node_title.clone() };
+                egui::ComboBox::from_id_salt("stac_node").selected_text(shown).width(330.0).height(360.0).show_ui(ui, |ui| {
+                    for (i, (title, _)) in st.trail.iter().enumerate() {
+                        let title = if title.is_empty() { tl!("all of it").to_string() } else { title.clone() };
+                        if ui.selectable_label(false, format!("↑ {title}")).clicked() {
+                            go_up = Some(i);
+                        }
+                    }
+                    for c in &st.children {
+                        if ui.selectable_label(false, &c.title).on_hover_text(&c.url).clicked() {
+                            go_to = Some((c.title.clone(), c.url.clone()));
+                        }
                     }
                 });
-            }
-            list = ui.add_enabled(!busy, egui::Button::new(tl!("Collections"))).clicked();
-        });
-        ui.end_row();
+                list = ui.add_enabled(!busy, egui::Button::new(tl!("Browse"))).clicked();
+            });
+            ui.end_row();
+        } else {
+            ui.label(tl!("Collection"));
+            ui.horizontal(|ui| {
+                if st.collections.is_empty() {
+                    ui.add(egui::TextEdit::singleline(&mut st.collection).hint_text(tl!("any")).desired_width(270.0));
+                } else {
+                    let shown = if st.collection.is_empty() { tl!("any").to_string() } else { st.collection.clone() };
+                    egui::ComboBox::from_id_salt("stac_collection").selected_text(shown).width(270.0).height(320.0).show_ui(ui, |ui| {
+                        ui.selectable_value(&mut st.collection, String::new(), tl!("any"));
+                        for (id, title) in &st.collections {
+                            let label = if title.is_empty() { id.clone() } else { format!("{id} — {title}") };
+                            ui.selectable_value(&mut st.collection, id.clone(), label);
+                        }
+                    });
+                }
+                list = ui.add_enabled(!busy, egui::Button::new(tl!("Collections"))).clicked();
+            });
+            ui.end_row();
+        }
         ui.label(tl!("Dates"));
         ui.horizontal(|ui| {
             ui.add(egui::TextEdit::singleline(&mut st.from).hint_text("2024-06-01").desired_width(110.0));
@@ -301,6 +636,15 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
         ui.label(tl!("Most cloud cover (%)"));
         ui.add(egui::TextEdit::singleline(&mut st.max_cloud).hint_text(tl!("any")).desired_width(110.0));
         ui.end_row();
+        if is_static && (st.preset == Some(Preset::Vantor) || !st.phase.is_empty()) {
+            ui.label(tl!("Phase"));
+            ui.horizontal(|ui| {
+                for (v, label) in [("", "Any"), ("pre", "Before the event"), ("post", "After the event")] {
+                    ui.radio_value(&mut st.phase, v.to_string(), tl!(label));
+                }
+            });
+            ui.end_row();
+        }
         ui.label("");
         ui.checkbox(&mut st.use_view, tl!("Only where the map is"));
         ui.end_row();
@@ -311,39 +655,22 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
             ui.spinner();
         }
     });
-    if list {
+    if api_changed && catalog::is_static(&app.ui.stac.api) && !busy {
+        browse(app, None);
+    } else if let Some(to) = go_to {
+        browse(app, Some(to));
+    } else if let Some(i) = go_up {
+        browse_up(app, i);
+    } else if list && is_static {
+        fetch_children(app);
+    } else if list {
         match stac::api(Some(app.ui.stac.api.as_str())) {
             Ok(api) => app.ui.stac.waiting = Some((Asked::Collections, fetch(&stac::collections_url(&api)))),
             Err(e) => app.ui.stac.error = Some(e),
         }
     }
     if search {
-        let st = &app.ui.stac;
-        let datetime = match (st.from.trim(), st.to.trim()) {
-            ("", "") => None,
-            (a, "") => Some(format!("{a}/..")),
-            ("", b) => Some(format!("../{b}")),
-            (a, b) => Some(format!("{a}/{b}")),
-        };
-        let mut p = json!({"collections": st.collection.trim(), "limit": 50});
-        if let Some(d) = datetime {
-            p["datetime"] = json!(d);
-        }
-        if let Ok(c) = st.max_cloud.trim().parse::<f64>() {
-            p["maxCloud"] = json!(c);
-        }
-        if st.use_view {
-            p["bbox"] = json!("view");
-        }
-        let url = stac::api(Some(st.api.as_str()))
-            .and_then(|api| rustgis_engine::cmd::stac::search_params(&app.session, &p).and_then(|s| stac::search_url(&api, &s)));
-        match url {
-            Ok(url) => {
-                let slot = fetch(&url);
-                app.ui.stac.waiting = Some((Asked::Search(url), slot));
-            }
-            Err(e) => app.ui.stac.error = Some(e),
-        }
+        find_items(app);
     }
     let t = crate::theme::Tokens::get(ui.ctx());
     if let Some(e) = &app.ui.stac.error {
@@ -353,6 +680,63 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
         ui.label(egui::RichText::new(i).weak());
     }
     results(app, ui);
+}
+
+/// Finds items: an API's search, or a walk of a static catalog from the node picked.
+fn find_items(app: &mut RustGisApp) {
+    let st = &app.ui.stac;
+    // A catalog's children still coming don't hold a search up.
+    if st.walk.is_some() || st.waiting.as_ref().is_some_and(|(a, _)| !matches!(a, Asked::Children(_))) {
+        return;
+    }
+    let datetime = match (st.from.trim(), st.to.trim()) {
+        ("", "") => None,
+        (a, "") => Some(format!("{a}/..")),
+        ("", b) => Some(format!("../{b}")),
+        (a, b) => Some(format!("{a}/{b}")),
+    };
+    let is_static = catalog::is_static(&st.api);
+    let mut p = json!({"limit": 50});
+    if !is_static {
+        p["collections"] = json!(st.collection.trim());
+    }
+    if let Some(d) = datetime {
+        p["datetime"] = json!(d);
+    }
+    if let Ok(c) = st.max_cloud.trim().parse::<f64>() {
+        p["maxCloud"] = json!(c);
+    }
+    if !st.sortby.trim().is_empty() {
+        p["sortby"] = json!(st.sortby.trim());
+    }
+    if st.use_view {
+        p["bbox"] = json!("view");
+    }
+    let search = rustgis_engine::cmd::stac::search_params(&app.session, &p);
+    app.ui.stac.error = None;
+    if is_static {
+        let st = &app.ui.stac;
+        let root = if st.node.is_empty() { st.api.trim().to_string() } else { st.node.clone() };
+        let walk = rustgis_engine::render::rustgis_tiles::address::check(&root, None)
+            .and(search)
+            .and_then(|s| Ok(Walk::new(&root, catalog::Filter::from_search(&s, Some(st.phase.as_str()))?, s.limit)));
+        match walk {
+            Ok(w) => {
+                app.ui.stac.info = Some(tl!("Reading the catalog…").to_string());
+                app.ui.stac.walk = Some((w, Vec::new()));
+            }
+            Err(e) => app.ui.stac.error = Some(e),
+        }
+        return;
+    }
+    let url = stac::api(Some(app.ui.stac.api.as_str())).and_then(|api| search.and_then(|s| stac::search_url(&api, &s)));
+    match url {
+        Ok(url) => {
+            let slot = fetch(&url);
+            app.ui.stac.waiting = Some((Asked::Search(url), slot));
+        }
+        Err(e) => app.ui.stac.error = Some(e),
+    }
 }
 
 /// The items found: a click frames one; Add adds its chosen asset.
@@ -391,5 +775,41 @@ fn results(app: &mut RustGisApp, ui: &mut egui::Ui) {
         let Some(item) = app.ui.stac.items.get(i).cloned() else { return };
         let key = app.ui.stac.chosen.get(i).cloned().unwrap_or_default();
         add_item_asset(app, &item, Some(key.as_str()).filter(|k| !k.is_empty()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::RustGisApp;
+
+    #[test]
+    fn presets_open_the_dialog_set_up() {
+        for p in Preset::ALL {
+            assert_eq!(Preset::from_id(p.id()), Some(p));
+        }
+        assert_eq!(Preset::from_id("nope"), None);
+        let d = days_ago(0);
+        assert!(d.len() == 10 && d.starts_with("20"), "{d}");
+        let mut app = RustGisApp::with_sample();
+        assert!(app.run("ui.stac.nope", json!({})).is_err());
+        // An API's preset fetches nothing until Find Items.
+        app.run("ui.stac.sentinel2", serde_json::Value::Null).unwrap();
+        assert_eq!(app.dialogs.open, Some("stac"));
+        assert_eq!((app.ui.stac.collection.as_str(), app.ui.stac.sortby.as_str()), ("sentinel-2-c1-l2a", "eo:cloud_cover"));
+        assert_eq!(title(&app), "Sentinel-2 Explorer");
+        assert!(app.ui.stac.waiting.is_none() && app.ui.stac.use_view);
+        app.run("ui.stac.usgsLidar", json!({})).unwrap();
+        assert_eq!((app.ui.stac.api.as_str(), app.ui.stac.collection.as_str()), (stac::PLANETARY_COMPUTER, "3dep-lidar-copc"));
+        // Typing another address leaves the service: plain STAC Search again.
+        app.ui.stac.api = "https://example.org/stac/v1".into();
+        assert_eq!(title(&app), "STAC Search");
+        app.run("ui.stac", json!({})).unwrap();
+        assert_eq!(app.ui.stac.preset, None);
+        // A static catalog's search walks it; bad dates are refused before anything is read.
+        app.ui.stac.api = VANTOR.into();
+        app.ui.stac.from = "soon".into();
+        find_items(&mut app);
+        assert!(app.ui.stac.walk.is_none() && app.ui.stac.error.is_some());
     }
 }

@@ -152,7 +152,7 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
         "addUrl" => "Add Data From URL",
         "addService" => "Add From Service",
         "addDatabase" => "Add From Database",
-        "stac" => "STAC Search",
+        "stac" => crate::stacui::title(app),
         "s3" => "S3 Buckets",
         "osm" => "OpenStreetMap",
         "boundaries" => "Administrative Boundaries",
