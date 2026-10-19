@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Renders the README and docs screenshots into target/shots/*.webp, for
-# opengeos/rustgis-assets (images/). Run from the repository root. Needs ImageMagick
+# BrinceMasr/syngle-observatory-assets (images/). Run from the repository root. Needs ImageMagick
 # (`magick`) and network access (the tiles and plugins shots, the sample DEM).
 #
 # The assistant shot asks a real model: set RUSTGIS_ASSISTANT_PROVIDER and the

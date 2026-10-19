@@ -448,7 +448,7 @@ fn browse_lists_thousands_of_plugins_quickly() {
                 "sha256": sha, "size": 123_456, "permissions": ["edit"]})
         })
         .collect();
-    let entries = registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.rustgis.app/registry.json").unwrap();
+    let entries = registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.example.org/registry.json").unwrap();
     assert_eq!(entries.len(), 5000);
     let mut h = harness();
     for _ in 0..4 {
@@ -485,7 +485,7 @@ fn browse_lists_thousands_of_plugins_quickly() {
             .iter()
             .map(|n| json!({"id": n.to_lowercase(), "name": n, "version": "1.0.0", "package": "https://packages.example.com/x.rgplugin", "sha256": sha}))
             .collect();
-        registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.rustgis.app/registry.json").unwrap()
+        registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.example.org/registry.json").unwrap()
     };
     h.state_mut().plugins.set_registry(Some(Ok(two("Alpha", "Beta"))));
     h.step();
@@ -1014,7 +1014,7 @@ fn delimited_text_dialog_lists_the_picked_files_columns() {
     assert_eq!(h.state().dialogs.open, Some("addCsv"));
     assert_eq!(h.state().dialogs.list, ["name", "east", "north"]);
     assert_eq!(h.state().dialogs.mode, ";", "the separator found");
-    assert!(h.state().dialogs.a.is_empty(), "east isn't a name RustGIS finds by itself");
+    assert!(h.state().dialogs.a.is_empty(), "east isn't a name Syngle Observatory finds by itself");
     {
         let d = &mut h.state_mut().dialogs;
         (d.a, d.b, d.text) = ("east".into(), "north".into(), "EPSG:2263".into());
@@ -1443,7 +1443,7 @@ fn dialogs_can_be_moved() {
     assert!((after.left_top() - (before.left_top() + (to - from))).length() < 2.0, "{before:?} → {after:?}");
 }
 
-/// "Let your Agents Control RustGIS", in the AI Assistant settings: ticking it starts the relay,
+/// "Let your Agents Control Syngle Observatory", in the AI Assistant settings: ticking it starts the relay,
 /// lets attached agents use files and the network, shows what an agent needs to connect and is
 /// remembered; unticking it stops the relay.
 #[cfg(not(target_arch = "wasm32"))]
@@ -1476,10 +1476,10 @@ fn letting_agents_control_rustgis_starts_the_relay_and_shows_how_to_connect() {
     h.step();
     assert!(h.state().relay.is_none(), "off until the user turns it on");
     assert!(h.query_by_label("Add this MCP server to your agent:").is_none(), "nothing to connect to while it's off");
-    // Whether the default port is free decides which path the box takes here: a RustGIS already
+    // Whether the default port is free decides which path the box takes here: a Syngle Observatory already
     // open on this machine may hold it.
     let free = std::net::TcpListener::bind(("127.0.0.1", rustgis_ui_egui::rustgis_assistant::relay::DEFAULT_PORT)).is_ok();
-    h.get_by_label("Let your Agents Control RustGIS").click();
+    h.get_by_label("Let your Agents Control Syngle Observatory").click();
     h.step();
     h.step();
     let last = |key: &str| saved.lock().unwrap().iter().rev().find(|(k, _)| k == key).map(|(_, v)| v.clone());
@@ -1501,7 +1501,7 @@ fn letting_agents_control_rustgis_starts_the_relay_and_shows_how_to_connect() {
         })
         .is_some()
     );
-    h.get_by_label("Let your Agents Control RustGIS").click();
+    h.get_by_label("Let your Agents Control Syngle Observatory").click();
     h.step();
     assert!(h.state().relay.is_none(), "unticking stops the relay");
     assert_eq!(last("agents_control").as_deref(), Some("off"));

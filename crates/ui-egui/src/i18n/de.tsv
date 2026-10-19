@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	Ein Zarr-Speicher (Format 2 oder 3) über seine Webadresse, mit konsolidierten Metadaten, oder ein Ordner auf diesem Computer. Die Karte einer Variablen wird für die gewählten Schritte ihrer anderen Dimensionen gelesen, etwa der Zeit.
 About	Über
 About plugins	Über Plugins
-About RustGIS	Über RustGIS
-About RustGIS.	Über RustGIS.
+About Syngle Observatory	Über Syngle Observatory
+About Syngle Observatory.	Über Syngle Observatory.
 Above	Oben
 Above Left	Oben links
 Above Right	Oben rechts
@@ -169,8 +169,8 @@ Agent input pipe closed.	Die Eingabe-Pipe des Agenten wurde geschlossen.
 Agent input queue is full or disconnected; stop the agent and try again.	Die Eingabewarteschlange des Agenten ist voll oder getrennt; stoppen Sie den Agenten und versuchen Sie es erneut.
 Agent threads	Agenten-Threads
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Agenten auf diesem Computer, die sich verbinden (Claude Code, Codex, Cursor und andere), arbeiten mit den Werkzeugen von RustGIS an der hier geöffneten Karte: Sie können Dateien öffnen und speichern und das Web nutzen. Skripte und die Plugin-Verwaltung bleiben aus.
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Agenten auf diesem Computer, die sich verbinden (Claude Code, Codex, Cursor und andere), arbeiten mit den Werkzeugen von RustGIS an der hier geöffneten Karte: Sie können Dateien öffnen und speichern und das Web nutzen. Skripte und Plugin-Verwaltung bleiben ausgeschaltet. Die Wahl bleibt über Neustarts hinweg erhalten.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Agenten auf diesem Computer, die sich verbinden (Claude Code, Codex, Cursor und andere), arbeiten mit den Werkzeugen von Syngle Observatory an der hier geöffneten Karte: Sie können Dateien öffnen und speichern und das Web nutzen. Skripte und die Plugin-Verwaltung bleiben aus.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Agenten auf diesem Computer, die sich verbinden (Claude Code, Codex, Cursor und andere), arbeiten mit den Werkzeugen von Syngle Observatory an der hier geöffneten Karte: Sie können Dateien öffnen und speichern und das Web nutzen. Skripte und Plugin-Verwaltung bleiben ausgeschaltet. Die Wahl bleibt über Neustarts hinweg erhalten.
 Agents then run commands, change files and use the web on this computer without asking you.	Agenten führen dann ohne Nachfrage Befehle aus, ändern Dateien und nutzen das Web auf diesem Computer.
 Aggregation	Aggregation
 AI	KI
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	Nur bestimmte Wertekombinationen über Felder hinweg zulassen.
 Allow such actions for this conversation	Solche Aktionen für diese Unterhaltung zulassen
 Allow this action?	Diese Aktion zulassen?
-Allow this agent's RustGIS action?	Diese RustGIS-Aktion des Agenten erlauben?
+Allow this agent's Syngle Observatory action?	Diese Syngle Observatory-Aktion des Agenten erlauben?
 Along Selected Line	Entlang ausgewählter Linie
 Alternating bar	Wechselnde Leiste
 Altitude	Höhe
 Always allow	Immer erlauben
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3 oder ein S3-kompatibler Dienst (MinIO, Cloudflare R2, Wasabi…) über seinen Endpunkt. Schlüssel werden aufbewahrt, bis RustGIS geschlossen wird; eine gemerkte Verbindung behält Namen, Endpunkt und Region, nie den geheimen Schlüssel.
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3 oder ein S3-kompatibler Dienst (MinIO, Cloudflare R2, Wasabi…) über seinen Endpunkt. Schlüssel werden aufbewahrt, bis Syngle Observatory geschlossen wird; eine gemerkte Verbindung behält Namen, Endpunkt und Region, nie den geheimen Schlüssel.
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	Ein Agent auf diesem Computer möchte:
 An AWS profile	Ein AWS-Profil
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	Anwendungsbereich: innerhalb v
 Area of use: within {r}° of {lon}°, {lat}°	Anwendungsbereich: innerhalb von {r}° um {lon}°, {lat}°
 Area {area}   ·   Perimeter {perimeter}	Fläche {area}   ·   Umfang {perimeter}
 Areas (name, land use, area)	Flächen (Name, Landnutzung, Fläche)
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	Stellen Sie eine Frage zu Ihren Daten, oder beschreiben Sie, was mit der Karte geschehen soll. Der Assistent führt RustGIS-Befehle für Sie aus; jede Änderung kann rückgängig gemacht werden.
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	Stellen Sie eine Frage zu Ihren Daten, oder beschreiben Sie, was mit der Karte geschehen soll. Der Assistent führt Syngle Observatory-Befehle für Sie aus; jede Änderung kann rückgängig gemacht werden.
 Ask about the map, or tell it what to do…	Fragen Sie zur Karte, oder sagen Sie, was zu tun ist…
 Ask about your data, or tell the assistant what to do with the map.	Fragen Sie zu Ihren Daten, oder sagen Sie dem Assistenten, was mit der Karte geschehen soll.
 Asking the catalog…	Katalog wird abgefragt…
@@ -479,7 +479,7 @@ Color Vision Simulator	Farbsehsimulator
 Colorbar	Farbleiste
 Colormap	Farbtabelle
 Colors from the raster's own color table.	Farben aus der eigenen Farbtabelle des Rasters.
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	Farbverläufe (RustGIS, QGIS, GDAL, GMT)
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	Farbverläufe (Syngle Observatory, QGIS, GDAL, GMT)
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	Spalten mit Namen wie longitude/latitude, easting/northing oder geometry werden für Sie ausgewählt.
 Combinations from the box above, one per line	Kombinationen aus dem Feld oben, eine pro Zeile
 Comma	Komma
@@ -631,7 +631,7 @@ Delete selected rows	Ausgewählte Zeilen löschen
 Delete Style	Stil löschen
 Delete Task	Aufgabe löschen
 Delete Task Step	Aufgabenschritt löschen
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	Den von RustGIS installierten GeoLibre-Runner löschen. Sie können ihn jederzeit erneut installieren.
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	Den von Syngle Observatory installierten GeoLibre-Runner löschen. Sie können ihn jederzeit erneut installieren.
 Delete the layout {name}?	Layout {name} löschen?
 Delete the map {name}?	Karte {name} löschen?
 Delete the selected features.	Die ausgewählten Objekte löschen.
@@ -770,7 +770,7 @@ Element	Element
 Element Properties	Elementeigenschaften
 Elevation	Höhe
 Elevation profiles along lines, cross sections and more.	Höhenprofile entlang von Linien, Querschnitte und mehr.
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	Berechtigte Anfragen in RustGIS nutzen Ihren ChatGPT-Tarif. Die Nutzung verwalten Sie in den ChatGPT-Einstellungen.
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Berechtigte Anfragen in Syngle Observatory nutzen Ihren ChatGPT-Tarif. Die Nutzung verwalten Sie in den ChatGPT-Einstellungen.
 Ellipse	Ellipse
 Embeddings	Embeddings
 Ember	Glut
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	Einen beliebigen Befehl nach Namen finden (Ct
 Find Datasets	Datensätze finden
 Find Items	Elemente finden
 Find Place	Ort finden
-Find plugins in the RustGIS plugin registry.	Plugins im RustGIS-Plugin-Verzeichnis finden.
+Find plugins in the Syngle Observatory plugin registry.	Plugins im Syngle Observatory-Plugin-Verzeichnis finden.
 Find Similar	Ähnliche finden
 Find Tools	Werkzeuge finden
 Finding routes…	Routen werden gesucht…
@@ -932,7 +932,7 @@ Folder…	Ordner…
 for a store that doesn't say	für einen Speicher ohne Angabe
 Forest	Wald
 Format	Format
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	Gefunden: {names}. Ein Agent arbeitet über die Werkzeuge von RustGIS und mit seinen eigenen (Web, Skripte, Dateien) an dieser Karte, in einem eigenen Ordner, der unter Dokumente › RustGIS › Agent work aufbewahrt wird. Er fragt Sie vor jeder Aktion.
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	Gefunden: {names}. Ein Agent arbeitet über die Werkzeuge von Syngle Observatory und mit seinen eigenen (Web, Skripte, Dateien) an dieser Karte, in einem eigenen Ordner, der unter Dokumente › Syngle Observatory › Agent work aufbewahrt wird. Er fragt Sie vor jeder Aktion.
 Frame rate	Bildrate
 Frame rate, draw time, data size and memory.	Bildrate, Zeichenzeit, Datengröße und Speicher.
 Free the prepared geometry.	Die vorbereitete Geometrie freigeben.
@@ -1091,7 +1091,7 @@ In memory	Im Speicher
 In Progress	In Bearbeitung
 in progress	in Bearbeitung
 In project	Im Projekt
-In RustGIS, it can:	In RustGIS kann es:
+In Syngle Observatory, it can:	In Syngle Observatory kann es:
 In use	In Verwendung
 Indices	Indizes
 Infographics	Infografiken
@@ -1205,7 +1205,7 @@ Legend	Legende
 Legend label. Clear it to show the value again.	Legendenbeschriftung. Leeren, um wieder den Wert anzuzeigen.
 Length {length} · gain {gain} m · loss {loss} m	Länge {length} · Anstieg {gain} m · Abstieg {loss} m
 Let the assistant hand tasks to agents on this computer	Den Assistenten Aufgaben an Agenten auf diesem Computer übergeben lassen
-Let your Agents Control RustGIS	Ihre Agenten RustGIS steuern lassen
+Let your Agents Control Syngle Observatory	Ihre Agenten Syngle Observatory steuern lassen
 Level	Ebene
 Library	Bibliothek
 Light and Shadow	Licht und Schatten
@@ -1271,7 +1271,7 @@ Longitude (X)	Länge (X)
 Look for {name}, outlined on the ribbon.	Suchen Sie {name}, im Menüband umrandet.
 Looking up the place…	Ort wird gesucht…
 Lower Priority	Niedrigere Priorität
-Made in RustGIS: samples, drawings and tool outputs	In RustGIS erstellt: Beispiele, Zeichnungen und Werkzeugausgaben
+Made in Syngle Observatory: samples, drawings and tool outputs	In Syngle Observatory erstellt: Beispiele, Zeichnungen und Werkzeugausgaben
 Magnifier	Lupe
 Major Lakes	Große Seen
 Major Rivers	Große Flüsse
@@ -1436,7 +1436,7 @@ No bookmarks yet	Noch keine Lesezeichen
 No bookmarks yet. New Bookmark saves the current view of the map.	Noch keine Lesezeichen. Neues Lesezeichen speichert die aktuelle Kartenansicht.
 no command	kein Befehl
 No connections this session	Keine Verbindungen in dieser Sitzung
-No datasets with data RustGIS can add	Keine Datensätze mit Daten, die RustGIS hinzufügen kann
+No datasets with data Syngle Observatory can add	Keine Datensätze mit Daten, die Syngle Observatory hinzufügen kann
 No edits since the project was saved	Keine Bearbeitungen seit dem Speichern des Projekts
 no home folder	kein Home-Ordner
 No layers match	Keine passenden Layer
@@ -1472,8 +1472,8 @@ North	Nord
 North\nArrow	Nord-\npfeil
 North Polar Stereographic	Polare stereografische Projektion (Nord)
 not a picture	kein Bild
-not a RustGIS layout	kein RustGIS-Layout
-not a RustGIS project	kein RustGIS-Projekt
+not a Syngle Observatory layout	kein Syngle Observatory-Layout
+not a Syngle Observatory project	kein Syngle Observatory-Projekt
 not needed	nicht erforderlich
 Not sandboxed	Nicht in der Sandbox
 Not saved yet	Noch nicht gespeichert
@@ -1515,8 +1515,8 @@ Opacity	Deckkraft
 Open	Öffnen
 Open a .rgis project	Ein .rgis-Projekt öffnen
 open a layout first	zuerst ein Layout öffnen
-Open a RustGIS or Jupyter notebook.	Ein RustGIS- oder Jupyter-Notizbuch öffnen.
-Open a RustGIS project.	Ein RustGIS-Projekt öffnen.
+Open a Syngle Observatory or Jupyter notebook.	Ein Syngle Observatory- oder Jupyter-Notizbuch öffnen.
+Open a Syngle Observatory project.	Ein Syngle Observatory-Projekt öffnen.
 Open an offline area to edit.	Einen Offline-Bereich zum Bearbeiten öffnen.
 Open browser again	Browser erneut öffnen
 Open Custom Template	Benutzerdefinierte Vorlage öffnen
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	Die Attributtabelle des Layers öffnen.
 Open the layer's table.	Die Tabelle des Layers öffnen.
 Open the plugin's panel.	Das Panel des Plugins öffnen.
 Open the Release Page	Release-Seite öffnen
-Open the RustGIS user guide.	Das RustGIS-Benutzerhandbuch öffnen.
+Open the Syngle Observatory user guide.	Das Syngle Observatory-Benutzerhandbuch öffnen.
 Open the selected layer's table.	Die Tabelle des ausgewählten Layers öffnen.
 Open the Symbology pane.	Den Symbologie-Bereich öffnen.
 Open the task's steps	Die Schritte der Aufgabe öffnen
@@ -1660,7 +1660,7 @@ Plugin registry	Plugin-Verzeichnis
 Plugins	Plugins
 Plugins are .rgplugin files. Install only plugins from people you trust.	Plugins sind .rgplugin-Dateien. Installieren Sie nur Plugins von Personen, denen Sie vertrauen.
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	Mit „Nicht in der Sandbox“ gekennzeichnete Plugins laufen stattdessen als Programme auf Ihrem Computer und können alles, was Sie können.
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	Plugins laufen in einer Sandbox: Sie können weder auf Ihre Dateien noch auf das Netzwerk zugreifen und ändern das Projekt nur über die eigenen Befehle von RustGIS, im Rahmen der von Ihnen akzeptierten Berechtigungen.
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	Plugins laufen in einer Sandbox: Sie können weder auf Ihre Dateien noch auf das Netzwerk zugreifen und ändern das Projekt nur über die eigenen Befehle von Syngle Observatory, im Rahmen der von Ihnen akzeptierten Berechtigungen.
 PMTiles archive	PMTiles-Archiv
 PNG frames (zip)	PNG-Einzelbilder (ZIP)
 PNG image	PNG-Bild
@@ -1882,26 +1882,26 @@ Run Tool	Werkzeug ausführen
 Run {name}	{name} ausführen
 Running the query for the map…	Abfrage für die Karte wird ausgeführt…
 Running…	Läuft…
-RustGIS	RustGIS
-RustGIS bookmarks	RustGIS-Lesezeichen
-RustGIS deep learning package	RustGIS-Deep-Learning-Paket
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	RustGIS wurde beim letzten Mal nicht ordnungsgemäß beendet und ist daher mit World Atlas statt mit Ihrem Startprojekt gestartet. Öffnen Sie das Projekt über das Menü Projekt, wenn Sie so weit sind.
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS ist ein freies Open-Source-GIS in reinem Rust. Es läuft auf dem Desktop und im Browser, und jede Aktion ist ein Befehl, den Sie auch über die Kommandozeile ausführen können.
-RustGIS layer file	RustGIS-Layer-Datei
-RustGIS layers, maps and projects	RustGIS-Layer, -Karten und -Projekte
-RustGIS layout	RustGIS-Layout
-RustGIS maps and projects	RustGIS-Karten und -Projekte
-RustGIS or Jupyter notebook	RustGIS- oder Jupyter-Notizbuch
-RustGIS plugin	RustGIS-Plugin
-RustGIS presentation	RustGIS-Präsentation
-RustGIS project	RustGIS-Projekt
-RustGIS project template	RustGIS-Projektvorlage
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	RustGIS hatte beim letzten Mal einen internen Fehler. Die Details stehen in {path}; bitte hängen Sie sie an einen Fehlerbericht an.
-RustGIS report or report template	RustGIS-Bericht oder -Berichtsvorlage
-RustGIS styles	RustGIS-Stile
-RustGIS task	RustGIS-Aufgabe
-RustGIS {latest} is available.	RustGIS {latest} ist verfügbar.
-RustGIS {version} is the latest version.	RustGIS {version} ist die neueste Version.
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Syngle Observatory-Lesezeichen
+Syngle Observatory deep learning package	Syngle Observatory-Deep-Learning-Paket
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	Syngle Observatory wurde beim letzten Mal nicht ordnungsgemäß beendet und ist daher mit World Atlas statt mit Ihrem Startprojekt gestartet. Öffnen Sie das Projekt über das Menü Projekt, wenn Sie so weit sind.
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory ist ein freies Open-Source-GIS in reinem Rust. Es läuft auf dem Desktop und im Browser, und jede Aktion ist ein Befehl, den Sie auch über die Kommandozeile ausführen können.
+Syngle Observatory layer file	Syngle Observatory-Layer-Datei
+Syngle Observatory layers, maps and projects	Syngle Observatory-Layer, -Karten und -Projekte
+Syngle Observatory layout	Syngle Observatory-Layout
+Syngle Observatory maps and projects	Syngle Observatory-Karten und -Projekte
+Syngle Observatory or Jupyter notebook	Syngle Observatory- oder Jupyter-Notizbuch
+Syngle Observatory plugin	Syngle Observatory-Plugin
+Syngle Observatory presentation	Syngle Observatory-Präsentation
+Syngle Observatory project	Syngle Observatory-Projekt
+Syngle Observatory project template	Syngle Observatory-Projektvorlage
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Syngle Observatory hatte beim letzten Mal einen internen Fehler. Die Details stehen in {path}; bitte hängen Sie sie an einen Fehlerbericht an.
+Syngle Observatory report or report template	Syngle Observatory-Bericht oder -Berichtsvorlage
+Syngle Observatory styles	Syngle Observatory-Stile
+Syngle Observatory task	Syngle Observatory-Aufgabe
+Syngle Observatory {latest} is available.	Syngle Observatory {latest} ist verfügbar.
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} ist die neueste Version.
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	S3-Buckets
 S3 Connections	S3-Verbindungen
 S3…	S3…
 Sample data (Natural Earth)	Beispieldaten (Natural Earth)
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	Beispieldaten © Natural Earth (gemeinfrei). RustGIS steht unter der Apache-2.0-Lizenz.
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	Beispieldaten © Natural Earth (gemeinfrei). Syngle Observatory steht unter der Apache-2.0-Lizenz.
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	Beispieldaten: Natural Earth (gemeinfrei). Lizenziert unter Apache-2.0.
 Saturation	Sättigung
 Save	Speichern
@@ -1994,7 +1994,7 @@ Sections	Abschnitte
 See and set the camera's position and scale.	Position und Maßstab der Kamera anzeigen und festlegen.
 See the map as people with colour vision deficiencies do.	Die Karte so sehen, wie Menschen mit Farbsehschwächen sie sehen.
 See the tools you've run.	Die ausgeführten Werkzeuge anzeigen.
-See whether a newer RustGIS has been released.	Prüfen, ob eine neuere RustGIS-Version erschienen ist.
+See whether a newer Syngle Observatory has been released.	Prüfen, ob eine neuere Syngle Observatory-Version erschienen ist.
 SELECT	SELECT
 Select	Auswählen
 Select (click)	Auswählen (Klick)
@@ -2121,7 +2121,7 @@ Sign out	Abmelden
 Sign-in cancelled.	Anmeldung abgebrochen.
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	Zeitüberschreitung bei der Anmeldung. Starten Sie erneut und erlauben Sie dem Browser den Zugriff auf die Loopback-Adresse dieses Computers.
 signed in	angemeldet
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	Auf diesem Computer abgemeldet, aber OpenAI hat es nicht bestätigt. Sie können RustGIS in den ChatGPT-Einstellungen trennen.
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	Auf diesem Computer abgemeldet, aber OpenAI hat es nicht bestätigt. Sie können Syngle Observatory in den ChatGPT-Einstellungen trennen.
 Signing in with ChatGPT works in the desktop app.	Die Anmeldung mit ChatGPT funktioniert in der Desktop-App.
 Signing the asset (Planetary Computer)…	Asset wird signiert (Planetary Computer)…
 Simplify	Vereinfachen
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	Der Schlüssel wird nur für diese Sitzun
 The layer's file couldn't be read: {error}	Die Datei des Layers konnte nicht gelesen werden: {error}
 the layout export failed unexpectedly	der Layout-Export ist unerwartet fehlgeschlagen
 The link doesn't say its STAC API: Find Items searches {api}	Der Link nennt keine STAC-API: Elemente finden durchsucht {api}
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	Die Liste der Plugins zum Durchsuchen. Leer lassen für das RustGIS-Plugin-Verzeichnis.
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	Die Liste der Plugins zum Durchsuchen. Leer lassen für das Syngle Observatory-Plugin-Verzeichnis.
 the map has no layers	die Karte hat keine Layer
 The map is drawn in this coordinate system; layers are projected on the fly.	Die Karte wird in diesem Koordinatensystem gezeichnet; Layer werden spontan projiziert.
 The map view as it is now	Die Kartenansicht im aktuellen Zustand
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	Die Dateien des Shapefiles werden als
 The sign-in expired or was revoked. Sign in again.	Die Anmeldung ist abgelaufen oder wurde widerrufen. Melden Sie sich erneut an.
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	Die Anmeldung wird im Einstellungsordner der App gespeichert, nur für Ihr Benutzerkonto und nie in einer Projektdatei.
 The start-up project {path} didn't open: {error}	Das Startprojekt {path} ließ sich nicht öffnen: {error}
-The start-up project {path} isn't a RustGIS project file.	Das Startprojekt {path} ist keine RustGIS-Projektdatei.
+The start-up project {path} isn't a Syngle Observatory project file.	Das Startprojekt {path} ist keine Syngle Observatory-Projektdatei.
 The step's layer {name} isn't in the map.	Der Layer {name} des Schritts ist nicht in der Karte.
 The store has no variables with two or more dimensions.	Der Speicher hat keine Variablen mit zwei oder mehr Dimensionen.
 the store is gone	der Speicher ist nicht mehr vorhanden
@@ -2365,7 +2365,7 @@ This map has no layers yet.	Diese Karte hat noch keine Layer.
 This map's thumbnail, from an image.	Die Miniaturansicht dieser Karte, aus einem Bild.
 This map's thumbnail, from the view.	Die Miniaturansicht dieser Karte, aus der Ansicht.
 This plugin can:	Dieses Plugin kann:
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Dieses Plugin läuft als Programm auf Ihrem Computer, außerhalb der Sandbox von RustGIS. Es kann alles, was Sie können: Ihre Dateien lesen und ändern, das Netzwerk nutzen und andere Programme ausführen. Installieren Sie es nur, wenn Sie dem Autor vertrauen.
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Dieses Plugin läuft als Programm auf Ihrem Computer, außerhalb der Sandbox von Syngle Observatory. Es kann alles, was Sie können: Ihre Dateien lesen und ändern, das Netzwerk nutzen und andere Programme ausführen. Installieren Sie es nur, wenn Sie dem Autor vertrauen.
 This request has no one-time allow option.	Diese Anfrage hat keine Option zum einmaligen Erlauben.
 This request uses an unsupported capability. Check the parameter and change the request.	Diese Anfrage verwendet eine nicht unterstützte Funktion. Prüfen Sie den Parameter und ändern Sie die Anfrage.
 This step names no tool to show.	Dieser Schritt nennt kein Werkzeug zum Anzeigen.
@@ -2439,7 +2439,7 @@ Uninstall Plugin	Plugin deinstallieren
 Uninstalled {id}.	{id} deinstalliert.
 Unique Values	Eindeutige Werte
 Units	Einheiten
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	Die GeoLibre-Werkzeuge entladen und beim Start von RustGIS nicht mehr laden.
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	Die GeoLibre-Werkzeuge entladen und beim Start von Syngle Observatory nicht mehr laden.
 Unsupervised classes (k-means)	Unüberwachte Klassen (k-Means)
 Unsupervised classes (k-means).	Unüberwachte Klassen (k-Means).
 Up	Nach oben
@@ -2515,13 +2515,13 @@ Web Tool	Web-Werkzeug
 Website	Website
 Weekly usage	Wöchentliche Nutzung
 Weights	Gewichte
-Welcome to RustGIS	Willkommen bei RustGIS
+Welcome to Syngle Observatory	Willkommen bei Syngle Observatory
 West	West
 WFS	WFS
 WGS 84 / Globe	WGS 84 / Globus
 WGS 84 / Web Mercator	WGS 84 / Web Mercator
-What RustGIS opens with: the World Atlas sample or a blank map.	Womit RustGIS startet: mit dem Beispiel World Atlas oder einer leeren Karte.
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Womit RustGIS startet: mit dem Beispiel World Atlas, einer leeren Karte, einem Projekt Ihrer Wahl oder dem zuletzt geöffneten oder gespeicherten Projekt.
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	Womit Syngle Observatory startet: mit dem Beispiel World Atlas oder einer leeren Karte.
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Womit Syngle Observatory startet: mit dem Beispiel World Atlas, einer leeren Karte, einem Projekt Ihrer Wahl oder dem zuletzt geöffneten oder gespeicherten Projekt.
 What to do, where to find it and why	Was zu tun ist, wo es zu finden ist und warum
 What's near a point	Was sich in der Nähe eines Punktes befindet
 WHERE	WHERE

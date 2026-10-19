@@ -1,5 +1,5 @@
 name: Bug report
-description: Report unexpected behavior or a possible flaw in RustGIS.
+description: Report unexpected behavior or a possible flaw in Syngle Observatory.
 title: "[Bug]: "
 labels: ["unconfirmed possible issue"]
 body:
@@ -14,9 +14,9 @@ body:
     attributes:
       label: Before you start
       options:
-        - label: I searched the [existing issues](https://github.com/opengeos/RustGIS/issues) and did not find a duplicate.
+        - label: I searched the [existing issues](https://github.com/BrinceMasr/syngle-observatory/issues) and did not find a duplicate.
           required: true
-        - label: This is a bug report, not a usage question (questions belong in [Discussions](https://github.com/opengeos/RustGIS/discussions)).
+        - label: This is a bug report, not a usage question (questions belong in [Discussions](https://github.com/BrinceMasr/syngle-observatory/discussions)).
           required: true
   - type: textarea
     id: what-happened
@@ -48,11 +48,11 @@ body:
   - type: dropdown
     id: app
     attributes:
-      label: How are you running RustGIS?
+      label: How are you running Syngle Observatory?
       options:
         - Desktop app (downloaded release)
         - Desktop app (built from source)
-        - Web app (https://web.rustgis.app)
+        - Web app (https://github.com/BrinceMasr/syngle-observatory)
         - Command line (rustgis-cli)
     validations:
       required: true
@@ -82,6 +82,6 @@ body:
     id: screenshots
     attributes:
       label: Screenshots or logs
-      description: 'Add screenshots, screen recordings, or terminal output if they help explain the problem. If the desktop app closed unexpectedly, attach `crash.log` or `crash-last.log` from its settings folder (`%APPDATA%\RustGIS` on Windows, `~/Library/Application Support/RustGIS` on macOS, `$XDG_CONFIG_HOME/rustgis` or `~/.config/rustgis` on Linux). Read it first: an error message can include file paths or layer names, so remove anything you don''t want to share.'
+      description: 'Add screenshots, screen recordings, or terminal output if they help explain the problem. If the desktop app closed unexpectedly, attach `crash.log` or `crash-last.log` from its settings folder (`%APPDATA%\Syngle Observatory` on Windows, `~/Library/Application Support/Syngle Observatory` on macOS, `$XDG_CONFIG_HOME/rustgis` or `~/.config/rustgis` on Linux). Read it first: an error message can include file paths or layer names, so remove anything you don''t want to share.'
     validations:
       required: false

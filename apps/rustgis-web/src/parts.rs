@@ -1,5 +1,5 @@
 //! Large GeoTIFFs picked or dropped in the browser, read a part at a time: the header first, then
-//! only the parts the overview RustGIS opens needs, by `Blob.slice`, never the whole file. The parts
+//! only the parts the overview Syngle Observatory opens needs, by `Blob.slice`, never the whole file. The parts
 //! read go to the app as one small file (`Sparse::container`), which the GeoTIFF reader opens and a
 //! saved project keeps. A cloud-optimised file (tiled, with overviews) needs little of itself; one
 //! in strips without overviews needs nearly all, and is refused past the upload limit.
@@ -54,7 +54,7 @@ pub async fn read_file(file: web_sys::File, notes: Notes) -> Option<Vec<u8>> {
     }
 }
 
-/// Reads the parts of a GeoTIFF the raster RustGIS opens from it needs; returns them as a
+/// Reads the parts of a GeoTIFF the raster Syngle Observatory opens from it needs; returns them as a
 /// container.
 async fn read_parts(file: &web_sys::File, name: &str) -> Result<Vec<u8>, String> {
     let len = file.size() as u64;

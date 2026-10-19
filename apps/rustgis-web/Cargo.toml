@@ -1,11 +1,20 @@
 [package]
 name = "rustgis-web"
-description = "RustGIS in the browser (eframe web runner, WebGPU with WebGL2 fallback)"
+description = "Syngle Observatory in the browser (eframe web runner, WebGPU with WebGL2 fallback)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
 
+
+[features]
+# The canvas-only WASM view (ADR 0010): the map and direct manipulation only, with none of the
+# fork's egui chrome (header, ribbon, tabs, panes, dialogs, status bar). SyngleCode's React UI is
+# the chrome; build with `trunk build --release --features canvas-only --dist ../../dist/canvas`.
+canvas-only = []
+# Spike A (#43): the raised view-read windows, for measuring the "pan with 1M points" target; build
+# with `trunk build --release --features canvas-only,spike`. Off by default; #77 revisits the limits.
+spike = ["rustgis-engine/spike"]
 [lints]
 workspace = true
 

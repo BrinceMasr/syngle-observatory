@@ -255,7 +255,7 @@ pub fn package(s: &Session, p: &Value) -> Result<Vec<u8>, String> {
     let m = s.project.dl_models.get(i).ok_or("no model")?;
     let model = serde_json::to_vec_pretty(m).map_err(|e| e.to_string())?;
     let about = json!({
-        "format": "RustGIS deep learning package",
+        "format": "Syngle Observatory deep learning package",
         "version": 1,
         "modelType": "pixel classification (multilayer perceptron)",
         "name": m.name,

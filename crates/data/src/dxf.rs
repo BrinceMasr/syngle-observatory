@@ -1359,7 +1359,7 @@ pub fn read(file_name: &str, bytes: &[u8], opts: &Options) -> Result<Vec<(Datase
     }
     if !d.unread.is_empty() {
         let kinds: Vec<String> = d.unread.iter().map(|(k, n)| format!("{n} {k}")).collect();
-        report.messages.push(format!("entities RustGIS doesn't draw were left out: {}", kinds.join(", ")));
+        report.messages.push(format!("entities Syngle Observatory doesn't draw were left out: {}", kinds.join(", ")));
     }
     let skipped = d.bad + out.cut;
     report.skipped = skipped;
@@ -1403,7 +1403,7 @@ pub fn read(file_name: &str, bytes: &[u8], opts: &Options) -> Result<Vec<(Datase
     if layers.is_empty() {
         return Err(DataError::Format(match opts.layer {
             Some(l) => format!("{file_name}: nothing drawn on layer '{l}'"),
-            None => format!("{file_name}: nothing RustGIS draws"),
+            None => format!("{file_name}: nothing Syngle Observatory draws"),
         }));
     }
     Ok(layers)

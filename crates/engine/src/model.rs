@@ -67,7 +67,7 @@ pub fn port_kind(k: ParamKind) -> Option<(PortKind, bool)> {
     }
 }
 
-/// A tool node's tool, if RustGIS has it.
+/// A tool node's tool, if Syngle Observatory has it.
 pub fn tool_of(node: &ModelNode) -> Option<&'static ToolSpec> {
     node.tool.as_deref().and_then(crate::cmd::gp::tool_id).and_then(rustgis_analysis::tool)
 }
@@ -223,7 +223,7 @@ pub fn validate(s: &Session, g: &ModelGraph) -> Vec<Problem> {
                 };
                 for p in t.params.iter().filter(|p| p.required) {
                     let port = port_kind(p.kind).is_some();
-                    if !(port && wired(p.name)) && !is_set(n.params.get(p.name)) && p.default.is_empty() {
+                    if !(is_set(n.params.get(p.name)) || port && wired(p.name)) && p.default.is_empty() {
                         let msg = if port { "\"{p}\" needs a connection or a layer." } else { "\"{p}\" needs a value." };
                         out.push(problem("missing-input", Some(&n.id), msg.replace("{p}", p.label)));
                     }
@@ -643,7 +643,7 @@ fn rename(s: &mut Session, id: u32, wanted: &str) -> Option<String> {
 }
 
 /// The JSON a model file holds (`*.model.json`).
-pub const SCHEMA: &str = "https://rustgis.app/schemas/model-graph-v1.json";
+pub const SCHEMA: &str = "https://github.com/BrinceMasr/syngle-observatory/schemas/model-graph-v1.json";
 
 pub fn to_file(name: &str, g: &ModelGraph) -> Value {
     json!({"$schema": SCHEMA, "version": "1.0.0", "name": name, "graph": g})

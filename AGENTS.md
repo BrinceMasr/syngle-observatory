@@ -1,6 +1,6 @@
-# RustGIS — instructions for agents
+# Syngle Observatory — instructions for agents
 
-RustGIS is a fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing
+Syngle Observatory is a fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing
 geospatial data, on the desktop and in the browser. Its architecture: layered crates, everything
 is a command, a thin egui front end, headless screenshots for UI work.
 
@@ -48,8 +48,8 @@ is a command, a thin egui front end, headless screenshots for UI work.
 - No third-party vendor icons, images, styles, fonts, help text or code. Icons are drawn in
   code (`icons.rs`). Every asset file has a row in `ATTRIBUTION.md`.
 - Screenshots and other images are not committed here: they live in
-  [opengeos/rustgis-assets](https://github.com/opengeos/rustgis-assets) (WebP, served at
-  `https://assets.rustgis.app/images/…`) and docs link to them by URL.
+  [BrinceMasr/syngle-observatory-assets](https://github.com/BrinceMasr/syngle-observatory-assets) (WebP, served at
+  `https://github.com/BrinceMasr/syngle-observatory…`) and docs link to them by URL.
 
 ## Quality gates
 `cargo xtask ci` (fmt, clippy -D warnings, tests, layers) before every commit.

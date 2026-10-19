@@ -3,9 +3,9 @@
 //!
 //! | Folder | Override | Windows | macOS | Linux |
 //! |---|---|---|---|---|
-//! | [`config_dir`] | `RUSTGIS_CONFIG_DIR` | `%APPDATA%\RustGIS` | `~/Library/Application Support/RustGIS` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
-//! | [`app_data_dir`] | `RUSTGIS_APP_DATA_DIR` | `%LOCALAPPDATA%\RustGIS` | `~/Library/Application Support/RustGIS` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
-//! | [`cache_dir`] | `RUSTGIS_CACHE_DIR` | `%LOCALAPPDATA%\RustGIS\cache` | `~/Library/Caches/RustGIS` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
+//! | [`config_dir`] | `RUSTGIS_CONFIG_DIR` | `%APPDATA%\Syngle Observatory` | `~/Library/Application Support/Syngle Observatory` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
+//! | [`app_data_dir`] | `RUSTGIS_APP_DATA_DIR` | `%LOCALAPPDATA%\Syngle Observatory` | `~/Library/Application Support/Syngle Observatory` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
+//! | [`cache_dir`] | `RUSTGIS_CACHE_DIR` | `%LOCALAPPDATA%\Syngle Observatory\cache` | `~/Library/Caches/Syngle Observatory` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
 //!
 //! An override is used as is. There are none in the browser, where these give `None`.
 
@@ -77,13 +77,13 @@ fn resolve(kind: Kind, os: Os, env: &dyn Fn(&str) -> Option<OsString>) -> Option
     let home = || var("HOME");
     match os {
         Os::Windows => match kind {
-            Kind::Config => var("APPDATA").map(|d| d.join("RustGIS")),
-            Kind::AppData => var("LOCALAPPDATA").or_else(|| var("APPDATA")).map(|d| d.join("RustGIS")),
-            Kind::Cache => var("LOCALAPPDATA").map(|d| d.join("RustGIS").join("cache")),
+            Kind::Config => var("APPDATA").map(|d| d.join("Syngle Observatory")),
+            Kind::AppData => var("LOCALAPPDATA").or_else(|| var("APPDATA")).map(|d| d.join("Syngle Observatory")),
+            Kind::Cache => var("LOCALAPPDATA").map(|d| d.join("Syngle Observatory").join("cache")),
         },
         Os::Mac => home().map(|h| match kind {
-            Kind::Config | Kind::AppData => h.join("Library/Application Support/RustGIS"),
-            Kind::Cache => h.join("Library/Caches/RustGIS"),
+            Kind::Config | Kind::AppData => h.join("Library/Application Support/Syngle Observatory"),
+            Kind::Cache => h.join("Library/Caches/Syngle Observatory"),
         }),
         Os::Other => {
             let (xdg, fallback) = match kind {
@@ -117,21 +117,21 @@ mod tests {
     fn platform_folders() {
         let win = with(&[("APPDATA", r"C:\U\Roaming"), ("LOCALAPPDATA", r"C:\U\Local")]);
         let r = all(Os::Windows, &win);
-        assert_eq!(r[0], Some(PathBuf::from(r"C:\U\Roaming").join("RustGIS")));
-        assert_eq!(r[1], Some(PathBuf::from(r"C:\U\Local").join("RustGIS")));
-        assert_eq!(r[2], Some(PathBuf::from(r"C:\U\Local").join("RustGIS").join("cache")));
+        assert_eq!(r[0], Some(PathBuf::from(r"C:\U\Roaming").join("Syngle Observatory")));
+        assert_eq!(r[1], Some(PathBuf::from(r"C:\U\Local").join("Syngle Observatory")));
+        assert_eq!(r[2], Some(PathBuf::from(r"C:\U\Local").join("Syngle Observatory").join("cache")));
         // Without LOCALAPPDATA, app data falls back to the roaming folder, the cache to nothing.
         let r = all(Os::Windows, &with(&[("APPDATA", r"C:\U\Roaming")]));
-        assert_eq!(r[1], Some(PathBuf::from(r"C:\U\Roaming").join("RustGIS")));
+        assert_eq!(r[1], Some(PathBuf::from(r"C:\U\Roaming").join("Syngle Observatory")));
         assert_eq!(r[2], None);
 
         let mac = with(&[("HOME", "/Users/a")]);
         assert_eq!(
             all(Os::Mac, &mac),
             paths([
-                "/Users/a/Library/Application Support/RustGIS",
-                "/Users/a/Library/Application Support/RustGIS",
-                "/Users/a/Library/Caches/RustGIS"
+                "/Users/a/Library/Application Support/Syngle Observatory",
+                "/Users/a/Library/Application Support/Syngle Observatory",
+                "/Users/a/Library/Caches/Syngle Observatory"
             ])
         );
 

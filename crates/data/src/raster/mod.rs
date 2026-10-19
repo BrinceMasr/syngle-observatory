@@ -627,7 +627,7 @@ pub fn read_bytes(file_name: &str, bytes: &[u8]) -> Result<Raster> {
     }
 }
 
-/// The coordinate system in a `.prj` next to an ASCII grid, when it's one RustGIS understands.
+/// The coordinate system in a `.prj` next to an ASCII grid, when it's one Syngle Observatory understands.
 fn sidecar_crs(path: &Path) -> Option<Crs> {
     wkt::crs_from_wkt(&read_prj(path)?).ok()
 }

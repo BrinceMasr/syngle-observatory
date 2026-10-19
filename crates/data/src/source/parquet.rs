@@ -728,7 +728,7 @@ pub fn write(ds: &crate::Dataset) -> Result<Vec<u8>> {
     }
     let props = WriterProperties::builder()
         .set_compression(Compression::SNAPPY)
-        .set_created_by("RustGIS".to_string())
+        .set_created_by("Syngle Observatory".to_string())
         .set_key_value_metadata(Some(metadata))
         .build();
     let mut w = SerializedFileWriter::new(Vec::new(), schema, Arc::new(props)).map_err(err)?;

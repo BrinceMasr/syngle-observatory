@@ -1,7 +1,7 @@
 //! L3: the GeoLibre tool suite (Whitebox's tools plus GeoLibre's own: 1,000+ raster, vector,
 //! LiDAR, hydrology and terrain tools) as geoprocessing tools.
 //!
-//! RustGIS doesn't link the suite; a runner runs it. Natively that is the `geolibre` program, an
+//! Syngle Observatory doesn't link the suite; a runner runs it. Natively that is the `geolibre` program, an
 //! optional download run as a subprocess (see `runner`). In the browser it is geolibre-rust's
 //! WASI runner, which the web app loads on demand and runs asynchronously
 //! ([`set_manifests`], then `external_start` → `Services::geolibre_run` → `external_complete`
@@ -446,7 +446,7 @@ fn stage(inputs: &dyn Inputs, value: &str, data: Data, tf: &Transformer, job: &m
         if let Some(p) = r.path.filter(|p| on_disk(p)) {
             return Ok(FileRef::Path(p.to_string()));
         }
-        // The parts of a large GeoTIFF the web app read are RustGIS's own: written out below instead.
+        // The parts of a large GeoTIFF the web app read are Syngle Observatory's own: written out below instead.
         if let Some((file_name, bytes)) = r.embedded.filter(|(_, b)| !rustgis_data::raster::cog::Sparse::is_container(b)) {
             // The tools tell formats apart by extension.
             let ext = Path::new(file_name).extension().and_then(|e| e.to_str()).map(safe).unwrap_or_else(|| "tif".into());
@@ -640,7 +640,7 @@ fn load(file_name: &str, bytes: &[u8], layer_name: &str, job: &Job, dir: Option<
             None
         }
         _ => {
-            messages.push(format!("{layer_name}: wrote a .{ext} file, which RustGIS can't open as a layer"));
+            messages.push(format!("{layer_name}: wrote a .{ext} file, which Syngle Observatory can't open as a layer"));
             None
         }
     }

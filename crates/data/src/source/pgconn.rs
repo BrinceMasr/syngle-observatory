@@ -148,7 +148,7 @@ pub(crate) fn keyword_pairs(dsn: &str) -> Vec<(String, String)> {
         }
         while chars.next_if(|c| c.is_whitespace()).is_some() {}
         if chars.next() != Some('=') {
-            // Not a connection string RustGIS can take apart: what came before it (never the
+            // Not a connection string Syngle Observatory can take apart: what came before it (never the
             // rest, which could hold a password).
             break;
         }

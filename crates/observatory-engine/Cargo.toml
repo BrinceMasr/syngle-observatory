@@ -1,0 +1,26 @@
+# The Syngle Observatory engine sidecar: the native process that owns the datasets and serves
+# them to the canvas-only WASM view (ADR 0005). A workspace member, so it links the crates the
+# desktop app already builds. Supersedes spike A's `syngle-spike/engine` (#43).
+[package]
+name = "syngle-observatory-engine"
+description = "Syngle Observatory's native engine sidecar"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "observatory_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "syngle-observatory-engine"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+rustgis-engine = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }

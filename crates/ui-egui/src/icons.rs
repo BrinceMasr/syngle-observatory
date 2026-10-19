@@ -766,7 +766,7 @@ pub fn paint(painter: &Painter, r: Rect, name: &str, ink: Color32, accent: Color
         "up" => p.line(&[(6.0, 15.0), (12.0, 9.0), (18.0, 15.0)], 1.8, ink),
         "down" => p.line(&[(6.0, 9.0), (12.0, 15.0), (18.0, 9.0)], 1.8, ink),
         "logo" => {
-            // A small version of the RustGIS logo: a rust cog around a four-colour globe.
+            // A small version of the Syngle Observatory logo: a rust cog around a four-colour globe.
             let rust = crate::theme::BRAND;
             for k in 0..12 {
                 let a = (k as f32 * 30.0).to_radians();

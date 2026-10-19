@@ -71,7 +71,7 @@ fn listing(s: &mut Session, p: &Value) -> CmdResult {
     }
     if found.incomplete {
         return Err(
-            "the service lists collections RustGIS cannot read (more than 2000, or unreadable addresses); the group was not changed".into(),
+            "the service lists collections Syngle Observatory cannot read (more than 2000, or unreadable addresses); the group was not changed".into(),
         );
     }
     let child = target(s, p)?.and_then(|(g, id)| id.and_then(|id| g.children.into_iter().find(|c| c.layer == id)));

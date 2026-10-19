@@ -1,12 +1,11 @@
 # Plugins
 
-Plugins add commands and geoprocessing tools to RustGIS. A plugin is a WebAssembly module with
+Plugins add commands and geoprocessing tools to Syngle Observatory. A plugin is a WebAssembly module with
 a `plugin.json` manifest, packaged as a `.rgplugin` file. The same file runs in the desktop app,
 on the command line and in the web app.
 
-Browse the registry at **[plugins.rustgis.app](https://plugins.rustgis.app)**. Plugin sources,
-the SDK and the registry live in
-[opengeos/rustgis-plugins](https://github.com/opengeos/rustgis-plugins).
+The fork has no plugin registry of its own and publishes no plugin SDK: a command that needs a
+registry takes an explicit address (a `registry.json` URL, or a local file).
 
 ## Using plugins
 
@@ -16,7 +15,7 @@ Open **Plugins › Plugin Manager**:
   against the SHA-256 the registry published, and shows what the plugin may do before it loads.
 - **Installed** lists your plugins: turn them on or off, update them, or uninstall them.
 - **Settings** installs a `.rgplugin` file. You can also drop the file on the window. It also
-  sets the registry address (empty means the RustGIS registry). On the desktop, it can load a
+  sets the registry address (empty means the Syngle Observatory registry). On the desktop, it can load a
   plugin from its folder while you develop it.
 
 A plugin's commands and tools appear on the **Plugins** tab, in a group named after the
@@ -46,8 +45,8 @@ rustgis-cli run --plugin ./dev-plugin/ --sample --cmd 'plugin:my-plugin/hello'  
 ## Safety
 
 Plugins run in a sandbox: an interpreter (`wasmi`) with no access to files, the network, the
-clock or anything else outside the module. A plugin reaches RustGIS only through the requests
-described below, and RustGIS checks each one:
+clock or anything else outside the module. A plugin reaches Syngle Observatory only through the requests
+described below, and Syngle Observatory checks each one:
 
 - Every plugin can **read the map**: its layers, their features and the view.
 - With the **`edit`** permission, it can change the project. It can run commands that edit it and
@@ -73,11 +72,11 @@ that traps, panics or returns garbage produces an error message, never a crash.
 
 The registry is curated: plugins are reviewed before they are listed, and packages are
 hash-pinned. A `blocklist.json` beside the registry withdraws a plugin (every version, or one
-package) from every install. RustGIS checks it when you browse the registry and at startup.
+package) from every install. Syngle Observatory checks it when you browse the registry and at startup.
 
 ## Writing a plugin
 
-Start from [`plugins/hello`](https://github.com/opengeos/rustgis-plugins/tree/main/plugins/hello)
+Start from [`plugins/hello`](https://github.com/BrinceMasr/syngle-observatory-plugins/tree/main/plugins/hello)
 in the plugins repository. It uses the `rustgis-plugin` SDK crate:
 
 ```rust
@@ -113,7 +112,7 @@ cargo build --release --target wasm32-unknown-unknown
 ```json
 {
   "id": "hello-rustgis",
-  "name": "Hello RustGIS",
+  "name": "Hello Syngle Observatory",
   "version": "0.1.0",
   "description": "What it does, in a sentence or two.",
   "author": "You",
@@ -141,10 +140,10 @@ cargo build --release --target wasm32-unknown-unknown
 
 - `id`: lower-case letters, digits and hyphens. Commands and tools get ids
   `plugin:<id>/<command>`, which the ribbon, command search, scripts and `rustgis-cli` use.
-- `version` and `minRustgisVersion` look like `1.2.3`. RustGIS refuses a plugin that needs a
-  newer RustGIS.
+- `version` and `minRustgisVersion` look like `1.2.3`. Syngle Observatory refuses a plugin that needs a
+  newer Syngle Observatory.
 - `permissions`: `edit`, `files` and `network` (see [Safety](#safety)). Ask only for what you use.
-- `commands[].icon`: the name of one of RustGIS's own icons (`stats`, `zoom_full`, `bookmark`,
+- `commands[].icon`: the name of one of Syngle Observatory's own icons (`stats`, `zoom_full`, `bookmark`,
   `buffer`…), or a puzzle piece when it isn't one.
 - Tool parameter `kind`s: `layer`, `vectorLayer`, `polygonLayer`, `pointLayer`, `field`,
   `numericField`, `number`, `text`, `choice` (with `choices`), `bool` and `file` (see
@@ -170,13 +169,13 @@ The plugin needs the `files` permission:
 
 - The Tools pane shows a path box with a **Browse** button. `extensions` (without the dot; up
   to 16) filters the file picker; leave it out for any file.
-- On the desktop and the command line the value is a path, and RustGIS reads the file. In the
+- On the desktop and the command line the value is a path, and Syngle Observatory reads the file. In the
   web app, which has no paths, the user picks the file and its contents go with the run. A
   script can do the same with `{"name": "run.nc", "data": base64}`.
 - The tool gets the file in the request's `files`, by parameter name, as
   `{"name": "run.nc", "data": base64}`. The parameter itself holds just the file name.
 - Files are at most 64 MB. The Geoprocessing history keeps the file's name, not its contents.
-- RustGIS versions before file parameters refuse a plugin that has one, so set
+- Syngle Observatory versions before file parameters refuse a plugin that has one, so set
   `minRustgisVersion` to the first version with them.
 
 ### Translations
@@ -195,7 +194,7 @@ English strings and their translations, written exactly as they appear in `plugi
 - It covers the plugin's name and description, command labels and help, tool names, summaries
   and toolboxes, parameter labels and `choice` values, the tab, group and menu labels, and the
   panel's title, help and widget labels. A string with no translation shows in English.
-- RustGIS's interface languages are `de`, `es`, `fr`, `it`, `nl`, `pt`, `ru`, `tr`, `az`, `id`,
+- Syngle Observatory's interface languages are `de`, `es`, `fr`, `it`, `nl`, `pt`, `ru`, `tr`, `az`, `id`,
   `vi`, `zh`, `ja` and `ko`. A code with a region matches its language: `zh-CN` serves `zh`.
 - The registry copies the name and description translations into `registry.json`, so the
   Plugin Manager lists plugins in the interface language before they are installed.
@@ -231,10 +230,10 @@ can hide it like any other. Declare it in `plugin.json`:
   `items` are any of those.
 - A tab has 1 to 8 groups, a group has 1 to 16 items, and a menu has 1 to 32 entries. Every
   entry must name one of the plugin's own commands or tools.
-- The label can't be the name of one of RustGIS's tabs (Map, Insert, Analysis, Plugins…). The
+- The label can't be the name of one of Syngle Observatory's tabs (Map, Insert, Analysis, Plugins…). The
   `i18n` translations apply to the tab, group and menu labels too.
 
-[Map Explorer](https://github.com/opengeos/rustgis-plugins/tree/main/plugins/map-explorer) is
+[Map Explorer](https://github.com/BrinceMasr/syngle-observatory-plugins/tree/main/plugins/map-explorer) is
 an example.
 
 ### A panel
@@ -259,7 +258,7 @@ buttons bound to its commands. Declare it in `plugin.json`:
 }
 ```
 
-- `title` is the pane's tab and the label of the button that opens it, which RustGIS puts
+- `title` is the pane's tab and the label of the button that opens it, which Syngle Observatory puts
   first in the plugin's group on the **Plugins** tab. On a tab of its own, put `panel` among a
   group's items. Command search lists the panel too. `icon` and `help` are for that button.
 - `items` lists the widgets, top to bottom (1 to 32). Buttons that follow each other share a
@@ -274,12 +273,12 @@ buttons bound to its commands. Declare it in `plugin.json`:
 - A checkbox runs its `command` when it changes, and a slider when it is let go, or stepped:
   never while it is dragged, while the pane shows the label of the value it would take. Without
   a `command`, a widget's value just goes with the plugin's next request.
-- `state` (optional) is a command RustGIS runs each time the panel is opened, to answer its
+- `state` (optional) is a command Syngle Observatory runs each time the panel is opened, to answer its
   state.
 - Every command and widget must be one of the plugin's own commands. A plugin with a panel
   can't have a command called `panel`.
 
-A plugin keeps nothing between calls, so RustGIS keeps the panel's state. Every request of a
+A plugin keeps nothing between calls, so Syngle Observatory keeps the panel's state. Every request of a
 plugin with a panel carries the widgets' values, whatever ran the command (the panel, a ribbon
 button, a script or the command line):
 
@@ -315,32 +314,32 @@ Any command can answer the panel's new state, beside the rest of its answer:
 - An item can set `label` (`null` brings back the declared one), `enabled` and `visible`; a text
   its `text`; a slider its `min`, `max` and `labels`, one per value from `min` (the numbers when
   there are none). What an answer leaves out stays as it was.
-- RustGIS checks the answer like any other: unknown ids and fields and values of the wrong type
+- Syngle Observatory checks the answer like any other: unknown ids and fields and values of the wrong type
   are ignored, a slider's value stays within its ends, texts are clipped to 4,000 characters,
   labels to 200, and a slider has at most 2,000 labels of 80 characters.
-- A plugin words what it sets in the request's `lang`; RustGIS translates only what the
+- A plugin words what it sets in the request's `lang`; Syngle Observatory translates only what the
   manifest declares.
 - A command that fails leaves the values as they were. The panel's state command is no undo
   step when it changes nothing in the project (it only reads the map); other commands keep
   theirs.
-- RustGIS asks for the state only when the panel opens, and takes in what the plugin's own
+- Syngle Observatory asks for the state only when the panel opens, and takes in what the plugin's own
   commands answer. It doesn't run the plugin when the map changes in other ways: undo, another
   plugin, a project opened. A state command that reads what it shows from the map (which
   release is on it) puts the panel right when it is opened again.
-- The values are kept while RustGIS runs, not saved with the project.
+- The values are kept while Syngle Observatory runs, not saved with the project.
 - `plugin.panel {"id": "<plugin>"}` answers a panel's state (`values` and `items`), and sets
   `values` or, with `"refresh": true`, runs the state command first. On the command line, which
   has no panes, the commands still run with the values given.
-- RustGIS versions before panels ignore `panel` (and refuse a tab that names it): keep the
+- Syngle Observatory versions before panels ignore `panel` (and refuse a tab that names it): keep the
   commands usable from the ribbon too, or set `minRustgisVersion`.
 
 ### What a plugin can ask for
 
-Inside a request, `host::call(op, params)` sends one of these to RustGIS:
+Inside a request, `host::call(op, params)` sends one of these to Syngle Observatory:
 
 | Request | Answer |
 |---|---|
-| `host.info` | RustGIS's version, the ABI, the plugin's id and permissions |
+| `host.info` | Syngle Observatory's version, the ABI, the plugin's id and permissions |
 | `host.layers` | `[{id, name, raster, visible, geometry, features, selected, active, fields: [{name, type}]}]` |
 | `host.features` `{layer, selected?, limit?}` | the layer's features as GeoJSON; each feature has its `row` |
 | `host.view` | `{center: [lon, lat], scale, projection}` |
@@ -351,7 +350,7 @@ Inside a request, `host::call(op, params)` sends one of these to RustGIS:
 | any command id (`layer.zoomTo`, `select.byAttributes`, `layer.symbology`…) | what the command returns, within the plugin's permissions |
 
 In the web app a command can't wait for a download, so where `layer.addUrl` has to download a
-file whole it answers `{"pending": true, "url": …}` there: RustGIS downloads the data off the
+file whole it answers `{"pending": true, "url": …}` there: Syngle Observatory downloads the data off the
 frame and adds the layer when it lands, as **Home › Add Data › From URL** does. A PMTiles
 archive, a cloud-optimised GeoTIFF or a FlatGeobuf or GeoParquet read in place is added at once,
 as elsewhere.
@@ -372,10 +371,10 @@ document parsed when it is a JSON object or array.
   (in the web app, the browser decides what it may reach). Requests carry no credentials (an
   S3 connection's included) and no headers of the plugin's. On the desktop and the command line
   they never go through a proxy (`HTTPS_PROXY` and the like are ignored), since a proxy would
-  reach addresses RustGIS can't check.
+  reach addresses Syngle Observatory can't check.
 - At most 2 MB, in UTF-8 (a byte-order mark is dropped). An answer that isn't a success (404,
   500…) is an error ending in `HTTP <status>`.
-- Answers are kept for 10 minutes (up to 256 documents and 16 MB in all) while RustGIS runs,
+- Answers are kept for 10 minutes (up to 256 documents and 16 MB in all) while Syngle Observatory runs,
   so asking for the same address again costs nothing. Each plugin has answers of its own: one
   never reads what another fetched. Errors are kept for 30 seconds,
   so every command waiting for an address sees its error; after that it is fetched again.
@@ -383,7 +382,7 @@ document parsed when it is a JSON object or array.
   one, and 60 seconds for all the fetches of one plugin call. A call makes at most 64 fetches.
 - In the web app nothing may wait. A fetch that isn't kept yet answers
   `{"pending": true, "url"}` and starts in the background. The command should then return
-  straight away, before doing anything outside the project (writing a file): RustGIS undoes
+  straight away, before doing anything outside the project (writing a file): Syngle Observatory undoes
   what the call did to the project (its notices stay, and so does anything done outside it),
   and runs the command
   again with the same parameters once every pending answer has landed (up to 8 per call), when
@@ -396,7 +395,7 @@ The plugins SDK may offer this as a `host::fetch` helper; until then, use
 
 Tools work differently. A tool receives its layer parameters' features as GeoJSON (only the
 selected features when a layer has a selection), and its `file` parameters' files. It returns new layers, standalone tables or a
-selection, plus messages for the Geoprocessing history. RustGIS adds the results as it does for
+selection, plus messages for the Geoprocessing history. Syngle Observatory adds the results as it does for
 built-in tools, with undo. Tools can log, but they make no host requests.
 
 In the desktop app a plugin tool runs in the background, so the map and the rest of the window
@@ -420,7 +419,7 @@ The module is `wasm32` with no imports except these three, in module `rustgis`:
 The module exports:
 
 - `memory`.
-- `rustgis_alloc(len: i32) -> i32`, which returns room for `len` bytes. RustGIS writes the
+- `rustgis_alloc(len: i32) -> i32`, which returns room for `len` bytes. Syngle Observatory writes the
   request there.
 - `rustgis_call(ptr: i32, len: i32) -> i64`, which handles the request and returns
   `reply_ptr << 32 | reply_len`. The reply is `{"ok": value}` or `{"error": "text"}`.
@@ -467,7 +466,7 @@ web app.
   plugin's folder. `run` can name a program per platform (`windows`, `macos`, `linux`, and
   `default` for the rest). There is no `entry`.
 - Commands, tools, tabs, translations and permissions work as for WebAssembly plugins.
-  Permissions still decide which host requests RustGIS answers, but they don't limit what the
+  Permissions still decide which host requests Syngle Observatory answers, but they don't limit what the
   program itself can do.
 - A `.rgplugin` holds the plugin's files (the manifest, scripts, executables). Installing it
   unpacks them to `unpacked/<id>/` in the plugins folder, keeping executables executable. A
@@ -479,16 +478,16 @@ web app.
 Each command or tool call starts the program once. It speaks the [ABI](#the-abi-version-1)'s
 requests and replies over its standard input and output, one JSON object per line:
 
-1. RustGIS writes the request: `{"abi", "kind", "id", "params", "layers", "files", "lang"}`, as
+1. Syngle Observatory writes the request: `{"abi", "kind", "id", "params", "layers", "files", "lang"}`, as
    a WebAssembly module gets it.
 2. The program writes lines:
    - `{"call": {"op": "...", "params": {...}}}`: a [host request](#what-a-plugin-can-ask-for).
-     RustGIS answers with one line, `{"ok": value}` or `{"error": "text"}`.
+     Syngle Observatory answers with one line, `{"ok": value}` or `{"error": "text"}`.
    - `{"log": "text"}`: a line for the log (and a tool's run messages).
    - `{"progress": "text"}`: what a tool is doing now, shown while it runs and not kept in its
      messages: a line per step of a long run, say.
    - Last, `{"ok": value}` or `{"error": "text"}`: the result.
-3. RustGIS then closes the program's input; a program still running a few seconds later is
+3. Syngle Observatory then closes the program's input; a program still running a few seconds later is
    stopped.
 
 Output lines that aren't protocol messages are logged and skipped, since libraries print (even
@@ -504,7 +503,7 @@ import sys
 
 
 def call(op, params):
-    """Sends a request to RustGIS and returns its answer."""
+    """Sends a request to Syngle Observatory and returns its answer."""
     print(json.dumps({"call": {"op": op, "params": params}}), flush=True)
     reply = json.loads(sys.stdin.readline())
     if "error" in reply:
@@ -531,7 +530,7 @@ print(json.dumps(result), flush=True)
 
 ### Python environments
 
-A Python plugin can have RustGIS make its environment, so its users don't install Python or
+A Python plugin can have Syngle Observatory make its environment, so its users don't install Python or
 any package themselves:
 
 ```json
@@ -541,11 +540,11 @@ any package themselves:
 ```
 
 - `python` in `run` is then that environment's interpreter, on every platform.
-- RustGIS makes the environment when the plugin is installed: in the background in the desktop
+- Syngle Observatory makes the environment when the plugin is installed: in the background in the desktop
   app (the Plugin Manager shows how it's going, and a **Prepare** button makes it again), and
   before the command returns in `rustgis-cli plugins install` and `get`.
   `rustgis-cli plugins prepare <id>` and the `plugin.prepare` command make it on demand.
-- It uses [uv](https://github.com/astral-sh/uv), which RustGIS downloads once (a pinned version,
+- It uses [uv](https://github.com/astral-sh/uv), which Syngle Observatory downloads once (a pinned version,
   checked against its pinned SHA-256; `RUSTGIS_UV` names one to use instead, which is then
   trusted as it is, unchecked). uv installs a standalone Python of the version asked for and
   the packages in the requirements file, from PyPI. Pythons and uv's cache are shared in
@@ -590,11 +589,11 @@ in the desktop app, on the command line and in the web app:
 ## Publishing a plugin
 
 Open a pull request on
-[opengeos/rustgis-plugins](https://github.com/opengeos/rustgis-plugins) that adds
+[BrinceMasr/syngle-observatory-plugins](https://github.com/BrinceMasr/syngle-observatory-plugins) that adds
 `registry/<id>.json`:
 
 - For a plugin whose source is in that repository: `{"id": "...", "path": "plugins/<dir>", "categories": [...]}`.
 - For one you publish elsewhere: `{"id": "...", "source": {"url": "https://…/<id>-<version>.rgplugin", "sha256": "…"}, "categories": [...]}`.
 
 CI builds or downloads the package and checks its manifest and module. A maintainer then
-reviews it. Once merged, it is published at `plugins.rustgis.app` with its hash.
+reviews it. Once merged, it is published at `the plugin registry` with its hash.

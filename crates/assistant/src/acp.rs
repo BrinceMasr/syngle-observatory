@@ -1,7 +1,7 @@
 //! Agents on this computer, through the Agent Client Protocol ([ACP](https://agentclientprotocol.com)):
 //! the assistant can hand a task to a coding agent the user already has (Claude Code, Codex,
-//! Gemini CLI, …) with `delegate`. RustGIS is the ACP client, as an editor is. It starts the
-//! agent, gives it RustGIS's MCP server (the app's relay, with a token for this run), sends the
+//! Gemini CLI, …) with `delegate`. Syngle Observatory is the ACP client, as an editor is. It starts the
+//! agent, gives it Syngle Observatory's MCP server (the app's relay, with a token for this run), sends the
 //! task, shows what the agent does, and asks the user whenever the agent asks for permission.
 //!
 //! Plain data here: which agents there are, how to start them, and an ACP session as a state
@@ -12,10 +12,10 @@
 
 use serde_json::{Value, json};
 
-/// The ACP major version RustGIS speaks.
+/// The ACP major version Syngle Observatory speaks.
 pub const PROTOCOL_VERSION: u64 = 1;
 
-/// An agent RustGIS can start: natively in ACP mode, or through an ACP adapter.
+/// An agent Syngle Observatory can start: natively in ACP mode, or through an ACP adapter.
 #[derive(Debug, PartialEq, Eq)]
 pub struct AgentSpec {
     /// The id the model names it by.
@@ -26,7 +26,7 @@ pub struct AgentSpec {
     /// Arguments that start it in ACP mode (a native ACP agent).
     pub acp_args: &'static [&'static str],
     /// The ACP adapter it needs instead: a program, or the npm package `npx` runs (pinned to a
-    /// version, so nothing newer than what RustGIS was released with runs unasked).
+    /// version, so nothing newer than what Syngle Observatory was released with runs unasked).
     pub adapter: Option<Adapter>,
 }
 
@@ -66,16 +66,16 @@ impl AgentSpec {
 }
 
 /// What the agent is told before the task.
-const BRIEF: &str = "You are working for RustGIS's AI assistant, on the map the user has open in RustGIS. RustGIS's MCP \
+const BRIEF: &str = "You are working for Syngle Observatory's AI assistant, on the map the user has open in Syngle Observatory. Syngle Observatory's MCP \
 server `rustgis` acts on that map: list_layers, read_features, view_map, search_commands, run_command, search_tools, \
-describe_tool, run_tool, search_docs, read_doc. Use your own tools for what RustGIS can't do (calling a web API, running a \
-script). Save what you make in your working folder as files RustGIS reads (GeoJSON, CSV with coordinates, GeoPackage, \
+describe_tool, run_tool, search_docs, read_doc. Use your own tools for what Syngle Observatory can't do (calling a web API, running a \
+script). Save what you make in your working folder as files Syngle Observatory reads (GeoJSON, CSV with coordinates, GeoPackage, \
 GeoTIFF) and add them to the map with run_command layer.addData {\"path\": …}, so the user sees them. The user approves \
-your actions in RustGIS. End with a short report of what you did and found (layer names, numbers, files): your last \
+your actions in Syngle Observatory. End with a short report of what you did and found (layer names, numbers, files): your last \
 message is all the assistant sees.\n\nTask: ";
 
 /// What a follow-up task is introduced with.
-const FOLLOW_UP: &str = "Follow-up task from RustGIS's assistant (the same map; end with a short report again):\n\n";
+const FOLLOW_UP: &str = "Follow-up task from Syngle Observatory's assistant (the same map; end with a short report again):\n\n";
 
 /// Something the agent did or asked, for the app to show or answer.
 #[derive(Clone, Debug, PartialEq)]
@@ -135,7 +135,7 @@ enum Phase {
     Finished,
 }
 
-/// The request ids of the three requests RustGIS makes.
+/// The request ids of the three requests Syngle Observatory makes.
 const INIT: u64 = 0;
 const NEW: u64 = 1;
 const PROMPT: u64 = 2;
@@ -209,7 +209,7 @@ fn short(v: Option<&Value>, max: usize) -> String {
 }
 
 impl Session {
-    /// A session for `task`, working in `cwd`, with RustGIS's MCP server started by `mcp`
+    /// A session for `task`, working in `cwd`, with Syngle Observatory's MCP server started by `mcp`
     /// (program and arguments), and the first line to send (`initialize`).
     /// `auto`: the user lets agents act without asking (their full-access mode).
     pub fn new(label: &str, task: &str, cwd: &str, mcp: Vec<String>, auto: bool) -> (Session, String) {
@@ -235,9 +235,9 @@ impl Session {
             "initialize",
             json!({
                 "protocolVersion": PROTOCOL_VERSION,
-                // RustGIS reads and writes no files and runs no terminals for the agent: it uses its own.
+                // Syngle Observatory reads and writes no files and runs no terminals for the agent: it uses its own.
                 "clientCapabilities": {"fs": {"readTextFile": false, "writeTextFile": false}, "terminal": false},
-                "clientInfo": {"name": "rustgis", "title": "RustGIS", "version": env!("CARGO_PKG_VERSION")}
+                "clientInfo": {"name": "rustgis", "title": "Syngle Observatory", "version": env!("CARGO_PKG_VERSION")}
             }),
         );
         (s, init)
@@ -255,12 +255,12 @@ impl Session {
                     events.extend(self.flush());
                     events.push(Event::Permission(self.permission(id.clone(), msg.get("params").unwrap_or(&Value::Null))));
                 } else {
-                    // RustGIS offers no files or terminals (see `initialize`).
-                    out.push(json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": format!("RustGIS doesn't provide {method}")}}).to_string());
+                    // Syngle Observatory offers no files or terminals (see `initialize`).
+                    out.push(json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": format!("Syngle Observatory doesn't provide {method}")}}).to_string());
                 }
             }
             (Some("session/update"), None) => events.extend(self.update(msg.pointer("/params/update").unwrap_or(&Value::Null))),
-            // A response to one of RustGIS's requests.
+            // A response to one of Syngle Observatory's requests.
             (None, Some(id)) => self.response(id.as_u64(), &msg, &mut out, &mut events),
             _ => {}
         }
@@ -314,7 +314,8 @@ impl Session {
             (Some(INIT), Phase::Initializing) => {
                 let version = result.get("protocolVersion").and_then(Value::as_u64).unwrap_or(0);
                 if version != PROTOCOL_VERSION {
-                    let report = format!("{} speaks ACP version {version}; RustGIS speaks version {PROTOCOL_VERSION}.", self.label);
+                    let report =
+                        format!("{} speaks ACP version {version}; Syngle Observatory speaks version {PROTOCOL_VERSION}.", self.label);
                     events.extend(self.finish_with(report, true));
                     return;
                 }

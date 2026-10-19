@@ -446,7 +446,7 @@ fn export(app: &mut RustGisApp) {
             let bytes = v["text"].as_str().unwrap_or("").as_bytes().to_vec();
             if app.services.download.is_some() {
                 app.download_bytes(&name, bytes);
-            } else if let Some(path) = crate::dialogs::pick_save(&name, &["json"], tl!("RustGIS model")) {
+            } else if let Some(path) = crate::dialogs::pick_save(&name, &["json"], tl!("Syngle Observatory model")) {
                 if let Err(e) = rustgis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes) {
                     app.mb.log(e.to_string(), LogKind::Error);
                 } else {
@@ -463,7 +463,7 @@ fn import(app: &mut RustGisApp) {
     if let Some(open) = &app.services.open_async {
         app.ui.pending_open = Some("model.import");
         open("item");
-    } else if let Some(path) = crate::dialogs::pick_open(&["json", "rgistool"], tl!("RustGIS model")) {
+    } else if let Some(path) = crate::dialogs::pick_open(&["json", "rgistool"], tl!("Syngle Observatory model")) {
         match app.run("model.import", json!({"path": path})) {
             Ok(v) => imported(app, &v),
             Err(e) => app.mb.log(e, LogKind::Error),
@@ -1327,7 +1327,7 @@ fn source_layer(app: &RustGisApp, n: &ModelNode, spec: &ToolSpec) -> Option<Stri
 fn tool_settings(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, i: usize, n: &ModelNode) {
     let Some(spec) = model::tool_of(n) else {
         ui.label(
-            egui::RichText::new(tl!("RustGIS doesn't have this tool. Install the tools it comes from, or delete the node."))
+            egui::RichText::new(tl!("Syngle Observatory doesn't have this tool. Install the tools it comes from, or delete the node."))
                 .size(11.5)
                 .color(t.text_dim),
         );

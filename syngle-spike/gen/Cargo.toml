@@ -1,0 +1,23 @@
+# Spike A (#43): the 1M-point Australian dataset generator.
+#
+# Standalone crate, deliberately NOT a member of the fork's workspace: it is spike tooling, it is
+# native only (no wasm32 build), and keeping it out of the workspace leaves the fork's own
+# Cargo.toml untouched.
+[package]
+name = "syngle-spike-gen"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+parquet = { version = "60", default-features = false, features = ["arrow", "snap", "flate2", "flate2-rust_backend"] }
+arrow-array = { version = "60", default-features = false }
+arrow-schema = { version = "60", default-features = false }
+flatgeobuf = { version = "6", default-features = false }
+# `with-wkb` gives geozero::wkb::Wkb, the adapter that hands flatgeobuf a WKB geometry.
+geozero = { version = "0.15", default-features = false, features = ["with-wkb"] }
+
+[profile.release]
+opt-level = 3

@@ -8,7 +8,7 @@ version = "0.3.0"
 edition = "2024"
 license = "Apache-2.0"
 rust-version = "1.90"
-repository = "https://github.com/opengeos/RustGIS"
+repository = "https://github.com/BrinceMasr/syngle-observatory"
 
 [workspace.dependencies]
 # internal

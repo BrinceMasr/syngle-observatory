@@ -46,12 +46,12 @@ Many features are first versions: there are no full 3D scenes or enterprise port
   app, the web app and `rustgis-cli ask`; an MCP server (`rustgis-cli mcp`) for AI agents such
   as Claude Code, Cursor and VS Code, with the documentation built in.
 - The AI Assistant's agent skill and loopback relay, which let external AI clients drive the app.
-- Sandboxed WebAssembly plugins with a registry at plugins.rustgis.app; process plugins that run
-  as programs (with Python environments RustGIS makes), in the background with progress and Cancel.
+- Sandboxed WebAssembly plugins with a registry at the plugin registry; process plugins that run
+  as programs (with Python environments Syngle Observatory makes), in the background with progress and Cancel.
 - The `rustgis` Python package on PyPI: the engine in-process, and `rustgis.Map` in Jupyter.
 - Desktop packages: Windows installers (setup.exe, .msi), a portable zip and a Store MSIX; a
   signed and notarized macOS DMG; Linux .deb, .rpm, AppImage and tarballs; Homebrew, the AUR,
-  Fedora COPR and winget; a download mirror at downloads.rustgis.app.
+  Fedora COPR and winget; a download mirror at the fork releases.
 
 ## Next
 - Editing: vertex editing (move, add and delete vertices of existing features).

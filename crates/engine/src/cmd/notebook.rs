@@ -1,6 +1,6 @@
 //! Analyze › Notebook (New Notebook, Add and Open Notebook): notebooks of text and command cells.
 //! A command cell is a script (one command per line, `id {json}`) whose results show beneath it.
-//! Notebooks save as RustGIS notebooks or Jupyter notebooks, and open from either.
+//! Notebooks save as Syngle Observatory notebooks or Jupyter notebooks, and open from either.
 
 use std::path::Path;
 
@@ -305,7 +305,7 @@ fn jupyter_text(v: &Value) -> String {
     }
 }
 
-/// A RustGIS or Jupyter notebook.
+/// A Syngle Observatory or Jupyter notebook.
 fn parse(text: &str, fallback_name: &str) -> Result<Notebook, String> {
     let v: Value = serde_json::from_str(text).map_err(|e| format!("not a notebook: {e}"))?;
     if v.get("nbformat").is_some() {
@@ -323,14 +323,14 @@ fn parse(text: &str, fallback_name: &str) -> Result<Notebook, String> {
         }
         return Ok(nb);
     }
-    let mut nb: Notebook = serde_json::from_value(v).map_err(|e| format!("not a RustGIS notebook: {e}"))?;
+    let mut nb: Notebook = serde_json::from_value(v).map_err(|e| format!("not a Syngle Observatory notebook: {e}"))?;
     if nb.name.trim().is_empty() {
         nb.name = fallback_name.to_string();
     }
     Ok(nb)
 }
 
-/// The notebook as a RustGIS notebook or (nbformat 4) Jupyter notebook.
+/// The notebook as a Syngle Observatory notebook or (nbformat 4) Jupyter notebook.
 pub fn notebook_file(s: &Session, i: usize, jupyter: bool) -> Result<Vec<u8>, String> {
     let nb = s.project.notebooks.get(i).ok_or("no notebook")?;
     let v = if jupyter {

@@ -1,6 +1,6 @@
 //! The `geolibre` runner: a separate executable (an optional download) that runs the tools.
 //!
-//! RustGIS doesn't link the suite (it would triple the app's size). It runs the runner as a
+//! Syngle Observatory doesn't link the suite (it would triple the app's size). It runs the runner as a
 //! subprocess instead: `geolibre manifests` for the tool forms, `geolibre <tool> --k=v …` for a
 //! run. A tool that crashes or panics takes only the subprocess down.
 

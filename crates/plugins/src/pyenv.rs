@@ -1,7 +1,7 @@
 //! Python environments for process plugins that declare `"python"` in `plugin.json` (desktop
 //! and command line), so their users install nothing themselves.
 //!
-//! RustGIS downloads [uv](https://github.com/astral-sh/uv) once: a pinned version's wheel from
+//! Syngle Observatory downloads [uv](https://github.com/astral-sh/uv) once: a pinned version's wheel from
 //! PyPI, checked against the SHA-256 pinned here. uv then makes each such plugin an environment
 //! of its own, with a Python it downloads itself and the packages the plugin's requirements file
 //! lists. The plugin's `run` names `python` for that environment's interpreter.
@@ -24,7 +24,7 @@ use sha2::{Digest, Sha256};
 
 use crate::manifest::{Manifest, PythonDecl};
 
-/// The uv release RustGIS uses.
+/// The uv release Syngle Observatory uses.
 pub const UV_VERSION: &str = "0.13.1";
 
 /// uv's wheels on PyPI by platform: (OS, architecture, a part of the wheel's file name, its
@@ -118,7 +118,7 @@ fn agent() -> ureq::Agent {
 }
 
 fn get(agent: &ureq::Agent, url: &str) -> Result<ureq::http::Response<ureq::Body>, String> {
-    agent.get(url).header("User-Agent", concat!("RustGIS/", env!("CARGO_PKG_VERSION"))).call().map_err(|e| format!("{url}: {e}"))
+    agent.get(url).header("User-Agent", concat!("Syngle Observatory/", env!("CARGO_PKG_VERSION"))).call().map_err(|e| format!("{url}: {e}"))
 }
 
 /// uv: the one [`UV_ENV`] names, else the one downloaded before, else a fresh download.
@@ -135,7 +135,7 @@ pub fn uv(progress: &mut dyn FnMut(&str)) -> Result<PathBuf, String> {
     let (_, _, tag, sha256) = UV_WHEELS
         .iter()
         .find(|(os, arch, _, _)| *os == std::env::consts::OS && *arch == std::env::consts::ARCH)
-        .ok_or("RustGIS can't make Python environments on this platform")?;
+        .ok_or("Syngle Observatory can't make Python environments on this platform")?;
     progress(&format!("Downloading uv {UV_VERSION}"));
     let agent = agent();
     // The wheel's address from PyPI; what it serves must match the SHA-256 pinned here.
@@ -183,7 +183,7 @@ fn run_uv(uv: &Path, args: &[&std::ffi::OsStr], progress: &mut dyn FnMut(&str)) 
     let tools = plugins_dir()?.join("tools");
     let mut c = Command::new(uv);
     c.args(args)
-        // uv's Pythons and cache in RustGIS's folder, and only Pythons uv installed: a plugin
+        // uv's Pythons and cache in Syngle Observatory's folder, and only Pythons uv installed: a plugin
         // gets the same Python on every computer, whatever else is installed.
         .env("UV_PYTHON_INSTALL_DIR", tools.join("python"))
         .env("UV_CACHE_DIR", tools.join("cache"))

@@ -1,10 +1,10 @@
 //! MySQL and MariaDB: the spatial columns of a database's tables, read live in place (desktop
 //! only).
 //!
-//! RustGIS talks to the server itself (the pure-Rust `mysql` client, TLS through rustls), so
+//! Syngle Observatory talks to the server itself (the pure-Rust `mysql` client, TLS through rustls), so
 //! nothing else needs installing. Extent queries use the column's spatial index
 //! (`MBRIntersects`); geometry comes as WKB, longitude first (MySQL's geographic coordinate
-//! systems are latitude first unless asked), and RustGIS converts it to longitude/latitude
+//! systems are latitude first unless asked), and Syngle Observatory converts it to longitude/latitude
 //! itself, since MariaDB has no `ST_Transform`. A capped read returns an evenly spread sample,
 //! numbered on the server (window functions: MySQL 8 or MariaDB 10.2 and later), so only the rows
 //! kept cross the network. The session is read only, and a server asking for a local file
@@ -295,7 +295,7 @@ fn open_client(config: &Config, password: Option<&str>) -> Result<((mysql::Conn,
         // A server asking for a local file (`LOAD DATA LOCAL INFILE`) is refused, whatever the
         // client's default.
         .local_infile_handler(Some(mysql::LocalInfileHandler::new(|_, _| {
-            Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "RustGIS sends the server no local file"))
+            Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Syngle Observatory sends the server no local file"))
         })));
     let unchecked = mysql::SslOpts::default().with_danger_accept_invalid_certs(true);
     let attempts: Vec<Option<mysql::SslOpts>> = match &config.tls {
@@ -832,7 +832,7 @@ impl MysqlSource {
         }
         if let Some(window) = window {
             // The column itself, so its spatial index serves. The polygon is a literal (numbers
-            // RustGIS wrote): as a statement parameter, MySQL parses it again for every row,
+            // Syngle Observatory wrote): as a statement parameter, MySQL parses it again for every row,
             // several times slower.
             w.push_str(&format!(
                 " AND MBRIntersects({g}, ST_GeomFromText('{window}', {}{}))",

@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn round_trip() {
-        let big = "RustGIS ".repeat(1000).into_bytes();
+        let big = "Syngle Observatory ".repeat(1000).into_bytes();
         let entries = vec![("project.json".to_string(), big.clone()), ("data/x.bin".to_string(), vec![1, 2, 3])];
         let z = write(&entries).unwrap();
         assert!(z.len() < big.len(), "compressed");

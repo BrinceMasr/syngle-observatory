@@ -5,7 +5,7 @@ description: Add data to the map — files (GeoJSON, CSV with coordinates, Shape
 
 # Adding data
 
-Based on the RustGIS user guide, Data (`read_doc` `{"page": "user-guide/data.md"}`). Every format
+Based on the Syngle Observatory user guide, Data (`read_doc` `{"page": "user-guide/data.md"}`). Every format
 and its limits are listed in `user-guide/data-formats.md`.
 
 - **A file on this computer:** `layer.addData` `{"path": P}`. Reading files asks the user first.

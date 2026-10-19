@@ -69,7 +69,7 @@ impl Projection {
             return Ok(Projection::WebMercator);
         }
         // Build it, not just look it up: a known code whose method has no implementation would
-        // otherwise be accepted and drawn in Web Mercator under its own name (opengeos/RustGIS#208).
+        // otherwise be accepted and drawn in Web Mercator under its own name (upstream #208).
         crate::projection::Projector::new(s)?;
         // A local view keeps its centre.
         if s.starts_with("local:") {
@@ -560,7 +560,7 @@ impl Globe {
     pub fn drape_mesh(&self, merc: &Extent) -> DrapeMesh {
         use rustgis_geom::merc_to_lonlat;
         let mut out = DrapeMesh::default();
-        if merc.is_empty() || !(merc.width() > 0.0 && merc.height() > 0.0) || !merc.width().is_finite() || !merc.height().is_finite() {
+        if !(!merc.is_empty() && merc.width() > 0.0 && merc.height() > 0.0 && merc.width().is_finite() && merc.height().is_finite()) {
             return out;
         }
         let ll =

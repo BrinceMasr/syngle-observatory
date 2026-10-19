@@ -1,6 +1,6 @@
-"""RustGIS from Python: the RustGIS engine in-process, headless.
+"""Syngle Observatory from Python: the Syngle Observatory engine in-process, headless.
 
-Every action in RustGIS is a command with an id and JSON parameters, the same ids the ribbon,
+Every action in Syngle Observatory is a command with an id and JSON parameters, the same ids the ribbon,
 the command line and the AI Assistant use. ``Session.run`` runs any of them; the other methods
 are shortcuts for the common ones.
 
@@ -10,7 +10,7 @@ are shortcuts for the common ones.
 >>> s.to_png("map.png")
 >>> s.save("atlas.rgis")
 
-In Jupyter, ``rustgis.Map`` shows the RustGIS app in the cell, in step with its session
+In Jupyter, ``rustgis.Map`` shows the Syngle Observatory app in the cell, in step with its session
 (``pip install "rustgis[jupyter]"``).
 """
 
@@ -118,7 +118,7 @@ class Layer:
 
 
 class Session:
-    """A RustGIS project open in memory: its maps, layers, symbology, layouts and undo history.
+    """A Syngle Observatory project open in memory: its maps, layers, symbology, layouts and undo history.
 
     Args:
         project: A project file (``.rgis``) to open.
@@ -155,7 +155,7 @@ class Session:
     # Commands ------------------------------------------------------------------------------
 
     def run(self, command: str, params: Optional[Dict[str, Any]] = None, /, **kwargs: Any) -> Any:
-        """Runs a RustGIS command by id.
+        """Runs a Syngle Observatory command by id.
 
         Parameters can be given as a dict, as keyword arguments, or both (keyword arguments win).
         ``Session.commands()`` lists every command with its parameters. The dict is positional

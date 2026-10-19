@@ -1,4 +1,4 @@
-//! "Let your Agents Control RustGIS" (desktop), in the AI Assistant settings. Ticking it turns
+//! "Let your Agents Control Syngle Observatory" (desktop), in the AI Assistant settings. Ticking it turns
 //! on the MCP relay ([`rustgis_assistant::relay`]): AI agents on this computer that connect
 //! (Claude Code, Codex, Cursor…) work on the map open here, with file and network access, no
 //! `--yes` needed. While it's on, the section shows what an agent needs to connect, and nothing
@@ -28,7 +28,7 @@ pub struct ConnectState {
     full: bool,
 }
 
-/// Whether the user lets agents control RustGIS.
+/// Whether the user lets agents control Syngle Observatory.
 pub fn enabled(app: &RustGisApp) -> bool {
     app.connect.on.unwrap_or_else(|| app.services.load_pref.as_ref().and_then(|l| l(PREF)).as_deref() == Some("on"))
 }
@@ -134,7 +134,7 @@ fn start_bridge(app: &mut RustGisApp) -> Result<(), String> {
     if app.file_bridge.is_some() {
         return Ok(());
     }
-    // Tests never touch the real folder (a running RustGIS holds its lock): one of their own, or none.
+    // Tests never touch the real folder (a running Syngle Observatory holds its lock): one of their own, or none.
     #[cfg(test)]
     let started = match app.connect.bridge_dir.clone() {
         Some(dir) => rustgis_assistant::filebridge::FileBridge::start_in(dir),
@@ -199,9 +199,9 @@ fn copyable(ui: &mut egui::Ui, text: &str) {
 pub fn section(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
     let mut on = enabled(app);
     let hint = tl!(
-        "Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. So can a script any program of yours writes to the file bridge shown below. Scripts and plugin management stay off. The choice is remembered across launches."
+        "Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. So can a script any program of yours writes to the file bridge shown below. Scripts and plugin management stay off. The choice is remembered across launches."
     );
-    if ui.checkbox(&mut on, tl!("Let your Agents Control RustGIS")).on_hover_text(hint).changed() {
+    if ui.checkbox(&mut on, tl!("Let your Agents Control Syngle Observatory")).on_hover_text(hint).changed() {
         app.connect.on = Some(on);
         app.connect.error = None;
         if let Some(save) = &app.services.save_pref {
@@ -230,7 +230,7 @@ pub fn section(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
     if on {
         let mut full = full_access(app);
         let hint = tl!(
-            "Agents may also run scripts, tasks and models, and install, remove and run plugins: anything you could do yourself. Turn it on only for an agent you trust with your computer. It lasts until RustGIS closes or agents are turned off."
+            "Agents may also run scripts, tasks and models, and install, remove and run plugins: anything you could do yourself. Turn it on only for an agent you trust with your computer. It lasts until Syngle Observatory closes or agents are turned off."
         );
         if ui.checkbox(&mut full, tl!("Full access")).on_hover_text(hint).changed() {
             app.connect.full = full;
@@ -250,11 +250,11 @@ pub fn section(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
         let (command, result) = (bridge.command_path().display().to_string(), bridge.result_path().display().to_string());
         ui.label(RichText::new(tl!("Agents without MCP can write a script (one command per line) to:")).small());
         copyable(ui, &command);
-        ui.label(RichText::new(tl!("RustGIS runs it and writes the outcome to:")).small());
+        ui.label(RichText::new(tl!("Syngle Observatory runs it and writes the outcome to:")).small());
         copyable(ui, &result);
     }
     let (true, Some(port)) = (on, app.relay.as_ref().map(|r| r.port())) else { return };
-    // What an agent needs: RustGIS's MCP server, attached to this app.
+    // What an agent needs: Syngle Observatory's MCP server, attached to this app.
     let cli = cli();
     let mut args = vec!["mcp".to_string(), "--attach".to_string()];
     if port != rustgis_assistant::relay::DEFAULT_PORT {

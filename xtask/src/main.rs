@@ -1,11 +1,14 @@
-//! `cargo xtask ci | layers | web-pwa <dir>`
+//! `cargo xtask ci | layers | rebrand | web-pwa <dir>`
 //!
 //! - `layers`: enforces the crate layering (nothing below L6 may depend on egui/eframe/rfd).
-//! - `ci`: fmt check, clippy -D warnings, tests and the layer check.
+//! - `rebrand`: fails on upstream branding in the fork (see `rebrand.rs`).
+//! - `ci`: fmt check, clippy -D warnings, tests, the layer check and the rebrand gate.
 //! - `web-pwa <dir>`: writes the web app's service worker into a `trunk build` output directory
-//!   (`dist/web`) from the template `apps/rustgis-web/sw.js`, listing the built files to cache.
+//!   (`dist/canvas`) from the template `apps/rustgis-web/sw.js`, listing the built files to cache.
 
 use std::process::{Command, ExitCode};
+
+mod rebrand;
 
 const LAYERS: &[(&str, u8)] = &[
     ("geom", 0),
@@ -143,12 +146,14 @@ fn main() -> ExitCode {
     let task = std::env::args().nth(1).unwrap_or_default();
     let r = match task.as_str() {
         "layers" => layers(),
+        "rebrand" => rebrand::run(&root()),
         "ci" => cargo(&["fmt", "--all", "--check"])
             .and_then(|_| cargo(&["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]))
             .and_then(|_| cargo(&["test", "--workspace", "-q"]))
-            .and_then(|_| layers()),
+            .and_then(|_| layers())
+            .and_then(|_| rebrand::run(&root())),
         "web-pwa" => web_pwa(std::env::args().nth(2)),
-        _ => Err("usage: cargo xtask ci | layers | web-pwa <dir>".into()),
+        _ => Err("usage: cargo xtask ci | layers | rebrand | web-pwa <dir>".into()),
     };
     match r {
         Ok(()) => ExitCode::SUCCESS,

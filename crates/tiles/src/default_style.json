@@ -1,6 +1,6 @@
 {
   "version": 8,
-  "name": "RustGIS vector tiles",
+  "name": "Syngle Observatory vector tiles",
   "sources": {"vector": {"type": "vector", "tiles": []}},
   "layers": [
     {"id": "background", "type": "background", "paint": {"background-color": "#f2efe9"}},

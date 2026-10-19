@@ -1,68 +1,41 @@
-# Become a Sponsor
+# Funding and support
 
-RustGIS is free and open-source software, released under the
-[Apache License 2.0](https://github.com/opengeos/RustGIS/blob/main/LICENSE) and developed in
-the open. There is no paid tier, no seat licence and no telemetry in the app: everything on this
-site is available to everyone, for good.
+Syngle Observatory is free and open-source software, released under the
+[Apache License 2.0](https://github.com/BrinceMasr/syngle-observatory/blob/main/LICENSE). There is no
+paid tier, no seat licence and no telemetry in the app.
 
-That model only works if the work behind it is sustainable. If RustGIS saves you or your team
-time, sponsorship is the most direct way to keep it moving.
+## The fork takes no money
 
-[Sponsor on GitHub](https://github.com/sponsors/giswqs){ .md-button .md-button--primary }
-[Buy me a coffee](https://buymeacoffee.com/giswqs){ .md-button }
+Syngle Observatory has no sponsorship programme, no donations page and no funding account, and the
+`.github/FUNDING.yml` file was removed so no Sponsor button appears on this repository. Nobody is
+paid for the fork, and nothing on this site asks you to fund it.
 
-## Ways to sponsor
+## Upstream
 
-| Option | What it is | Best for |
-| --- | --- | --- |
-| **[GitHub Sponsors](https://github.com/sponsors/giswqs)** | Monthly or one-time sponsorship, billed through your existing GitHub account. | Individuals and organizations that want recurring support, and companies that can expense it alongside other GitHub spend. |
-| **[Buy Me a Coffee](https://buymeacoffee.com/giswqs)** | A quick one-off contribution, no account required. | A small thank-you for a feature or bug fix that helped you. |
+Syngle Observatory is a hard fork of an open-source GIS project (Apache-2.0), a project of the
+[opengeos](https://github.com/opengeos) ecosystem by [Qiusheng Wu](https://github.com/giswqs); the
+[NOTICE](https://github.com/BrinceMasr/syngle-observatory/blob/main/NOTICE) file names the upstream
+work and its repository exactly, and the app credits it in both About views. He maintains the
+upstream project, GeoLibre and the rest of that ecosystem, not this fork. If you want to fund that upstream work, use the links on the upstream
+project; a contribution there supports the upstream author's projects and does not fund Syngle
+Observatory. The upstream credit, and the licence obligations, are recorded in
+[NOTICE](https://github.com/BrinceMasr/syngle-observatory/blob/main/NOTICE) and
+[ATTRIBUTION.md](https://github.com/BrinceMasr/syngle-observatory/blob/main/ATTRIBUTION.md), and in
+the app's About views.
 
-Both go to [Qiusheng Wu](https://github.com/giswqs), the maintainer of RustGIS and the wider
-[opengeos](https://github.com/opengeos) ecosystem, including [GeoLibre](https://geolibre.app).
+## Other ways to help
 
-## What your sponsorship supports
+None of these cost anything:
 
-- **Development time**: new features from the
-  [roadmap](https://github.com/opengeos/RustGIS/blob/main/ROADMAP.md), bug fixes, and keeping
-  up with fast-moving dependencies such as egui, wgpu and the GeoLibre tool suite.
-- **Shipping to every platform**: the Apple developer account, code signing and notarization
-  behind the macOS app, the Microsoft Store listing, and building the Windows and Linux
-  [packages](installation.md), which the project pays for whether or not anyone sponsors it.
-- **Hosting**: [rustgis.app](https://rustgis.app), the [web app](https://web.rustgis.app), the
-  [plugin registry](https://plugins.rustgis.app), the
-  [download mirror](https://downloads.rustgis.app) and the sample data and fonts at
-  assets.rustgis.app.
-- **Documentation**: the [User Guide](user-guide/index.md) and examples that make the app usable
-  without training.
-- **Support**: triaging issues, answering questions and reviewing community pull requests.
-
-## Sponsoring as an organization
-
-If your team depends on RustGIS and you would like to discuss a larger or invoiced sponsorship,
-please [open an issue](https://github.com/opengeos/RustGIS/issues/new/choose) to get in touch.
-Grant-funded and institutional support is welcome too.
-
-## Other ways to support RustGIS
-
-Sponsorship is not the only currency, and none of these cost anything:
-
-- **Star and share**: [star the repository](https://github.com/opengeos/RustGIS) and tell
-  colleagues who are looking for a fast, open-source GIS.
-- **Report bugs well**: a reproducible [issue](https://github.com/opengeos/RustGIS/issues) is
-  worth a great deal.
+- **Report bugs well**: a reproducible
+  [issue](https://github.com/BrinceMasr/syngle-observatory/issues) is the most useful contribution.
 - **Contribute code or plugins**: see [Contributing](contributing.md) and
   [Plugins](plugins.md#writing-a-plugin).
-- **Translate the interface**: RustGIS ships in 16 languages; see [Languages](i18n.md) to add or
-  improve one.
-
-## Thank you
-
-Every sponsor, contributor, bug reporter and tester has helped make RustGIS what it is. Thank
-you.
+- **Translate the interface**: Syngle Observatory ships in 16 languages; see [Languages](i18n.md) to add
+  or improve one.
 
 ## See also
 
-- [User Guide](user-guide/index.md): what RustGIS can do today.
-- [Comparison](comparison/index.md): RustGIS beside GeoLibre, QGIS and ArcGIS.
+- [User Guide](user-guide/index.md): what Syngle Observatory can do today.
+- [Comparison](comparison/index.md): Syngle Observatory beside GeoLibre, QGIS and ArcGIS.
 - [Contributing](contributing.md): the development setup and quality gate.

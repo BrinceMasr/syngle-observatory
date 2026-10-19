@@ -1,6 +1,6 @@
 //! Running a plugin's WebAssembly module in a sandbox.
 //!
-//! The module is interpreted by `wasmi` with no imports but RustGIS's own (no files, no
+//! The module is interpreted by `wasmi` with no imports but Syngle Observatory's own (no files, no
 //! network, no clock): everything it learns and does goes through the [`Host`]. Each call gets
 //! a fresh instance, a fuel budget (so an endless loop stops) and a memory cap.
 //!
@@ -9,7 +9,7 @@
 //! - the module exports `memory`, `rustgis_alloc(len: i32) -> i32` (room for `len` bytes) and
 //!   `rustgis_call(ptr: i32, len: i32) -> i64`, which reads a request and returns where its
 //!   reply is, packed as `ptr << 32 | len`. A reply is `{"ok": value}` or `{"error": "text"}`.
-//! - RustGIS provides, in module `rustgis`: `call(ptr, len) -> i32`, which runs a host request
+//! - Syngle Observatory provides, in module `rustgis`: `call(ptr, len) -> i32`, which runs a host request
 //!   (`{"op": "...", "params": {...}}`) and returns the length of its reply (`-1` when there is
 //!   none); `result(ptr)`, which copies that reply to `ptr`; and `log(ptr, len)`.
 
@@ -32,9 +32,9 @@ const MAX_LOG: usize = 4_096;
 /// The most entries a module's function tables may hold.
 const MAX_TABLE: usize = 100_000;
 
-/// What a plugin can ask of RustGIS while it runs.
+/// What a plugin can ask of Syngle Observatory while it runs.
 pub trait Host {
-    /// Runs a host request: a RustGIS command by id, or a `host.*` request.
+    /// Runs a host request: a Syngle Observatory command by id, or a `host.*` request.
     fn call(&mut self, op: &str, params: &Value) -> Result<Value, String>;
     /// A line the plugin logged.
     fn log(&mut self, text: &str) {
@@ -75,12 +75,12 @@ pub fn compile(wasm: &[u8]) -> Result<Module, String> {
     let module = Module::new(engine(), wasm).map_err(|e| format!("not a valid WebAssembly module: {e}"))?;
     for name in ["memory", "rustgis_alloc", "rustgis_call"] {
         if module.get_export(name).is_none() {
-            return Err(format!("the module doesn't export '{name}' (was it built with the RustGIS plugin SDK?)"));
+            return Err(format!("the module doesn't export '{name}' (was it built with the Syngle Observatory plugin SDK?)"));
         }
     }
     for import in module.imports() {
         if import.module() != "rustgis" || !matches!(import.name(), "call" | "result" | "log") {
-            return Err(format!("the module needs '{}.{}', which RustGIS doesn't provide", import.module(), import.name()));
+            return Err(format!("the module needs '{}.{}', which Syngle Observatory doesn't provide", import.module(), import.name()));
         }
     }
     Ok(module)
@@ -122,7 +122,7 @@ fn link<'a>(linker: &mut Linker<State<'a>>) -> Result<(), String> {
             };
             let req = if too_many { None } else { read(&mem, &caller, ptr, len).map(|b| serde_json::from_slice::<Value>(&b)) };
             let reply = match req {
-                None if too_many => json!({"error": "too many requests to RustGIS in one call"}),
+                None if too_many => json!({"error": "too many requests to Syngle Observatory in one call"}),
                 Some(Ok(req)) => {
                     let op = req.get("op").and_then(Value::as_str).unwrap_or_default().to_string();
                     let params = req.get("params").cloned().unwrap_or(Value::Null);

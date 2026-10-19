@@ -194,7 +194,7 @@ fn tab_strip(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             app.ui.backstage = true;
         }
         ui.add_space(6.0);
-        // RustGIS's tabs, then plugins' own tabs; the user can hide any of them.
+        // Syngle Observatory's tabs, then plugins' own tabs; the user can hide any of them.
         let mut tabs: Vec<(String, String)> = TABS.iter().map(|t| (t.to_string(), tl!(*t).to_string())).collect();
         tabs.extend(plugin_tabs(app));
         tabs.retain(|(id, _)| !app.ui.hidden_tabs.iter().any(|h| h == id));
@@ -912,7 +912,7 @@ fn project_group(app: &mut RustGisApp, ui: &mut Ui) {
     group(ui, "Project", |ui| {
         big(ui, app, "new_map", "New\nMap", "Add a new map to the project.", "map.new", Value::Null, false, false);
         big(ui, app, "toolbox", "Toolbox", "Browse the geoprocessing toolbox.", "ui.pane.geoprocessing", Value::Null, false, false);
-        big(ui, app, "open", "Import\nProject", "Open a RustGIS project.", "ui.open", Value::Null, false, false);
+        big(ui, app, "open", "Import\nProject", "Open a Syngle Observatory project.", "ui.open", Value::Null, false, false);
         big_menu(ui, app, "new_layout", "New\nLayout", "Add a page layout for printing and exporting the map.", |ui, app| {
             for (id, label, w, h) in rustgis_engine::map::layout::PAGES {
                 let text = format!("{} ({w:.0} × {h:.0} mm)", tl!(*label));
@@ -1135,7 +1135,7 @@ fn notebook_group(app: &mut RustGisApp, ui: &mut Ui) {
                 app,
                 "open",
                 "Add and Open",
-                "Open a RustGIS or Jupyter notebook.",
+                "Open a Syngle Observatory or Jupyter notebook.",
                 "ui.openItem",
                 json!({"kind": "notebook"}),
                 false,
@@ -2825,7 +2825,7 @@ fn plugins_tab(app: &mut RustGisApp, ui: &mut Ui) {
                 app,
                 "search",
                 "Browse Plugins",
-                "Find plugins in the RustGIS plugin registry.",
+                "Find plugins in the Syngle Observatory plugin registry.",
                 "ui.plugins",
                 json!({"open": true, "tab": "browse"}),
                 false,
@@ -2944,7 +2944,7 @@ fn plugin_tab(app: &mut RustGisApp, ui: &mut Ui, plugin: &str) {
 fn settings_tab(app: &mut RustGisApp, ui: &mut Ui) {
     group(ui, "Customize", |ui| {
         let hidden = app.ui.hidden_tabs.clone();
-        // RustGIS's tabs and plugins' tabs.
+        // Syngle Observatory's tabs and plugins' tabs.
         let mut all: Vec<(String, String)> =
             TABS.iter().filter(|t| !FIXED_TABS.contains(*t)).map(|t| (t.to_string(), tl!(*t).to_string())).collect();
         all.extend(plugin_tabs(app));
@@ -2992,9 +2992,9 @@ fn start_project_menu(app: &mut RustGisApp, ui: &mut Ui) {
     let label = format!("{}\n{current}", tl!("Start With"));
     let files = app.opens_files();
     let tip = if files {
-        "What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved."
+        "What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved."
     } else {
-        "What RustGIS opens with: the World Atlas sample or a blank map."
+        "What Syngle Observatory opens with: the World Atlas sample or a blank map."
     };
     big_menu(ui, app, "map", &label, tip, move |ui, app| {
         for (w, name) in [(StartWith::Sample, tl!("World Atlas")), (StartWith::Blank, tl!("Blank Map"))] {
@@ -3024,7 +3024,7 @@ fn start_project_menu(app: &mut RustGisApp, ui: &mut Ui) {
         let item = if chosen.is_empty() { item } else { item.on_hover_text(chosen) };
         if item.clicked() {
             ui.close();
-            if let Some(path) = crate::dialogs::pick_open(&["rgis", "rgisx"], tl!("RustGIS project"))
+            if let Some(path) = crate::dialogs::pick_open(&["rgis", "rgisx"], tl!("Syngle Observatory project"))
                 && let Err(e) = app.run("ui.startup", json!({"project": {"path": path}}))
             {
                 app.session.notify(e, true);
@@ -3117,17 +3117,17 @@ fn help_tab(app: &mut RustGisApp, ui: &mut Ui) {
         );
     });
     group(ui, "Learn", |ui| {
-        big(ui, app, "help", "Learning\nResources", "Open the RustGIS user guide.", "ui.learn", Value::Null, false, false);
+        big(ui, app, "help", "Learning\nResources", "Open the Syngle Observatory user guide.", "ui.learn", Value::Null, false, false);
     });
     group(ui, "Help", |ui| {
-        big(ui, app, "help", "About", "About RustGIS.", "ui.about", Value::Null, false, false);
+        big(ui, app, "help", "About", "About Syngle Observatory.", "ui.about", Value::Null, false, false);
         if !cfg!(target_arch = "wasm32") {
             big(
                 ui,
                 app,
                 "update",
                 "Check for\nUpdates",
-                "See whether a newer RustGIS has been released.",
+                "See whether a newer Syngle Observatory has been released.",
                 "ui.checkUpdate",
                 Value::Null,
                 false,

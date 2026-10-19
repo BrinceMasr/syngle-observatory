@@ -66,7 +66,7 @@ impl Spec {
 /// A style whose sources all have tile addresses.
 pub struct Resolved {
     pub style: Style,
-    /// The style's sprite (an address without `.json`/`.png`), when it has one RustGIS can
+    /// The style's sprite (an address without `.json`/`.png`), when it has one Syngle Observatory can
     /// fetch.
     pub sprite: Option<String>,
     /// Credits from the layer and its sources, without duplicates.

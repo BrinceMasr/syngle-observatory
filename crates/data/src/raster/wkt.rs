@@ -1,5 +1,5 @@
 //! Coordinate systems from WKT, the text of a `.prj` file next to a Shapefile or a grid, and to
-//! WKT for the files RustGIS writes ([`to_wkt`]).
+//! WKT for the files Syngle Observatory writes ([`to_wkt`]).
 //!
 //! WKT1 (OGC and Esri) is read directly. WKT2 (`PROJCRS`, `GEOGCRS`, as PROJ 6 and later write
 //! it) is first rewritten as the WKT1 it corresponds to, its units folded into degrees and the
@@ -1169,7 +1169,7 @@ mod tests {
     /// it, and from its parameters to within a metre of PROJ when it doesn't.
     #[test]
     fn wkt2_corpus() {
-        // Projections RustGIS builds no PROJ definition for: read by their EPSG code only, as in
+        // Projections Syngle Observatory builds no PROJ definition for: read by their EPSG code only, as in
         // WKT1.
         let by_code_only = ["EPSG:2056", "EPSG:5514", "EPSG:3375", "EPSG:3168", "EPSG:2066", "ESRI:54008"];
         let rows = corpus();

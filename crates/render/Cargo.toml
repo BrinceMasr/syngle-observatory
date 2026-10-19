@@ -3,7 +3,7 @@ name = "rustgis-render"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L3: CPU map renderer (tiny-skia), label placement, PNG export, font discovery"
+description = "Syngle Observatory L3: CPU map renderer (tiny-skia), label placement, PNG export, font discovery"
 
 [lints]
 workspace = true

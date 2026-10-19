@@ -126,7 +126,7 @@ struct Request {
     state: Arc<AtomicU8>,
 }
 
-/// A RustGIS-side approval, scoped to one exact MCP message and one run's grant.
+/// A Syngle Observatory-side approval, scoped to one exact MCP message and one run's grant.
 #[derive(Clone)]
 pub struct Approval {
     pub id: u64,
@@ -173,7 +173,7 @@ struct Shared {
     full_access: AtomicBool,
     /// Run-scoped tokens and what each allows ([`Relay::grant`]), by token.
     grants: Mutex<HashMap<String, (bool, PathBuf)>>,
-    /// Local-agent grants require RustGIS approval unless their explicit auto setting is on.
+    /// Local-agent grants require Syngle Observatory approval unless their explicit auto setting is on.
     reviewed: Mutex<HashMap<String, bool>>,
     approvals: Mutex<Vec<Approval>>,
     /// The connections attached with a grant, by connection id, so revoking it closes them.
@@ -548,7 +548,7 @@ impl Relay {
         }
         let listener = TcpListener::bind(addr).map_err(|e| {
             if e.kind() == std::io::ErrorKind::AddrInUse {
-                format!("{addr}: the port is in use (another RustGIS, or another program); set {PORT_ENV} to another port")
+                format!("{addr}: the port is in use (another Syngle Observatory, or another program); set {PORT_ENV} to another port")
             } else {
                 format!("{addr}: {e}")
             }
@@ -766,7 +766,7 @@ impl Relay {
     }
 
     /// A local agent still has file/network capability, but every gated MCP message waits for
-    /// RustGIS-side approval. Neither --yes nor the global relay checkbox bypasses this queue.
+    /// Syngle Observatory-side approval. Neither --yes nor the global relay checkbox bypasses this queue.
     pub fn grant_reviewed(&self, auto: bool) -> Result<Grant, String> {
         let grant = self.grant(true)?;
         let grants = lock(&self.owner.shared.grants);
@@ -1265,7 +1265,7 @@ fn connection(stream: TcpStream, slot: &mut Slot) {
             && app_busy(&shared, asked_at)
             && state.compare_exchange(PENDING, CANCELLED, SeqCst, SeqCst).is_ok()
         {
-            let busy = "RustGIS isn't drawing (a dialog is open, a long task is running, or its window is hidden); the request was not run, try again when it is back";
+            let busy = "Syngle Observatory isn't drawing (a dialog is open, a long task is running, or its window is hidden); the request was not run, try again when it is back";
             if !send_line(&mut output, &error_reply(&id, BUSY_CODE, busy)) {
                 return;
             }

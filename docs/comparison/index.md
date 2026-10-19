@@ -1,30 +1,30 @@
-# RustGIS vs. other GIS platforms
+# Syngle Observatory vs. other GIS platforms
 
-How RustGIS compares to its sibling project **[GeoLibre](https://geolibre.app)** and to the GIS
+How Syngle Observatory compares to its sibling project **[GeoLibre](https://geolibre.app)** and to the GIS
 platforms people most often ask about: **QGIS**, **ArcGIS Pro** and **ArcGIS Online**.
 
-RustGIS is not trying to replace any of these. It fills a narrower spot: a **free and
+Syngle Observatory is not trying to replace any of these. It fills a narrower spot: a **free and
 open-source desktop GIS compiled to a single native program**, with a ribbon interface familiar
 from desktop GIS, every action available as a scriptable command, and the same app running in a
 browser tab through WebAssembly.
 
 !!! note "How to read this"
-    Comparisons like this age quickly and are written by an interested party. The RustGIS
-    column reflects what ships in the [current source](https://github.com/opengeos/RustGIS)
+    Comparisons like this age quickly and are written by an interested party. The Syngle Observatory
+    column reflects what ships in the [current source](https://github.com/BrinceMasr/syngle-observatory)
     as of **October 2026**; the other columns describe each product's mainstream,
     out-of-the-box behaviour, not what is reachable with every add-on or plugin. The GeoLibre,
     QGIS and ArcGIS columns draw on [GeoLibre's own comparison](https://geolibre.app/comparison/),
     where those products are described in more depth. Found something wrong or out of date?
-    Please [open an issue](https://github.com/opengeos/RustGIS/issues).
+    Please [open an issue](https://github.com/BrinceMasr/syngle-observatory/issues).
 
-Coming from QGIS? [RustGIS and QGIS](qgis.md) goes deeper: the pros and cons of each, how QGIS
-concepts map onto RustGIS, and how to use the two together. Deciding between RustGIS and its
-sibling? [RustGIS and GeoLibre](geolibre.md) compares the two in detail.
+Coming from QGIS? [Syngle Observatory and QGIS](qgis.md) goes deeper: the pros and cons of each, how QGIS
+concepts map onto Syngle Observatory, and how to use the two together. Deciding between Syngle Observatory and its
+sibling? [Syngle Observatory and GeoLibre](geolibre.md) compares the two in detail.
 
-## RustGIS and GeoLibre
+## Syngle Observatory and GeoLibre
 
-RustGIS and GeoLibre are both [opengeos](https://github.com/opengeos) projects, and they share
-more than a maintainer: both run the same suite of over 1,000 GeoLibre and Whitebox
+Syngle Observatory is Syngle's hard fork of an upstream open-source GIS (credited in the repository's NOTICE file); GeoLibre is a separate
+[opengeos](https://github.com/opengeos) project. They share the same suite of over 1,000 GeoLibre and Whitebox
 geoprocessing tools, natively on the desktop and on WebAssembly in the browser.
 
 They differ in how they are built and who they suit:
@@ -33,19 +33,19 @@ They differ in how they are built and who they suit:
   It reaches further: cloud-native formats (GeoParquet, PMTiles, Zarr, STAC), databases, OGC
   and Esri services, native Android and iOS apps, a Jupyter widget, a Python package and
   real-time collaboration.
-- **RustGIS** is written entirely in Rust and draws its own interface on the GPU (egui). It is
+- **Syngle Observatory** is written entirely in Rust and draws its own interface on the GPU (egui). It is
   one native program with no browser engine or JavaScript runtime inside, a ribbon laid
   out in the order of the work, and an engine where every button is a command with an id, run the
   same way by the ribbon, `rustgis-cli`, notebooks, models and the AI Assistant.
 
 If you want the widest data access and the most platforms, choose GeoLibre. If you want a
 compact native desktop GIS with a classic ribbon workflow and a fully scriptable command
-engine, choose RustGIS. Both keep your data on your machine. See
-[RustGIS and GeoLibre](geolibre.md) for a closer look.
+engine, choose Syngle Observatory. Both keep your data on your machine. See
+[Syngle Observatory and GeoLibre](geolibre.md) for a closer look.
 
 ## At a glance
 
-| | **RustGIS** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
+| | **Syngle Observatory** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
 |---|---|---|---|---|---|
 | **License** | Apache-2.0, open source | MIT, open source | GPL-2.0+, open source | Proprietary | Proprietary |
 | **Cost** | Free | Free | Free | Paid subscription | Paid subscription (credit-metered analysis) |
@@ -60,7 +60,7 @@ engine, choose RustGIS. Both keep your data on your machine. See
 
 ## Data and formats
 
-| | **RustGIS** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
+| | **Syngle Observatory** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
 |---|---|---|---|---|---|
 | **Format breadth** | Focused: GeoJSON, CSV, Shapefile, GeoPackage, GeoParquet, FlatGeobuf, KML/KMZ and GPX in and out (large files read in place); GML, MapInfo MIF, OSM PBF, TopoJSON, DXF, LiDAR and spreadsheets in; GeoTIFF/COG and ASCII grids; WKT out; with GDAL installed, the vector formats it reads; with DuckDB, SQL queries over files and web addresses | Wide: DuckDB-WASM Spatial plus in-house readers | **Widest**: everything GDAL/OGR reads | Very wide, plus native Esri formats | Common upload formats |
 | **Cloud-native data** | GeoParquet, FlatGeobuf, PMTiles and cloud-optimised GeoTIFF read in place, large files and web addresses alike (by address, over HTTP byte ranges: a COG reads only the tiles the view needs, a FlatGeobuf only its index and the features in view, a GeoParquet its footer and the row groups in view, desktop and web), Zarr 2 and 3 stores (the chunks of the step picked, desktop and web), from `s3://` buckets too (private ones signed with a connection's keys, S3-compatible services by endpoint) | GeoParquet, FlatGeobuf, PMTiles, COG, Zarr, streamed over HTTP | GeoParquet, FlatGeobuf, PMTiles, COG, Zarr | GeoParquet, COG, Zarr | Hosted layers |
@@ -73,7 +73,7 @@ engine, choose RustGIS. Both keep your data on your machine. See
 
 ## Analysis and processing
 
-| | **RustGIS** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
+| | **Syngle Observatory** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
 |---|---|---|---|---|---|
 | **Geoprocessing tools** | **1,000+** (GeoLibre and Whitebox) plus built-in vector tools | **1,000+** (GeoLibre and Whitebox) | **1,000+** (native, GDAL, GRASS, SAGA) | **Most mature and complete**, plus paid extensions | A useful subset, credit-metered |
 | **Where analysis runs** | Your machine; in the browser on WebAssembly | Your browser (WASM); optional Python sidecar on desktop | Your machine | Your machine, or a server | Vendor cloud |
@@ -86,7 +86,7 @@ engine, choose RustGIS. Both keep your data on your machine. See
 
 ## Cartography, layout and output
 
-| | **RustGIS** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
+| | **Syngle Observatory** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
 |---|---|---|---|---|---|
 | **Renderers** | Single, unique values, graduated, proportional; hexagon/square aggregation; raster stretch, RGB, classify, colormap, shaded relief | Single, categorized, graduated, rule-based, heatmap, cluster, proportional | **Richest** | Very rich | Smart-mapping styles |
 | **Labeling** | Collision-free placement, scale ranges, annotation | Data-defined engine | Best-in-class placement | Maplex | Basic |
@@ -97,7 +97,7 @@ engine, choose RustGIS. Both keep your data on your machine. See
 
 ## Automation and extensibility
 
-| | **RustGIS** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
+| | **Syngle Observatory** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
 |---|---|---|---|---|---|
 | **Scripting** | Every action is a command: `rustgis-cli` and the `rustgis` Python package run any of them headlessly; a Script pane | Python console, `geolibre` Python package | PyQGIS, `qgis_process` | `arcpy` | ArcGIS API for Python / JavaScript |
 | **Notebooks** | Built-in notebooks of text and command cells; Jupyter `.ipynb` in and out | The whole app as a Jupyter widget | Bindings, not the UI | Notebooks drive `arcpy` | Hosted notebooks |
@@ -108,7 +108,7 @@ engine, choose RustGIS. Both keep your data on your machine. See
 
 ## Where each one is the right choice
 
-**Choose RustGIS when** you want a compact, native desktop GIS that installs as one program, a
+**Choose Syngle Observatory when** you want a compact, native desktop GIS that installs as one program, a
 ribbon interface without a licence, every action scriptable from
 the command line with the same ids the interface uses, plugins that run sandboxed, or an AI
 assistant whose every step is an undoable command.
@@ -126,17 +126,17 @@ versioned editing, the deepest 3D and imagery workflows, or organizational suppo
 **Choose ArcGIS Online when** the priority is hosted layers, organizational sharing and the
 surrounding Esri app family.
 
-They also compose: RustGIS reads and writes GeoJSON, CSV, GeoPackage, GeoParquet, Shapefile and GeoTIFF, which every tool above
+They also compose: Syngle Observatory reads and writes GeoJSON, CSV, GeoPackage, GeoParquet, Shapefile and GeoTIFF, which every tool above
 opens, and writes MapLibre styles and OGC API Features collections for the web.
 
-## Where RustGIS is not the strongest option
+## Where Syngle Observatory is not the strongest option
 
 Stated plainly, so the tables above are worth trusting:
 
 - **Format breadth.** Databases are PostgreSQL/PostGIS, MySQL and MariaDB (all read only) and DuckDB files (through
   DuckDB), on the desktop, and the web app doesn't write GeoPackages. Other vector formats (File Geodatabase,
   DWG…) and rasters (JPEG 2000, NetCDF, HDF…) need GDAL installed, and SQL queries need
-  DuckDB, which RustGIS calls rather than links.
+  DuckDB, which Syngle Observatory calls rather than links.
 - **Coordinate systems.** Vector data is stored in longitude/latitude; there is no full PROJ.
 - **Editing depth.** No vertex editing of existing features yet, and no versioned or
   multi-user editing.
@@ -144,14 +144,14 @@ Stated plainly, so the tables above are worth trusting:
   spatial statistics are thin or missing, beyond what the GeoLibre and Whitebox tools cover.
 - **Python.** The [`rustgis` package](../python.md) runs commands headlessly, but there is no
   Python console inside the app and no Python plugins.
-- **Maturity.** RustGIS is young. Many features are first versions; see the
-  [roadmap](https://github.com/opengeos/RustGIS/blob/main/ROADMAP.md).
+- **Maturity.** Syngle Observatory is young. Many features are first versions; see the
+  [roadmap](https://github.com/BrinceMasr/syngle-observatory/blob/main/ROADMAP.md).
 
 ## See also
 
-- [User Guide](../user-guide/index.md): what RustGIS does, page by page
-- [RustGIS and GeoLibre](geolibre.md): a closer look at the sibling project
-- [RustGIS and QGIS](qgis.md): a closer look, for QGIS users
-- [Command Line](../cli.md): scripting RustGIS
+- [User Guide](../user-guide/index.md): what Syngle Observatory does, page by page
+- [Syngle Observatory and GeoLibre](geolibre.md): a closer look at the sibling project
+- [Syngle Observatory and QGIS](qgis.md): a closer look, for QGIS users
+- [Command Line](../cli.md): scripting Syngle Observatory
 - [GeoLibre's comparison](https://geolibre.app/comparison/): GeoLibre against QGIS, ArcGIS,
   CARTO, Felt, kepler.gl and Google Earth

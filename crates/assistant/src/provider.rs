@@ -529,7 +529,7 @@ pub enum Turn {
     Results(Vec<ToolResult>),
 }
 
-/// A message from RustGIS in the transcript (a stop, a retry, a compaction): an English template
+/// A message from Syngle Observatory in the transcript (a stop, a retry, a compaction): an English template
 /// naming its values in braces, which the interface translates before filling them in
 /// (`i18n::fmt`); its `Display` is the English text.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -548,13 +548,13 @@ impl Note {
         Note { template, args: args.into() }
     }
 
-    /// Text RustGIS doesn't write itself (a diagnostic), shown as it is.
+    /// Text Syngle Observatory doesn't write itself (a diagnostic), shown as it is.
     pub fn text(text: String) -> Self {
         Note::with("{text}", [("text", text)])
     }
 }
 
-/// Every [`Note`] template RustGIS writes (the interface's catalogs translate each).
+/// Every [`Note`] template Syngle Observatory writes (the interface's catalogs translate each).
 pub const NOTE_TEMPLATES: &[&str] = &[
     "The reply reached its length limit.",
     "The provider's content filter stopped the reply.",
@@ -1109,7 +1109,7 @@ fn responses_request(cfg: &Config, system: &str, turns: &[Turn], tools: &[ToolDe
         body["tools"] = json!([{
             "type": "namespace",
             "name": TOOL_NAMESPACE,
-            "description": "RustGIS: read and change the map, run commands and geoprocessing tools.",
+            "description": "Syngle Observatory: read and change the map, run commands and geoprocessing tools.",
             "tools": functions,
         }]);
         body["tool_choice"] = json!("auto");

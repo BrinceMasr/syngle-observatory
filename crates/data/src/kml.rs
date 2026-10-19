@@ -480,7 +480,9 @@ impl Reader {
             if i == 0 {
                 report.skipped = self.skipped;
                 if self.skipped > 0 {
-                    report.messages.push(format!("{name}: {} placemarks without a geometry RustGIS draws were skipped", self.skipped));
+                    report
+                        .messages
+                        .push(format!("{name}: {} placemarks without a geometry Syngle Observatory draws were skipped", self.skipped));
                 }
                 if self.dropped_keys > 0 {
                     report.messages.push(format!("{name}: extended data past {MAX_KEYS} distinct names was left out"));

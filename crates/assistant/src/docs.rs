@@ -1,10 +1,10 @@
-//! The RustGIS documentation (`docs/`), built in, so an agent can look up how RustGIS works
+//! The Syngle Observatory documentation (`docs/`), built in, so an agent can look up how Syngle Observatory works
 //! without a network: search it by words, then read a page or one of its sections.
 
 use serde_json::{Value, json};
 
 /// Where the published documentation lives.
-pub const SITE: &str = "https://rustgis.app/";
+pub const SITE: &str = "https://github.com/BrinceMasr/syngle-observatory/";
 
 /// One documentation page: its path under `docs/` and its Markdown.
 pub struct Page {

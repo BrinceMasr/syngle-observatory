@@ -5,7 +5,7 @@ description: Run geoprocessing tools and chain them — buffer, clip, erase, dis
 
 # Geoprocessing
 
-Based on the RustGIS user guide, Analysis › Geoprocessing tools
+Based on the Syngle Observatory user guide, Analysis › Geoprocessing tools
 (`read_doc` `{"page": "user-guide/analysis.md", "section": "Geoprocessing tools"}`).
 
 1. **Find the tool:** `search_tools` with words ("buffer", "overlay", "count points"), then

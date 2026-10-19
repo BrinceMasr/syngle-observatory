@@ -365,7 +365,7 @@ mod file {
             // That it is an MBTiles file: the tiles table (or view) has its columns. Nothing is read.
             c.prepare("SELECT zoom_level, tile_column, tile_row, tile_data FROM tiles LIMIT 0").map_err(sql)?;
             // What the metadata says, if it is usable: a zoom that reads as a number, a format
-            // RustGIS knows.
+            // Syngle Observatory knows.
             let says = |k: &str, ok: &dyn Fn(&str) -> bool| {
                 meta.iter().find(|(n, _)| n.eq_ignore_ascii_case(k)).is_some_and(|(_, v)| ok(v.trim()))
             };

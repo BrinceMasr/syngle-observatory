@@ -41,6 +41,8 @@ pub struct Sparse {
 }
 
 /// What a container of a file's parts ([`Sparse::container`]) starts with.
+/// The format's own magic, upstream's: a container the upstream app wrote must still open here,
+/// so it keeps its bytes (the fork's readme says the same of the `.rgis` extensions).
 const CONTAINER_MAGIC: &[u8; 16] = b"RustGIS parts 1\n";
 /// The most parts a container may hold.
 const MAX_PARTS: u64 = 1 << 20;
@@ -238,7 +240,7 @@ pub enum Parse {
     Done(Box<Layout>),
     /// These bytes (first, end) must be read first.
     Need(u64, u64),
-    /// Not a tiled GeoTIFF RustGIS can read a tile at a time (strips, separate band planes…): read
+    /// Not a tiled GeoTIFF Syngle Observatory can read a tile at a time (strips, separate band planes…): read
     /// it whole instead.
     NotTiled(String),
 }

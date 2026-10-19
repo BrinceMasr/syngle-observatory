@@ -54,7 +54,7 @@ pub enum ParamKind {
     VectorLayers,
     /// On or off.
     Bool,
-    /// A file path typed by the user (for data RustGIS doesn't open as a layer, such as LiDAR).
+    /// A file path typed by the user (for data Syngle Observatory doesn't open as a layer, such as LiDAR).
     Path,
 }
 

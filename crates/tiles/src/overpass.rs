@@ -396,7 +396,7 @@ fn collection(features: Vec<(&str, i64, Vec<(String, String)>, Value)>) -> Value
         }
     }
     counts.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-    // `osm_type` and `osm_id` are the columns RustGIS adds; a tag of that name stays in other_tags.
+    // `osm_type` and `osm_id` are the columns Syngle Observatory adds; a tag of that name stays in other_tags.
     let columns: Vec<&str> =
         counts.iter().map(|(k, _)| k.as_str()).filter(|k| !matches!(*k, "osm_type" | "osm_id")).take(MAX_COLUMNS).collect();
     let feats: Vec<Value> = features

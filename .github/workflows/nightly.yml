@@ -4,7 +4,7 @@ name: Nightly
 # the apps, once a night on main. A night with no new commits since the last successful run is
 # skipped. A failure opens an issue (or comments on the open one); the next success closes it.
 #
-#   gh workflow run nightly.yml -R opengeos/RustGIS --ref main
+#   gh workflow run nightly.yml -R BrinceMasr/syngle-observatory --ref main
 
 on:
   schedule:
@@ -22,7 +22,7 @@ jobs:
   changed:
     name: New commits
     # Forks don't run the schedule.
-    if: github.repository == 'opengeos/RustGIS' || github.event_name == 'workflow_dispatch'
+    if: github.repository == 'BrinceMasr/syngle-observatory' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       actions: read

@@ -99,7 +99,7 @@ fn manifests_become_tool_forms() {
     assert_eq!(serde_json::from_str::<Value>(units.default).unwrap(), json!("degrees"));
     // The built-in Buffer still wins by name.
     assert_eq!(rustgis_analysis::tool("Buffer").map(|t| t.id), Some("buffer"));
-    // GeoLibre's choices aren't enforced by RustGIS (#406 covers the built-in tools): some take
+    // GeoLibre's choices aren't enforced by Syngle Observatory (#406 covers the built-in tools): some take
     // a comma-separated list of options, which its runner checks.
     let glcm = tools.iter().find(|t| t.id == "geolibre:glcm_texture").unwrap();
     let list = json!({"input": "dem", "features": "contrast,energy"});

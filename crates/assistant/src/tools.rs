@@ -1,6 +1,6 @@
 //! The tools the model calls, and what they do to the session.
 //!
-//! Every RustGIS action is a command, so a handful of tools reach all of them: the model finds a
+//! Every Syngle Observatory action is a command, so a handful of tools reach all of them: the model finds a
 //! command or geoprocessing tool by searching, then runs it by id. Runs go through
 //! [`Session::run`], so each is one undo step and is restored if it fails. Commands that reach
 //! beyond the project (files, the network, the user's own automation) need the user's approval
@@ -40,7 +40,7 @@ pub fn defs() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "search_commands",
-            description: "Search RustGIS commands (map navigation, layers, symbology, labels, selection, editing, layouts, export…) by words. Returns each command's id, label, ribbon location and parameters.",
+            description: "Search Syngle Observatory commands (map navigation, layers, symbology, labels, selection, editing, layouts, export…) by words. Returns each command's id, label, ribbon location and parameters.",
             schema: json!({
                 "type": "object",
                 "properties": {
@@ -52,7 +52,7 @@ pub fn defs() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "run_command",
-            description: "Run a RustGIS command by id with JSON parameters (see search_commands for ids and parameters). Each run is one undo step. Commands that read or write files, use the network or replace the project ask the user first.",
+            description: "Run a Syngle Observatory command by id with JSON parameters (see search_commands for ids and parameters). Each run is one undo step. Commands that read or write files, use the network or replace the project ask the user first.",
             schema: json!({
                 "type": "object",
                 "properties": {
@@ -114,7 +114,7 @@ pub fn defs() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "search_docs",
-            description: "Search the RustGIS documentation (user guide, command line, plugins, installation…) by words. Returns the best matching sections: page, section, address and a snippet; read_doc reads one.",
+            description: "Search the Syngle Observatory documentation (user guide, command line, plugins, installation…) by words. Returns the best matching sections: page, section, address and a snippet; read_doc reads one.",
             schema: json!({
                 "type": "object",
                 "properties": {
@@ -126,7 +126,7 @@ pub fn defs() -> Vec<ToolDef> {
         },
         ToolDef {
             name: "read_doc",
-            description: "Read a RustGIS documentation page as Markdown, or one section of it (page paths come from search_docs). Long pages read best one section at a time. Results are budgeted; continue at next_offset when present.",
+            description: "Read a Syngle Observatory documentation page as Markdown, or one section of it (page paths come from search_docs). Long pages read best one section at a time. Results are budgeted; continue at next_offset when present.",
             schema: json!({
                 "type": "object",
                 "properties": {
@@ -296,7 +296,7 @@ pub fn run_with_budget(s: &mut Session, call: &ToolCall, tokens: usize) -> Resul
             )
             .map(|v| v.to_string());
         }
-        // Fails the way a bug in RustGIS would, for the agent's panic guard.
+        // Fails the way a bug in Syngle Observatory would, for the agent's panic guard.
         #[cfg(test)]
         #[allow(clippy::panic)]
         "test_panic" => panic!("a test tool panicked"),

@@ -127,11 +127,14 @@ pub fn valid_font(bytes: &[u8], index: u32) -> bool {
     ab_glyph::FontRef::try_from_slice_and_index(bytes, index).is_ok()
 }
 
-/// Where the web app downloads a CJK face from (Noto Sans, SIL Open Font License).
+/// Where the web app downloads a CJK face from: the Noto CJK project's own repository (SIL Open
+/// Font License), not the upstream app's asset host.
 pub fn cjk_font_url(region: CjkRegion) -> &'static str {
     match region {
-        CjkRegion::SimplifiedChinese => "https://assets.rustgis.app/fonts/NotoSansSC-Regular.otf",
-        CjkRegion::Japanese => "https://assets.rustgis.app/fonts/NotoSansJP-Regular.otf",
-        CjkRegion::Korean => "https://assets.rustgis.app/fonts/NotoSansKR-Regular.otf",
+        CjkRegion::SimplifiedChinese => {
+            "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf"
+        }
+        CjkRegion::Japanese => "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf",
+        CjkRegion::Korean => "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF/Korean/NotoSansCJKkr-Regular.otf",
     }
 }

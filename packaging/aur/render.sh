@@ -6,13 +6,13 @@
 # A binary package: it unpacks the release's .deb (x86_64 and aarch64), which already carries
 # both programs, the desktop entry, the project file type and the icons, so installing it needs
 # no Rust toolchain. The checksums come from the release's SHA256SUMS. REPO defaults to
-# opengeos/RustGIS.
+# BrinceMasr/syngle-observatory.
 set -euo pipefail
 
 version="${1:?usage: render.sh <version> <SHA256SUMS>}"
 version="${version#v}"
 sums="${2:?usage: render.sh <version> <SHA256SUMS>}"
-repo="${REPO:-opengeos/RustGIS}"
+repo="${REPO:-BrinceMasr/syngle-observatory}"
 
 # pkgver may not contain a hyphen, so pre-releases are never published.
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not an X.Y.Z version: $version" >&2; exit 1; }
@@ -39,7 +39,7 @@ pkgver=$version
 pkgrel=1
 pkgdesc="Fast, free and open-source GIS for mapping, analyzing and sharing geospatial data"
 arch=('x86_64' 'aarch64')
-url="https://rustgis.app"
+url="https://github.com/BrinceMasr/syngle-observatory"
 license=('Apache-2.0')
 depends=('gcc-libs' 'glibc' 'hicolor-icon-theme' 'libxkbcommon')
 # The window system and GPU libraries are loaded at run time.

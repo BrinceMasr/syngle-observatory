@@ -1,9 +1,9 @@
 # Python
 
 [![PyPI](https://img.shields.io/pypi/v/rustgis.svg)](https://pypi.org/project/rustgis/)
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/BrinceMasr/syngle-observatory/blob/main/apps/rustgis-python/examples/getting-started.ipynb)
 
-The `rustgis` package runs the RustGIS engine inside Python, headless. It opens data and
+The `rustgis` package runs the Syngle Observatory engine inside Python, headless. It opens data and
 projects, runs any command and geoprocessing tool, styles layers, renders maps and saves projects
 that the desktop app opens as they are. There is no app to install and no server to run: the
 engine is a native module built for Windows, macOS and Linux, for Python 3.12 and later.
@@ -12,8 +12,8 @@ engine is a native module built for Windows, macOS and Linux, for Python 3.12 an
 pip install rustgis               # pip install "rustgis[geopandas]" for GeoDataFrames
 ```
 
-A [getting-started notebook](https://github.com/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) walks
-through what follows; [open it in Colab](https://colab.research.google.com/github/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) to try it without installing anything.
+A [getting-started notebook](https://github.com/BrinceMasr/syngle-observatory/blob/main/apps/rustgis-python/examples/getting-started.ipynb) walks
+through what follows; [open it in Colab](https://colab.research.google.com/github/BrinceMasr/syngle-observatory/blob/main/apps/rustgis-python/examples/getting-started.ipynb) to try it without installing anything.
 
 ## A first session
 
@@ -33,7 +33,7 @@ use a `Map`.
 
 ## The app in a notebook
 
-`rustgis.Map` shows the RustGIS app (ribbon, panes, map) in the cell, kept in step with its
+`rustgis.Map` shows the Syngle Observatory app (ribbon, panes, map) in the cell, kept in step with its
 session: what Python adds or styles appears in the app, and what you do in the app (an edit, a new
 layer, a pan) is back in the session for Python to read. It needs
 [anywidget](https://anywidget.dev), and works in JupyterLab, Notebook, VS Code and Colab.
@@ -63,7 +63,7 @@ The whole project goes across after each change, so changes made on both sides a
 merge: the later one wins. A change made in the app replaces Python's project, so `m.undo()`
 undoes only what Python did since.
 
-The app is the [web app](installation.md), loaded from https://web.rustgis.app, so the
+The app is the [web app](installation.md), loaded from https://github.com/BrinceMasr/syngle-observatory, so the
 notebook needs to be online. `Map(url=...)` or the `RUSTGIS_WEB_URL` environment variable points
 it at another copy (a self-hosted one, or `trunk serve` in `apps/rustgis-web`). Settings you
 change in the widget last until the cell is run again: an embedded app keeps nothing in the
@@ -75,7 +75,7 @@ address your data stays on your machine. Point `url=` only at a copy of the app 
 
 ## Commands
 
-Every action in RustGIS is a command with an id and JSON parameters: the same ids the ribbon,
+Every action in Syngle Observatory is a command with an id and JSON parameters: the same ids the ribbon,
 the [command line](cli.md) and the [AI Assistant](user-guide/assistant.md) use.
 `Session.run(id, ...)` runs any of them, with the parameters as keyword arguments, a dict, or
 both. It returns the command's result and raises `rustgis.RustGISError` when the command fails.
@@ -119,4 +119,4 @@ pip install ./apps/rustgis-python                   # or: cd apps/rustgis-python
 python -m pytest apps/rustgis-python/tests
 ```
 
-Its version is the RustGIS version, and each release publishes wheels to PyPI.
+Its version is the Syngle Observatory version, and each release publishes wheels to PyPI.

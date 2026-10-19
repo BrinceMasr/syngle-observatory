@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
-description = "Python bindings to the RustGIS engine (the `rustgis` package on PyPI)"
+description = "Python bindings to the Syngle Observatory engine (the `rustgis` package on PyPI)"
 
 [lints]
 workspace = true

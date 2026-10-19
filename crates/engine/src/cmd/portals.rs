@@ -241,7 +241,7 @@ fn first_layer(s: &mut Session, url: &str, kind: &str) -> Result<String, String>
         .or_else(|| layers.first())
         .and_then(|l| l["name"].as_str())
         .map(str::to_string)
-        .ok_or_else(|| format!("{url}: the service lists no layer RustGIS can add"))
+        .ok_or_else(|| format!("{url}: the service lists no layer Syngle Observatory can add"))
 }
 
 /// A fetch the command waits for (the command line and the assistant; the app fetches off the

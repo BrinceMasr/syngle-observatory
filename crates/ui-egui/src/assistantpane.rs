@@ -292,7 +292,7 @@ fn signed_in(app: &mut RustGisApp, c: &chatgpt::Credentials, ctx: &egui::Context
     app.assistant.account = Some(c.account());
     app.assistant.login_error = None;
     let saved = chatgpt::accounts().unwrap_or_default();
-    // "Use another account" with an account already saved registers RustGIS for it again.
+    // "Use another account" with an account already saved registers Syngle Observatory for it again.
     app.assistant.duplicate = saved.iter().any(|a| a.subject == c.subject && a.client_id != c.client_id);
     app.assistant.accounts = Some(saved);
     // The first sign-in says that the plan is now used (once).
@@ -495,7 +495,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
         app.assistant.signout = None;
         if r.is_err() {
             app.assistant.login_error = Some(
-                tl!("Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.").into(),
+                tl!("Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.").into(),
             );
         }
     }
@@ -953,7 +953,7 @@ fn local_agents_setting(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     } else {
         let names: Vec<&str> = found.iter().map(|(spec, _)| spec.label).collect();
         crate::i18n::fmt(
-            "Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.",
+            "Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.",
             &[("names", &names.join(", "))],
         )
     };
@@ -1104,9 +1104,11 @@ fn plan_notice(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.label(RichText::new(tl!("You're using your ChatGPT plan")).font(semibold(12.5)));
             ui.label(
-                RichText::new(tl!("Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings."))
-                    .small()
-                    .color(t.text_dim),
+                RichText::new(tl!(
+                    "Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings."
+                ))
+                .small()
+                .color(t.text_dim),
             );
             if ui.button(tl!("Got it")).clicked() {
                 app.assistant.welcome = false;
@@ -1230,7 +1232,7 @@ fn composer(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, busy: bool, ctx: &egu
 fn transcript(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, ctx: &egui::Context) {
     let Some(agent) = app.assistant.agent.as_ref() else { return };
     if agent.transcript.is_empty() {
-        ui.label(RichText::new(tl!("Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.")).color(t.text_dim));
+        ui.label(RichText::new(tl!("Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.")).color(t.text_dim));
         ui.add_space(8.0);
         let mut chosen = None;
         for s in SUGGESTIONS {

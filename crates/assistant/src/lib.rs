@@ -1,5 +1,5 @@
 //! L5: the AI assistant. A chat agent that answers questions about the map and acts on it by
-//! running RustGIS commands and geoprocessing tools, through a model of the user's choosing
+//! running Syngle Observatory commands and geoprocessing tools, through a model of the user's choosing
 //! (Anthropic, OpenAI, a ChatGPT account, Gemini, OpenRouter, Ollama or any OpenAI-compatible
 //! server).
 //!

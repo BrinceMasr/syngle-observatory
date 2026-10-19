@@ -70,7 +70,14 @@ impl Family {
 pub const EXTENSIONS: &[&str] = &["gpkg", "parquet", "geoparquet", "fgb", "las", "laz"];
 
 /// The most features one read returns, whatever the request asks for.
-pub const MAX_LIMIT: usize = if cfg!(target_arch = "wasm32") { 500_000 } else { 2_000_000 };
+///
+/// The browser's shipped cap is 500,000, which samples a larger view rather than holding it all.
+///
+/// The `spike` feature raises it to 1,000,000 there, so the "pan with 1M points" target (spike A,
+/// #43) can be measured with every feature really held by the browser view. Off by default, and
+/// raised together with `rustgis-map`'s `spike` feature (which forwards to this one); #77 revisits it.
+pub const MAX_LIMIT: usize =
+    if cfg!(target_arch = "wasm32") { if cfg!(feature = "spike") { 1_000_000 } else { 500_000 } } else { 2_000_000 };
 
 /// Whether a file name is read through a provider.
 pub fn is_source_name(name: &str) -> bool {

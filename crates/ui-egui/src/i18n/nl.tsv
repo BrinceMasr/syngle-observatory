@@ -39,8 +39,8 @@ A value, a field, or two of them joined by + − × ÷. Applies to the selected 
 A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time.	Een Zarr-opslag (formaat 2 of 3) via het webadres, met geconsolideerde metadata, of een map op deze computer. De kaart van een variabele wordt gelezen voor de gekozen stappen van de andere dimensies, zoals tijd.
 About	Over
 About plugins	Over plugins
-About RustGIS	Over RustGIS
-About RustGIS.	Over RustGIS.
+About Syngle Observatory	Over Syngle Observatory
+About Syngle Observatory.	Over Syngle Observatory.
 Above	Boven
 Above Left	Linksboven
 Above Right	Rechtsboven
@@ -169,8 +169,8 @@ Agent input pipe closed.	De invoerpipe van de agent is gesloten.
 Agent input queue is full or disconnected; stop the agent and try again.	De invoerwachtrij van de agent is vol of losgekoppeld; stop de agent en probeer het opnieuw.
 Agent threads	Agent-threads
 Agent work	Agent work
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Agents op deze computer die verbinden (Claude Code, Codex, Cursor en andere) werken met de tools van RustGIS aan de kaart die hier openstaat: ze kunnen bestanden openen en opslaan en het web gebruiken. Scripts en pluginbeheer blijven uit.
-Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with RustGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Agents op deze computer die verbinden (Claude Code, Codex, Cursor en andere) werken met de tools van RustGIS aan de kaart die hier openstaat: ze kunnen bestanden openen en opslaan en het web gebruiken. Scripts en pluginbeheer blijven uit. De keuze wordt onthouden tussen keren starten.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off.	Agents op deze computer die verbinden (Claude Code, Codex, Cursor en andere) werken met de tools van Syngle Observatory aan de kaart die hier openstaat: ze kunnen bestanden openen en opslaan en het web gebruiken. Scripts en pluginbeheer blijven uit.
+Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with Syngle Observatory's tools: they can open and save files and use the web. Scripts and plugin management stay off. The choice is remembered across launches.	Agents op deze computer die verbinden (Claude Code, Codex, Cursor en andere) werken met de tools van Syngle Observatory aan de kaart die hier openstaat: ze kunnen bestanden openen en opslaan en het web gebruiken. Scripts en pluginbeheer blijven uit. De keuze wordt onthouden tussen keren starten.
 Agents then run commands, change files and use the web on this computer without asking you.	Agents voeren dan zonder te vragen opdrachten uit, wijzigen bestanden en gebruiken het web op deze computer.
 Aggregation	Aggregatie
 AI	AI
@@ -190,12 +190,12 @@ Allow ChatGPT plan use when signing in. If your workspace doesn't permit it, ask
 Allow only certain combinations of values across fields.	Alleen bepaalde combinaties van waarden over velden toestaan.
 Allow such actions for this conversation	Zulke acties toestaan voor dit gesprek
 Allow this action?	Deze actie toestaan?
-Allow this agent's RustGIS action?	De RustGIS-actie van deze agent toestaan?
+Allow this agent's Syngle Observatory action?	De Syngle Observatory-actie van deze agent toestaan?
 Along Selected Line	Langs geselecteerde lijn
 Alternating bar	Afwisselende balk
 Altitude	Hoogte
 Always allow	Altijd toestaan
-Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until RustGIS closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3, of een S3-compatibele dienst (MinIO, Cloudflare R2, Wasabi…) via het eindpunt. Sleutels worden bewaard tot RustGIS sluit; een onthouden verbinding behoudt naam, eindpunt en regio, nooit de geheime sleutel.
+Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until Syngle Observatory closes; a remembered connection keeps its name, endpoint and region, never its secret.	Amazon S3, of een S3-compatibele dienst (MinIO, Cloudflare R2, Wasabi…) via het eindpunt. Sleutels worden bewaard tot Syngle Observatory sluit; een onthouden verbinding behoudt naam, eindpunt en regio, nooit de geheime sleutel.
 amenity=cafe, shop	amenity=cafe, shop
 An agent on this computer asks to:	Een agent op deze computer vraagt om:
 An AWS profile	Een AWS-profiel
@@ -228,7 +228,7 @@ Area of use: within {r}° of the {lon}° meridian	Toepassingsgebied: binnen {r}�
 Area of use: within {r}° of {lon}°, {lat}°	Toepassingsgebied: binnen {r}° van {lon}°, {lat}°
 Area {area}   ·   Perimeter {perimeter}	Oppervlakte {area}   ·   Omtrek {perimeter}
 Areas (name, land use, area)	Gebieden (naam, landgebruik, oppervlakte)
-Ask a question about your data, or describe what to do with the map. The assistant runs RustGIS commands for you; every change can be undone.	Stel een vraag over je gegevens, of beschrijf wat er met de kaart moet gebeuren. De assistent voert RustGIS-opdrachten voor je uit; elke wijziging kan ongedaan worden gemaakt.
+Ask a question about your data, or describe what to do with the map. The assistant runs Syngle Observatory commands for you; every change can be undone.	Stel een vraag over je gegevens, of beschrijf wat er met de kaart moet gebeuren. De assistent voert Syngle Observatory-opdrachten voor je uit; elke wijziging kan ongedaan worden gemaakt.
 Ask about the map, or tell it what to do…	Stel een vraag over de kaart, of zeg wat er moet gebeuren…
 Ask about your data, or tell the assistant what to do with the map.	Stel een vraag over je gegevens, of vertel de assistent wat er met de kaart moet gebeuren.
 Asking the catalog…	Catalogus bevragen…
@@ -479,7 +479,7 @@ Color Vision Simulator	Kleurenzichtsimulator
 Colorbar	Kleurenbalk
 Colormap	Kleurenkaart
 Colors from the raster's own color table.	Kleuren uit de eigen kleurentabel van het raster.
-Colour ramps (RustGIS, QGIS, GDAL, GMT)	Kleurverlopen (RustGIS, QGIS, GDAL, GMT)
+Colour ramps (Syngle Observatory, QGIS, GDAL, GMT)	Kleurverlopen (Syngle Observatory, QGIS, GDAL, GMT)
 Columns named like longitude/latitude, easting/northing or geometry are picked for you.	Kolommen met namen als longitude/latitude, easting/northing of geometry worden voor u gekozen.
 Combinations from the box above, one per line	Combinaties uit het vak hierboven, één per regel
 Comma	Komma
@@ -631,7 +631,7 @@ Delete selected rows	Geselecteerde rijen verwijderen
 Delete Style	Stijl verwijderen
 Delete Task	Taak verwijderen
 Delete Task Step	Taakstap verwijderen
-Delete the GeoLibre runner that RustGIS installed. Install it again at any time.	De GeoLibre-runner verwijderen die RustGIS heeft geïnstalleerd. Je kunt hem altijd opnieuw installeren.
+Delete the GeoLibre runner that Syngle Observatory installed. Install it again at any time.	De GeoLibre-runner verwijderen die Syngle Observatory heeft geïnstalleerd. Je kunt hem altijd opnieuw installeren.
 Delete the layout {name}?	Lay-out {name} verwijderen?
 Delete the map {name}?	Kaart {name} verwijderen?
 Delete the selected features.	De geselecteerde objecten verwijderen.
@@ -770,7 +770,7 @@ Element	Element
 Element Properties	Elementeigenschappen
 Elevation	Hoogte
 Elevation profiles along lines, cross sections and more.	Hoogteprofielen langs lijnen, dwarsdoorsneden en meer.
-Eligible requests in RustGIS use your ChatGPT plan. You can manage usage in ChatGPT settings.	Geschikte verzoeken in RustGIS gebruiken je ChatGPT-abonnement. Je kunt het gebruik beheren in de instellingen van ChatGPT.
+Eligible requests in Syngle Observatory use your ChatGPT plan. You can manage usage in ChatGPT settings.	Geschikte verzoeken in Syngle Observatory gebruiken je ChatGPT-abonnement. Je kunt het gebruik beheren in de instellingen van ChatGPT.
 Ellipse	Ellips
 Embeddings	Embeddings
 Ember	Gloed
@@ -908,7 +908,7 @@ Find any command by name (Ctrl+K).	Elke opdracht op naam zoeken (Ctrl+K).
 Find Datasets	Datasets zoeken
 Find Items	Items zoeken
 Find Place	Plaats zoeken
-Find plugins in the RustGIS plugin registry.	Plugins zoeken in het RustGIS-pluginregister.
+Find plugins in the Syngle Observatory plugin registry.	Plugins zoeken in het Syngle Observatory-pluginregister.
 Find Similar	Vergelijkbare zoeken
 Find Tools	Gereedschappen zoeken
 Finding routes…	Routes zoeken…
@@ -932,7 +932,7 @@ Folder…	Map…
 for a store that doesn't say	voor een opslag die het niet aangeeft
 Forest	Bos
 Format	Formaat
-Found: {names}. An agent works on this map through RustGIS's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › RustGIS › Agent work. It asks you before each action.	Gevonden: {names}. Een agent werkt aan deze kaart met de tools van RustGIS en met zijn eigen (web, scripts, bestanden), in een eigen map die bewaard wordt in Documenten › RustGIS › Agent work. Hij vraagt je vóór elke actie.
+Found: {names}. An agent works on this map through Syngle Observatory's tools and with its own (web, scripts, files) in a folder of its own, kept in Documents › Syngle Observatory › Agent work. It asks you before each action.	Gevonden: {names}. Een agent werkt aan deze kaart met de tools van Syngle Observatory en met zijn eigen (web, scripts, bestanden), in een eigen map die bewaard wordt in Documenten › Syngle Observatory › Agent work. Hij vraagt je vóór elke actie.
 Frame rate	Framesnelheid
 Frame rate, draw time, data size and memory.	Framesnelheid, tekentijd, gegevensgrootte en geheugen.
 Free the prepared geometry.	De voorbereide geometrie vrijgeven.
@@ -1091,7 +1091,7 @@ In memory	In het geheugen
 In Progress	Bezig
 in progress	bezig
 In project	In project
-In RustGIS, it can:	In RustGIS kan hij:
+In Syngle Observatory, it can:	In Syngle Observatory kan hij:
 In use	In gebruik
 Indices	Indices
 Infographics	Infographics
@@ -1205,7 +1205,7 @@ Legend	Legenda
 Legend label. Clear it to show the value again.	Legendalabel. Wis het om de waarde weer te tonen.
 Length {length} · gain {gain} m · loss {loss} m	Lengte {length} · stijging {gain} m · daling {loss} m
 Let the assistant hand tasks to agents on this computer	Laat de assistent taken overdragen aan agents op deze computer
-Let your Agents Control RustGIS	Laat je agents RustGIS besturen
+Let your Agents Control Syngle Observatory	Laat je agents Syngle Observatory besturen
 Level	Niveau
 Library	Bibliotheek
 Light and Shadow	Licht en schaduw
@@ -1271,7 +1271,7 @@ Longitude (X)	Lengtegraad (X)
 Look for {name}, outlined on the ribbon.	Zoek {name}, omlijnd op het lint.
 Looking up the place…	Plaats opzoeken…
 Lower Priority	Lagere prioriteit
-Made in RustGIS: samples, drawings and tool outputs	Gemaakt in RustGIS: voorbeelden, tekeningen en uitvoer van gereedschappen
+Made in Syngle Observatory: samples, drawings and tool outputs	Gemaakt in Syngle Observatory: voorbeelden, tekeningen en uitvoer van gereedschappen
 Magnifier	Vergrootglas
 Major Lakes	Grote meren
 Major Rivers	Grote rivieren
@@ -1436,7 +1436,7 @@ No bookmarks yet	Nog geen bladwijzers
 No bookmarks yet. New Bookmark saves the current view of the map.	Nog geen bladwijzers. Nieuwe bladwijzer bewaart de huidige weergave van de kaart.
 no command	geen opdracht
 No connections this session	Geen verbindingen in deze sessie
-No datasets with data RustGIS can add	Geen datasets met gegevens die RustGIS kan toevoegen
+No datasets with data Syngle Observatory can add	Geen datasets met gegevens die Syngle Observatory kan toevoegen
 No edits since the project was saved	Geen bewerkingen sinds het project is opgeslagen
 no home folder	geen thuismap
 No layers match	Geen lagen komen overeen
@@ -1472,8 +1472,8 @@ North	Noord
 North\nArrow	Noord-\npijl
 North Polar Stereographic	Polair stereografisch noord
 not a picture	geen afbeelding
-not a RustGIS layout	geen RustGIS-lay-out
-not a RustGIS project	geen RustGIS-project
+not a Syngle Observatory layout	geen Syngle Observatory-lay-out
+not a Syngle Observatory project	geen Syngle Observatory-project
 not needed	niet nodig
 Not sandboxed	Niet in sandbox
 Not saved yet	Nog niet opgeslagen
@@ -1515,8 +1515,8 @@ Opacity	Dekking
 Open	Openen
 Open a .rgis project	Een .rgis-project openen
 open a layout first	open eerst een lay-out
-Open a RustGIS or Jupyter notebook.	Een RustGIS- of Jupyter-notebook openen.
-Open a RustGIS project.	Een RustGIS-project openen.
+Open a Syngle Observatory or Jupyter notebook.	Een Syngle Observatory- of Jupyter-notebook openen.
+Open a Syngle Observatory project.	Een Syngle Observatory-project openen.
 Open an offline area to edit.	Een offline gebied openen om te bewerken.
 Open browser again	Browser opnieuw openen
 Open Custom Template	Aangepast sjabloon openen
@@ -1539,7 +1539,7 @@ Open the layer's attribute table.	De attributentabel van de laag openen.
 Open the layer's table.	De tabel van de laag openen.
 Open the plugin's panel.	Het paneel van de plugin openen.
 Open the Release Page	Releasepagina openen
-Open the RustGIS user guide.	De RustGIS-gebruikershandleiding openen.
+Open the Syngle Observatory user guide.	De Syngle Observatory-gebruikershandleiding openen.
 Open the selected layer's table.	De tabel van de geselecteerde laag openen.
 Open the Symbology pane.	Het symbologievenster openen.
 Open the task's steps	De stappen van de taak openen
@@ -1660,7 +1660,7 @@ Plugin registry	Pluginregister
 Plugins	Plugins
 Plugins are .rgplugin files. Install only plugins from people you trust.	Plugins zijn .rgplugin-bestanden. Installeer alleen plugins van mensen die je vertrouwt.
 Plugins marked Not sandboxed run as programs on your computer instead, and can do anything you can.	Plugins met het label 'Niet in sandbox' draaien in plaats daarvan als programma's op je computer en kunnen alles wat jij kunt.
-Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through RustGIS's own commands, within the permissions you accept.	Plugins draaien in een sandbox: ze kunnen niet bij je bestanden of het netwerk, en ze wijzigen het project alleen via de eigen opdrachten van RustGIS, binnen de rechten die je accepteert.
+Plugins run in a sandbox: they can't reach your files or the network, and they change the project only through Syngle Observatory's own commands, within the permissions you accept.	Plugins draaien in een sandbox: ze kunnen niet bij je bestanden of het netwerk, en ze wijzigen het project alleen via de eigen opdrachten van Syngle Observatory, binnen de rechten die je accepteert.
 PMTiles archive	PMTiles-archief
 PNG frames (zip)	PNG-frames (zip)
 PNG image	PNG-afbeelding
@@ -1882,26 +1882,26 @@ Run Tool	Gereedschap uitvoeren
 Run {name}	{name} uitvoeren
 Running the query for the map…	Query voor de kaart uitvoeren…
 Running…	Bezig…
-RustGIS	RustGIS
-RustGIS bookmarks	RustGIS-bladwijzers
-RustGIS deep learning package	RustGIS-deep learning-pakket
-RustGIS didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	RustGIS is de vorige keer niet goed afgesloten en is daarom met World Atlas gestart in plaats van met je startproject. Open het project via het menu Project wanneer je zover bent.
-RustGIS is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	RustGIS is een vrij en opensource GIS in puur Rust. Het draait op de desktop en in de browser, en elke actie is een opdracht die u ook vanaf de opdrachtregel kunt uitvoeren.
-RustGIS layer file	RustGIS-laagbestand
-RustGIS layers, maps and projects	RustGIS-lagen, -kaarten en -projecten
-RustGIS layout	RustGIS-lay-out
-RustGIS maps and projects	RustGIS-kaarten en -projecten
-RustGIS or Jupyter notebook	RustGIS- of Jupyter-notebook
-RustGIS plugin	RustGIS-plugin
-RustGIS presentation	RustGIS-presentatie
-RustGIS project	RustGIS-project
-RustGIS project template	RustGIS-projectsjabloon
-RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.	RustGIS liep de vorige keer tegen een interne fout aan. De details staan in {path}; voeg ze toe aan een foutmelding.
-RustGIS report or report template	RustGIS-rapport of -rapportsjabloon
-RustGIS styles	RustGIS-stijlen
-RustGIS task	RustGIS-taak
-RustGIS {latest} is available.	RustGIS {latest} is beschikbaar.
-RustGIS {version} is the latest version.	RustGIS {version} is de nieuwste versie.
+Syngle Observatory	Syngle Observatory
+Syngle Observatory bookmarks	Syngle Observatory-bladwijzers
+Syngle Observatory deep learning package	Syngle Observatory-deep learning-pakket
+Syngle Observatory didn't close properly last time, so it started with the World Atlas instead of your start-up project. Open the project from the Project menu when you're ready.	Syngle Observatory is de vorige keer niet goed afgesloten en is daarom met World Atlas gestart in plaats van met je startproject. Open het project via het menu Project wanneer je zover bent.
+Syngle Observatory is a free and open-source GIS written in pure Rust. It runs on the desktop and in the browser, and every action is a command you can also run from the command line.	Syngle Observatory is een vrij en opensource GIS in puur Rust. Het draait op de desktop en in de browser, en elke actie is een opdracht die u ook vanaf de opdrachtregel kunt uitvoeren.
+Syngle Observatory layer file	Syngle Observatory-laagbestand
+Syngle Observatory layers, maps and projects	Syngle Observatory-lagen, -kaarten en -projecten
+Syngle Observatory layout	Syngle Observatory-lay-out
+Syngle Observatory maps and projects	Syngle Observatory-kaarten en -projecten
+Syngle Observatory or Jupyter notebook	Syngle Observatory- of Jupyter-notebook
+Syngle Observatory plugin	Syngle Observatory-plugin
+Syngle Observatory presentation	Syngle Observatory-presentatie
+Syngle Observatory project	Syngle Observatory-project
+Syngle Observatory project template	Syngle Observatory-projectsjabloon
+Syngle Observatory ran into an internal error last time. The details are in {path}; please attach them to a bug report.	Syngle Observatory liep de vorige keer tegen een interne fout aan. De details staan in {path}; voeg ze toe aan een foutmelding.
+Syngle Observatory report or report template	Syngle Observatory-rapport of -rapportsjabloon
+Syngle Observatory styles	Syngle Observatory-stijlen
+Syngle Observatory task	Syngle Observatory-taak
+Syngle Observatory {latest} is available.	Syngle Observatory {latest} is beschikbaar.
+Syngle Observatory {version} is the latest version.	Syngle Observatory {version} is de nieuwste versie.
 RUSTGIS_ASSISTANT_MODEL	RUSTGIS_ASSISTANT_MODEL
 RUSTGIS_ASSISTANT_PROVIDER	RUSTGIS_ASSISTANT_PROVIDER
 RUSTGIS_GPU	RUSTGIS_GPU
@@ -1910,7 +1910,7 @@ S3 Buckets	S3-buckets
 S3 Connections	S3-verbindingen
 S3…	S3…
 Sample data (Natural Earth)	Voorbeeldgegevens (Natural Earth)
-Sample data © Natural Earth (public domain). RustGIS is licensed under Apache-2.0.	Voorbeeldgegevens © Natural Earth (publiek domein). RustGIS valt onder de Apache-2.0-licentie.
+Sample data © Natural Earth (public domain). Syngle Observatory is licensed under Apache-2.0.	Voorbeeldgegevens © Natural Earth (publiek domein). Syngle Observatory valt onder de Apache-2.0-licentie.
 Sample data: Natural Earth (public domain). Licensed under Apache-2.0.	Voorbeeldgegevens: Natural Earth (publiek domein). Licentie Apache-2.0.
 Saturation	Verzadiging
 Save	Opslaan
@@ -1994,7 +1994,7 @@ Sections	Secties
 See and set the camera's position and scale.	De positie en schaal van de camera bekijken en instellen.
 See the map as people with colour vision deficiencies do.	De kaart zien zoals mensen met een kleurenzichtstoornis.
 See the tools you've run.	De uitgevoerde gereedschappen bekijken.
-See whether a newer RustGIS has been released.	Controleren of er een nieuwere RustGIS is uitgebracht.
+See whether a newer Syngle Observatory has been released.	Controleren of er een nieuwere Syngle Observatory is uitgebracht.
 SELECT	SELECT
 Select	Selecteren
 Select (click)	Selecteren (klik)
@@ -2121,7 +2121,7 @@ Sign out	Afmelden
 Sign-in cancelled.	Aanmelding geannuleerd.
 Sign-in timed out. Start again and allow the browser to reach this computer's loopback address.	De aanmeldtijd is verstreken. Begin opnieuw en geef de browser toegang tot het loopback-adres van deze computer.
 signed in	aangemeld
-Signed out on this computer, but OpenAI didn't confirm it. You can disconnect RustGIS in ChatGPT's settings.	Afgemeld op deze computer, maar OpenAI heeft het niet bevestigd. Je kunt RustGIS ontkoppelen in de instellingen van ChatGPT.
+Signed out on this computer, but OpenAI didn't confirm it. You can disconnect Syngle Observatory in ChatGPT's settings.	Afgemeld op deze computer, maar OpenAI heeft het niet bevestigd. Je kunt Syngle Observatory ontkoppelen in de instellingen van ChatGPT.
 Signing in with ChatGPT works in the desktop app.	Aanmelden met ChatGPT werkt in de desktop-app.
 Signing the asset (Planetary Computer)…	Asset ondertekenen (Planetary Computer)…
 Simplify	Vereenvoudigen
@@ -2311,7 +2311,7 @@ The key is kept for this session only.	De sleutel wordt alleen voor deze sessie 
 The layer's file couldn't be read: {error}	Het bestand van de laag kon niet worden gelezen: {error}
 the layout export failed unexpectedly	het exporteren van de lay-out is onverwacht mislukt
 The link doesn't say its STAC API: Find Items searches {api}	De link noemt geen STAC-API: Items zoeken doorzoekt {api}
-The list of plugins to browse. Leave it empty for the RustGIS plugin registry.	De lijst met plugins om door te bladeren. Laat leeg voor het RustGIS-pluginregister.
+The list of plugins to browse. Leave it empty for the Syngle Observatory plugin registry.	De lijst met plugins om door te bladeren. Laat leeg voor het Syngle Observatory-pluginregister.
 the map has no layers	de kaart heeft geen lagen
 The map is drawn in this coordinate system; layers are projected on the fly.	De kaart wordt in dit coördinatenstelsel getekend; lagen worden direct geprojecteerd.
 The map view as it is now	De kaartweergave zoals ze nu is
@@ -2347,7 +2347,7 @@ The Shapefile's files download as one zip.	De bestanden van de Shapefile worden 
 The sign-in expired or was revoked. Sign in again.	De aanmelding is verlopen of ingetrokken. Meld je opnieuw aan.
 The sign-in is kept in the app's settings folder, for your user account only, and never in a project file.	De aanmelding wordt bewaard in de instellingenmap van de app, alleen voor uw gebruikersaccount, en nooit in een projectbestand.
 The start-up project {path} didn't open: {error}	Het startproject {path} kon niet worden geopend: {error}
-The start-up project {path} isn't a RustGIS project file.	Het startproject {path} is geen RustGIS-projectbestand.
+The start-up project {path} isn't a Syngle Observatory project file.	Het startproject {path} is geen Syngle Observatory-projectbestand.
 The step's layer {name} isn't in the map.	De laag {name} van de stap staat niet in de kaart.
 The store has no variables with two or more dimensions.	De opslag heeft geen variabelen met twee of meer dimensies.
 the store is gone	de opslag is verdwenen
@@ -2365,7 +2365,7 @@ This map has no layers yet.	Deze kaart heeft nog geen lagen.
 This map's thumbnail, from an image.	De miniatuur van deze kaart, uit een afbeelding.
 This map's thumbnail, from the view.	De miniatuur van deze kaart, uit de weergave.
 This plugin can:	Deze plugin kan:
-This plugin runs as a program on your computer, outside RustGIS's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Deze plugin draait als programma op je computer, buiten de sandbox van RustGIS. Hij kan alles wat jij kunt: je bestanden lezen en wijzigen, het netwerk gebruiken en andere programma's starten. Installeer hem alleen als je de maker vertrouwt.
+This plugin runs as a program on your computer, outside Syngle Observatory's sandbox. It can do anything you can: read and change your files, use the network and run other programs. Install it only if you trust its author.	Deze plugin draait als programma op je computer, buiten de sandbox van Syngle Observatory. Hij kan alles wat jij kunt: je bestanden lezen en wijzigen, het netwerk gebruiken en andere programma's starten. Installeer hem alleen als je de maker vertrouwt.
 This request has no one-time allow option.	Dit verzoek heeft geen optie om eenmalig toe te staan.
 This request uses an unsupported capability. Check the parameter and change the request.	Dit verzoek gebruikt een niet-ondersteunde functie. Controleer de parameter en wijzig het verzoek.
 This step names no tool to show.	Deze stap noemt geen gereedschap om te tonen.
@@ -2439,7 +2439,7 @@ Uninstall Plugin	Plugin verwijderen
 Uninstalled {id}.	{id} verwijderd.
 Unique Values	Unieke waarden
 Units	Eenheden
-Unload the GeoLibre tools and stop loading them when RustGIS starts.	De GeoLibre-gereedschappen ontladen en ze niet meer laden bij het starten van RustGIS.
+Unload the GeoLibre tools and stop loading them when Syngle Observatory starts.	De GeoLibre-gereedschappen ontladen en ze niet meer laden bij het starten van Syngle Observatory.
 Unsupervised classes (k-means)	Niet-gesuperviseerde klassen (k-means)
 Unsupervised classes (k-means).	Niet-gesuperviseerde klassen (k-means).
 Up	Omhoog
@@ -2515,13 +2515,13 @@ Web Tool	Webtool
 Website	Website
 Weekly usage	Wekelijks gebruik
 Weights	Gewichten
-Welcome to RustGIS	Welkom bij RustGIS
+Welcome to Syngle Observatory	Welkom bij Syngle Observatory
 West	West
 WFS	WFS
 WGS 84 / Globe	WGS 84 / Wereldbol
 WGS 84 / Web Mercator	WGS 84 / Web Mercator
-What RustGIS opens with: the World Atlas sample or a blank map.	Waarmee RustGIS opent: het voorbeeld World Atlas of een lege kaart.
-What RustGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Waarmee RustGIS opent: het voorbeeld World Atlas, een lege kaart, een project dat je kiest of het laatst geopende of opgeslagen project.
+What Syngle Observatory opens with: the World Atlas sample or a blank map.	Waarmee Syngle Observatory opent: het voorbeeld World Atlas of een lege kaart.
+What Syngle Observatory opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved.	Waarmee Syngle Observatory opent: het voorbeeld World Atlas, een lege kaart, een project dat je kiest of het laatst geopende of opgeslagen project.
 What to do, where to find it and why	Wat te doen, waar het te vinden is en waarom
 What's near a point	Wat er bij een punt in de buurt is
 WHERE	WHERE

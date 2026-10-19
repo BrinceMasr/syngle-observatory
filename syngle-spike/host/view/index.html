@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Syngle spike A host</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #101318; }
+    #view { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+    #hud { position: absolute; right: 8px; bottom: 8px; z-index: 5; color: #9aa4b2;
+           font: 11px ui-monospace, Consolas, monospace; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <iframe id="view" src="/web/?embed" allow="fullscreen"></iframe>
+  <div id="hud"></div>
+  <script src="/host/driver.js"></script>
+</body>
+</html>

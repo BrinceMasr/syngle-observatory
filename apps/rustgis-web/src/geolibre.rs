@@ -32,7 +32,7 @@ function tools() {
 // Listing the manifests runs the runner synchronously (seconds of a blocked page), so the list
 // is kept in the browser's cache under the runner's versioned URL and read from there on later
 // visits. The runner itself loads only when a tool runs.
-// The suffix changes when RustGIS reads the list differently.
+// The suffix changes when Syngle Observatory reads the list differently.
 const MANIFESTS = `${BASE}/manifests.json?v=1`;
 async function manifestCache() {
   try { return await caches.open("rustgis-geolibre"); } catch (_) { return null; }
@@ -62,7 +62,7 @@ export async function geolibre_manifests() {
       }
     }
   } catch (e) {
-    console.warn("RustGIS couldn't keep the GeoLibre tool list; it will be listed again next visit", e);
+    console.warn("Syngle Observatory couldn't keep the GeoLibre tool list; it will be listed again next visit", e);
   }
   return text;
 }

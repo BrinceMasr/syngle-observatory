@@ -1,7 +1,9 @@
-//! Fetches the Natural Earth sample data (public domain) that RustGIS embeds for its basemap
-//! outline and World Atlas sample. The files live in opengeos/rustgis-assets, not in this repo.
+//! Fetches the Natural Earth sample data (public domain) that Syngle Observatory embeds for its basemap
+//! outline and World Atlas sample. The fork has no asset mirror yet, so the files are downloaded from the
+//! upstream asset host (`assets.rustgis.app/data`), which the fork does not control.
 //!
-//! Set `RUSTGIS_DATA_DIR` to a folder holding the files to build offline.
+//! Set `RUSTGIS_DATA_DIR` to a folder holding the five files to build offline (and when that host is
+//! unreachable).
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

@@ -1,0 +1,13 @@
+{
+  "name": "syngle-spike-host",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Spike A (#43): Electron host that measures the native engine + WebAssembly view pair",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^44.9.0"
+  }
+}

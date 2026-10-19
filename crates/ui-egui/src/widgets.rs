@@ -462,7 +462,7 @@ pub fn search_field(ui: &mut Ui, text: &mut String, hint: &str) -> Response {
     .inner
 }
 
-/// A colour button whose picker has no "Additive" blending (#381). RustGIS symbols blend normally
+/// A colour button whose picker has no "Additive" blending (#381). Syngle Observatory symbols blend normally
 /// only, and egui's additive colour is a premultiplied one with zero alpha, which unmultiplies to
 /// transparent black (`to_srgba_unmultiplied`): picking it made the symbol disappear.
 pub fn color_button(ui: &mut Ui, color: &mut egui::Color32) -> Response {
@@ -485,7 +485,7 @@ mod tests {
 
     #[test]
     fn colour_buttons_offer_no_additive_blending() {
-        // egui's own button offers it, so the check can tell; RustGIS's doesn't (#381).
+        // egui's own button offers it, so the check can tell; Syngle Observatory's doesn't (#381).
         assert!(offers_additive(|ui, c| {
             ui.color_edit_button_srgba(c);
         }));

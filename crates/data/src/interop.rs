@@ -82,7 +82,7 @@ pub fn to_kml(ds: &Dataset, name_field: Option<usize>) -> String {
 /// A GPX file: points become waypoints, lines tracks (polygon outlines too).
 pub fn to_gpx(ds: &Dataset, name_field: Option<usize>) -> String {
     let mut out = String::from(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\" creator=\"RustGIS\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n",
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\" creator=\"Syngle Observatory\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n",
     );
     let pt = |c: &Coord| format!("lat=\"{}\" lon=\"{}\"", c.y, c.x);
     let mut tracks = String::new();

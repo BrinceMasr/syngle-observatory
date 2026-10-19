@@ -1,0 +1,28 @@
+Syngle Observatory
+Copyright (c) 2026 Syngle (BrinceMasr) and the Syngle Observatory contributors.
+Licensed under the Apache License, Version 2.0 (LICENSE).
+
+Fork and modification notice
+
+Syngle Observatory is a hard fork of RustGIS (https://github.com/opengeos/RustGIS), Copyright the
+RustGIS contributors, licensed under the Apache License, Version 2.0. The fork is owned by Syngle,
+is changed freely and is never merged back; upstream is read-only.
+
+Files in this repository have been modified for the fork: the product name ("Syngle Observatory"),
+the application id (com.syngle.observatory), every user-visible string and the interface
+translations, the web page and its manifest, the packaging metadata for every platform, and the
+community, website, plugin-registry and download addresses of the upstream project (the fork has no
+website, community forum, plugin registry, asset host or download mirror of its own, so commands
+that need one require an explicit address). Two hosts upstream also uses are still read, because
+the fork has no mirror for them: the build fetches the Natural Earth sample data from the upstream
+asset host (`assets.rustgis.app/data`, set `RUSTGIS_DATA_DIR` to build offline), and the GeoLibre tool
+releases and planet basemaps come from the opengeos project (`opengeos/geolibre-rust` releases and
+`tiles.geolibre.app`), which are third-party works, not fork infrastructure. The upstream project's
+icon, logo and brand assets were not carried over. The two licence-relevant files, LICENSE
+(Apache-2.0, unchanged) and ATTRIBUTION.md (every third-party work, unmodified), are kept, and the
+upstream project is credited there and in both About views (desktop and browser).
+
+Changes specific to the fork, beyond the rename: `rustgis-web` gains a `canvas-only` feature (the
+map view alone, no egui chrome; ADR 0010), and `crates/observatory-engine` is the native engine
+sidecar moved out of `syngle-spike/engine` (#43) into a fork crate with tests. See the fork's
+ticket and the Syngle-Ecosystem repository for the decisions.

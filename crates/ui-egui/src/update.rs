@@ -7,9 +7,9 @@ use serde_json::Value;
 use crate::{RustGisApp, Slot};
 
 /// The latest release, as JSON naming its tag and page.
-const LATEST: &str = "https://api.github.com/repos/opengeos/RustGIS/releases/latest";
+const LATEST: &str = "https://api.github.com/repos/BrinceMasr/syngle-observatory/releases/latest";
 /// Every release, for when the check can't reach GitHub.
-const RELEASES: &str = "https://github.com/opengeos/RustGIS/releases";
+const RELEASES: &str = "https://github.com/BrinceMasr/syngle-observatory/releases";
 /// The release JSON is a few kilobytes; anything far larger isn't it.
 const MAX_BYTES: usize = 1024 * 1024;
 
@@ -137,7 +137,10 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
                     });
                 }
                 Some(Ok(r)) if is_newer(&r.version, current) => {
-                    ui.label(egui::RichText::new(crate::i18n::fmt("RustGIS {latest} is available.", &[("latest", &r.version)])).strong());
+                    ui.label(
+                        egui::RichText::new(crate::i18n::fmt("Syngle Observatory {latest} is available.", &[("latest", &r.version)]))
+                            .strong(),
+                    );
                     ui.label(crate::i18n::fmt("You have version {version}.", &[("version", current)]));
                     ui.add_space(4.0);
                     ui.label(egui::RichText::new(tl!("Installed with Homebrew, winget, the AUR or COPR? Update it there.")).small().weak());
@@ -152,7 +155,7 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
                     });
                 }
                 Some(Ok(_)) => {
-                    ui.label(crate::i18n::fmt("RustGIS {version} is the latest version.", &[("version", current)]));
+                    ui.label(crate::i18n::fmt("Syngle Observatory {version} is the latest version.", &[("version", current)]));
                     ui.add_space(6.0);
                     if ui.button(tl!("Check Again")).clicked() {
                         again = true;
@@ -212,7 +215,9 @@ mod tests {
 
     #[test]
     fn release_json_is_read_and_checked() {
-        let r = parse_release(br#"{"tag_name":"v0.2.0","html_url":"https://github.com/opengeos/RustGIS/releases/tag/v0.2.0"}"#).unwrap();
+        let r =
+            parse_release(br#"{"tag_name":"v0.2.0","html_url":"https://github.com/BrinceMasr/syngle-observatory/releases/tag/v0.2.0"}"#)
+                .unwrap();
         assert_eq!(r.version, "0.2.0");
         assert!(r.url.ends_with("/v0.2.0"));
         // A page that isn't HTTPS falls back to the releases list.

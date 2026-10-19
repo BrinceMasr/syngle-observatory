@@ -2,7 +2,7 @@
 //!
 //! A plugin command (`plugin:<plugin>/<command>`) runs through [`Session::run`] like any other:
 //! one undo step, restored if it fails. While it runs, the plugin reaches the project through
-//! the requests [`Bridge`] answers: RustGIS commands by id, and a few `host.*` requests for
+//! the requests [`Bridge`] answers: Syngle Observatory commands by id, and a few `host.*` requests for
 //! reading layers and fetching documents (`host.fetch`, see [`fetch`]). What it may run depends
 //! on the permissions it declared.
 
@@ -27,7 +27,7 @@ pub fn commands() -> Vec<C> {
         C::new("plugin.enable", "Enable Plugin", "Plugins › Manage", enable).view().params(r#"{"id": plugin id, "enabled"?: bool}"#),
         C::new("plugin.registry", "Browse Plugins", "Plugins › Manage", browse)
             .view()
-            .params(r#"{"url"?: "registry.json (default: https://plugins.rustgis.app/registry.json)"}"#),
+            .params(r#"{"url"?: "registry.json (default: https://plugins.example.org/registry.json)"}"#),
         C::new("plugin.installFromRegistry", "Install Plugin From Registry", "Plugins › Manage", install_from_registry)
             .view()
             .params(r#"{"id": plugin id, "url"?: registry.json}"#),
@@ -177,6 +177,9 @@ pub fn entry_status(e: &rustgis_plugins::registry::Entry) -> Value {
 
 fn browse(_: &mut Session, p: &Value) -> CmdResult {
     let url = ps(p, "url").map(str::trim).filter(|s| !s.is_empty()).unwrap_or(rustgis_plugins::registry::DEFAULT_URL);
+    if url.is_empty() {
+        return Err("no plugin registry is configured; pass url= with the registry's address".into());
+    }
     #[cfg(not(target_arch = "wasm32"))]
     {
         Ok(Value::Array(fetch_registry(url)?.iter().map(entry_status).collect()))
@@ -204,6 +207,9 @@ pub fn install_checked(e: &rustgis_plugins::registry::Entry, bytes: &[u8]) -> Re
 fn install_from_registry(_: &mut Session, p: &Value) -> CmdResult {
     let id = ps(p, "id").ok_or("id is required")?;
     let url = ps(p, "url").map(str::trim).filter(|s| !s.is_empty()).unwrap_or(rustgis_plugins::registry::DEFAULT_URL);
+    if url.is_empty() {
+        return Err("no plugin registry is configured; pass url= with the registry's address".into());
+    }
     #[cfg(not(target_arch = "wasm32"))]
     {
         let entries = fetch_registry(url)?;
