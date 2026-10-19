@@ -20,6 +20,7 @@
 //! | `b"RustGIS parts 1\n"` (`crates/data/src/raster/cog.rs`) | the parts container's on-disk magic: renaming it would stop the fork reading containers the upstream app wrote |
 //! | `NOTICE`, `ATTRIBUTION.md`, `LICENSE`, `README.md` | the Apache-2.0 notices must name the work they came from, including its repository, and the README's provenance section says once where the fork came from |
 //! | `crates/render/build.rs`'s `assets.rustgis.app/data` | the public-domain Natural Earth sample data the build fetches; the fork hosts no data mirror |
+//! | `crates/ui-egui/src/chrome.rs`'s About credit | the fork names the work it came from in both About views, as a courtesy and as NOTICE promises; one exact sentence and address, in that one file |
 //!
 //! This file is skipped, since it names the banned strings to ban them. Binary files are skipped
 //! (the check is a text check).
@@ -35,6 +36,14 @@ const PROVENANCE: &[&str] = &["NOTICE", "ATTRIBUTION.md", "LICENSE", "README.md"
 /// Natural Earth sample data. The exact host and path, not the domain.
 const SAMPLE_DATA: &str = "assets.rustgis.app/data";
 
+/// The About views' upstream credit, in the one file that draws them. Apache-2.0 asks only for the
+/// licence, so this is a courtesy, but NOTICE promises it: both About views are built by
+/// `project_links`, and the sentence and its address are stripped only while scanning that file, so
+/// the line cannot be reused elsewhere to smuggle the upstream branding in.
+const CREDIT_FILE: &str = "crates/ui-egui/src/chrome.rs";
+const CREDIT_TEXT: &[&str] =
+    &["A hard fork of RustGIS, by Qiusheng Wu and the RustGIS contributors (Apache-2.0).", "https://github.com/opengeos/RustGIS"];
+
 /// The strings that legitimately carry the upstream name inside code: the Python package's
 /// exception class (an inherited API identifier), and the parts container's on-disk magic, which
 /// must keep its bytes so a container the upstream app wrote still opens here.
@@ -47,6 +56,11 @@ fn offences(file: &str, line: &str) -> Vec<String> {
     // The sample-data address is removed first, so its host alone does not trip the domain check,
     // and the Python package's exception class is an identifier, not a product string.
     let mut scan = line.replace(SAMPLE_DATA, "");
+    if file == CREDIT_FILE {
+        for credit in CREDIT_TEXT {
+            scan = scan.replace(credit, "");
+        }
+    }
     for identifier in IDENTIFIERS {
         scan = scan.replace(identifier, "");
     }
@@ -145,12 +159,20 @@ mod tests {
         assert!(allowed("crates/data/src/raster/cog.rs", "const CONTAINER_MAGIC: &[u8; 16] = b\"RustGIS parts 1\\n\";"));
         // The build-time sample data fetch is the one upstream address left.
         assert!(allowed("crates/render/build.rs", "const BASE: &str = \"https://assets.rustgis.app/data\";"));
+        // The About views' credit: that exact sentence and address, in that one file only.
+        assert!(allowed(
+            CREDIT_FILE,
+            "            tl!(\"A hard fork of RustGIS, by Qiusheng Wu and the RustGIS contributors (Apache-2.0).\"),"
+        ));
+        assert!(allowed(CREDIT_FILE, "            \"https://github.com/opengeos/RustGIS\","));
     }
 
     #[test]
     fn user_visible_branding_is_banned() {
         assert!(banned("apps/rustgis-web/index.html", "<title>RustGIS</title>"));
         assert!(banned("crates/x/src/lib.rs", "About RustGIS"));
+        // The credit is allowed in the About file only, not as a loophole elsewhere.
+        assert!(banned("crates/x/src/lib.rs", "A hard fork of RustGIS, by Qiusheng Wu and the RustGIS contributors (Apache-2.0)."));
         assert!(banned("docs/x.md", "see https://rustgis.app/user-guide/"));
         assert!(banned("docs/x.md", "see https://web.rustgis.app"));
         assert!(banned("Cargo.toml", "repository = \"https://github.com/opengeos/RustGIS\""));

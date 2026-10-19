@@ -11,7 +11,9 @@ license = "Apache-2.0"
 # PyPI wants the file at the root of the sdist, where this puts it.
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
-authors = [{ name = "Qiusheng Wu", email = "giswqs@gmail.com" }]
+# The fork's own package metadata (NOTICE credits the upstream project and ATTRIBUTION.md the
+# third-party works); the upstream author is not the maintainer of this fork.
+authors = [{ name = "Syngle" }]
 keywords = ["gis", "geospatial", "maps", "geoprocessing", "rust", "jupyter", "anywidget"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -31,7 +33,7 @@ test = ["pytest>=7", "anywidget>=0.9"]
 
 [project.urls]
 Homepage = "https://github.com/BrinceMasr/syngle-observatory"
-Documentation = "https://github.com/BrinceMasr/syngle-observatory/python/"
+Documentation = "https://github.com/BrinceMasr/syngle-observatory/blob/main/docs/python.md"
 Repository = "https://github.com/BrinceMasr/syngle-observatory"
 Issues = "https://github.com/BrinceMasr/syngle-observatory/issues"
 

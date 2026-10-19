@@ -38,7 +38,7 @@ nav = [
   { "Languages" = "i18n.md" },
   { "Architecture" = "architecture.md" },
   { "Contributing" = "contributing.md" },
-  { "Sponsor" = "sponsor.md" },
+  { "Funding" = "sponsor.md" },
   { "Privacy" = "privacy.md" },
   { "Report Issues" = "https://github.com/BrinceMasr/syngle-observatory/issues" },
 ]
@@ -91,12 +91,3 @@ icon = "fontawesome/brands/github"
 link = "https://github.com/BrinceMasr/syngle-observatory"
 name = "Syngle Observatory on GitHub"
 
-[[project.extra.social]]
-icon = "fontawesome/solid/heart"
-link = "https://github.com/sponsors/giswqs"
-name = "Sponsor Syngle Observatory on GitHub"
-
-[[project.extra.social]]
-icon = "fontawesome/solid/mug-hot"
-link = "https://buymeacoffee.com/giswqs"
-name = "Buy the maintainer a coffee"

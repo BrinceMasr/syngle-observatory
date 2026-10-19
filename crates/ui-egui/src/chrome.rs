@@ -755,7 +755,9 @@ pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// The project's website and source code, opened in a new tab in the browser build so the app
-/// (and its map) stays open.
+/// (and its map) stays open, then the upstream project the fork came from. Both About views show
+/// this row, which is the credit NOTICE promises (Apache-2.0 asks only for the licence, this is a
+/// courtesy to the authors).
 pub(crate) fn project_links(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.add(
@@ -766,6 +768,13 @@ pub(crate) fn project_links(ui: &mut egui::Ui) {
             egui::Hyperlink::from_label_and_url(tl!("GitHub"), "https://github.com/BrinceMasr/syngle-observatory").open_in_new_tab(true),
         );
     });
+    ui.add(
+        egui::Hyperlink::from_label_and_url(
+            tl!("A hard fork of RustGIS, by Qiusheng Wu and the RustGIS contributors (Apache-2.0)."),
+            "https://github.com/opengeos/RustGIS",
+        )
+        .open_in_new_tab(true),
+    );
 }
 
 pub fn about(app: &mut RustGisApp, ctx: &egui::Context) {
