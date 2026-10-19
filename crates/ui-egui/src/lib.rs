@@ -23,6 +23,7 @@ mod cswui;
 mod dialogs;
 mod docpanes;
 mod editpanes;
+mod embeddingsui;
 mod failureui;
 mod geocodeui;
 mod globe_drape;
@@ -495,6 +496,8 @@ pub struct UiState {
     pub catalogs: catalogsui::State,
     /// Search Open Data: the portal, the search under way and the datasets found.
     pub opendata: opendataui::State,
+    /// Satellite Embeddings: the dataset, its choices, the read under way and the tiles found.
+    pub embeddings: embeddingsui::State,
     /// Find Place searches and Geocode Addresses runs under way.
     pub geocode: geocodeui::State,
     /// The Directions pane: places, routes and a simulated drive.
@@ -609,6 +612,7 @@ impl Default for UiState {
             portals: Default::default(),
             catalogs: Default::default(),
             opendata: Default::default(),
+            embeddings: Default::default(),
             geocode: Default::default(),
             nav: Default::default(),
             bookmarks: Default::default(),
@@ -2607,6 +2611,12 @@ impl RustGisApp {
                 if let Some(name) = panes::web_data_name(which) {
                     self.ui.web_data = name;
                     self.ui.open_right(RightPane::WebData);
+                    // Satellite Embeddings opens on a dataset, when given one.
+                    if name == "embeddings"
+                        && let Some(d) = p.get("dataset").and_then(Value::as_str)
+                    {
+                        embeddingsui::pick(self, d)?;
+                    }
                     return Ok(Value::Null);
                 }
                 self.dialogs.open(which, &self.session)?;
@@ -2980,6 +2990,7 @@ impl RustGisApp {
         portalsui::poll(self, ctx);
         catalogsui::poll(self, ctx);
         opendataui::poll(self, ctx);
+        embeddingsui::poll(self, ctx);
         geocodeui::poll(self, ctx);
         navui::poll(self, ctx);
         zarrui::poll(self, ctx);

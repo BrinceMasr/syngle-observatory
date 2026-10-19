@@ -536,6 +536,7 @@ fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
     menu_item(ui, app, "", "OpenAerialMap…", "ui.searchOpenData", svc("openaerialmap"));
     menu_item(ui, app, "", "OpenStreetMap…", "ui.dialog", json!({"name": "osm"}));
     menu_item(ui, app, "", "Overture Maps…", "ui.dialog", json!({"name": "overture"}));
+    menu_item(ui, app, "", "Satellite Embeddings…", "ui.dialog", json!({"name": "embeddings"}));
     menu_item(ui, app, "", "Search Open Data…", "ui.searchOpenData", Value::Null);
     menu_item(ui, app, "", "Source Cooperative…", "ui.dialog", json!({"name": "sourcecoop"}));
     menu_item(ui, app, "", "STAC Search…", "ui.dialog", json!({"name": "stac"}));

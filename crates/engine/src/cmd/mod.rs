@@ -7,6 +7,7 @@ pub mod design;
 pub mod directions;
 pub mod edit;
 pub mod effects;
+pub mod embeddings;
 pub mod geocode;
 pub mod gp;
 pub mod graphics;
@@ -85,6 +86,7 @@ pub fn all() -> Vec<CommandSpec> {
     v.extend(stac::commands());
     v.extend(portals::commands());
     v.extend(catalogs::commands());
+    v.extend(embeddings::commands());
     v
 }
 

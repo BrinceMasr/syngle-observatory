@@ -4,6 +4,7 @@
 use rustgis_map::effects::Blend;
 use rustgis_map::planets;
 use rustgis_map::tiles::{MAX_TILE_LAYERS, TileKind, TileLayer};
+use rustgis_render::rustgis_tiles::cog::{self, Look};
 use serde_json::{Value, json};
 
 use super::{b, f, ps};
@@ -39,6 +40,8 @@ pub const NETWORK: &[&str] = &[
     "portal.search",
     "portal.add",
     "portal.files",
+    "embeddings.search",
+    "embeddings.add",
 ];
 
 pub fn commands() -> Vec<C> {
@@ -49,7 +52,7 @@ pub fn commands() -> Vec<C> {
         C::new("map.removeTiles", "Remove Tile Layer", "Home › Add", remove)
             .params(r#"{"name"?: text, "index"?: number, "id"?: catalog id} (removes every tile layer when none is given)"#),
         C::new("map.setTiles", "Tile Layer Properties", "Home › Add", set).params(
-            r#"{"name"?: text | "index"?: number (0 = top) | "id"?: catalog id, "visible"?: bool, "opacity"?: 0–1, "blend"?: "normal"|"multiply"|"screen"|"overlay"|"darken"|"lighten"|"difference", "move"?: "up"|"down"|"top"|"bottom", "rename"?: text}"#,
+            r#"{"name"?: text | "index"?: number (0 = top) | "id"?: catalog id, "visible"?: bool, "opacity"?: 0–1, "blend"?: "normal"|"multiply"|"screen"|"overlay"|"darken"|"lighten"|"difference", "move"?: "up"|"down"|"top"|"bottom", "rename"?: text, "bands"?: [red, green, blue] | [band] (a cloud-optimised GeoTIFF's bands shown, from 1; [] for its own), "range"?: [low, high] (the values shown from black to full colour; null: each band's 2nd–98th percentile), "dequantize"?: "aef" (AlphaEarth's quantised embeddings) | "none"}"#,
         ),
         C::new("map.tiles", "Tile Layers", "Home › Add", |s, _| Ok(list(s, false))).view(),
         C::new("map.body", "Celestial Body", "Home › Add", body).params(
@@ -278,9 +281,52 @@ fn blend(p: &Value) -> Result<Option<Blend>, String> {
     ps(p, "blend").map(|m| Blend::from_code(m).ok_or_else(|| format!("unknown blend mode '{m}'"))).transpose()
 }
 
+/// A change of a COG layer's look a command asks for (`bands`, `range`, `dequantize`), applied to
+/// the look it has; `None` when it asks for none.
+#[allow(clippy::type_complexity)]
+fn cog_look(p: &Value) -> Result<Option<Box<dyn Fn(Look) -> Look>>, String> {
+    if p.get("bands").is_none() && p.get("range").is_none() && p.get("dequantize").is_none() {
+        return Ok(None);
+    }
+    let bands: Option<Vec<usize>> = match p.get("bands") {
+        None => None,
+        Some(Value::Array(a)) => {
+            let b: Option<Vec<usize>> = a.iter().map(|v| v.as_u64().filter(|b| (1..=65_535).contains(b)).map(|b| b as usize - 1)).collect();
+            match b {
+                Some(b) if matches!(b.len(), 0 | 1 | 3) => Some(b),
+                _ => return Err("bands is [red, green, blue] or [band], each from 1".into()),
+            }
+        }
+        Some(_) => return Err("bands is [red, green, blue] or [band], each from 1".into()),
+    };
+    let range: Option<Option<(f32, f32)>> = match p.get("range") {
+        None => None,
+        Some(Value::Null) => Some(None),
+        Some(Value::Array(a)) => match (a.first().and_then(Value::as_f64), a.get(1).and_then(Value::as_f64), a.len()) {
+            (Some(lo), Some(hi), 2) if lo.is_finite() && hi.is_finite() && hi > lo && (hi as f32) > (lo as f32) => {
+                Some(Some((lo as f32, hi as f32)))
+            }
+            _ => return Err("range is [low, high], low below high".into()),
+        },
+        Some(_) => return Err("range is [low, high], low below high".into()),
+    };
+    let aef = match ps(p, "dequantize") {
+        None => None,
+        Some("aef") => Some(true),
+        Some("none") => Some(false),
+        Some(other) => return Err(format!("unknown dequantize '{other}' (aef or none)")),
+    };
+    Ok(Some(Box::new(move |old: Look| Look {
+        bands: bands.clone().unwrap_or(old.bands),
+        range: range.unwrap_or(old.range),
+        aef: aef.unwrap_or(old.aef),
+    })))
+}
+
 fn set(s: &mut Session, p: &Value) -> CmdResult {
     let i = find(s, p)?.ok_or("name or index is required")?;
     let mode = blend(p)?;
+    let look = cog_look(p)?;
     let m = s.map_mut();
     let n = m.tiles.len();
     let Some(t) = m.tiles.get_mut(i) else { return Err("no tile layer at that index".into()) };
@@ -295,6 +341,13 @@ fn set(s: &mut Session, p: &Value) -> CmdResult {
     }
     if let Some(r) = ps(p, "rename").map(str::trim).filter(|r| !r.is_empty()) {
         t.name = r.chars().take(120).collect();
+    }
+    if let Some(look) = look {
+        if t.kind != TileKind::Cog {
+            return Err("bands, range and dequantize are for a cloud-optimised GeoTIFF's layer".into());
+        }
+        let (_, old) = cog::split(&t.url);
+        t.url = cog::with_look(&t.url, &look(old));
     }
     if let Some(mv) = ps(p, "move") {
         let to = match mv {
