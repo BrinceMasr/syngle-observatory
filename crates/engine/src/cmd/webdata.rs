@@ -430,6 +430,10 @@ fn fields_add(s: &mut Session, p: &Value) -> CmdResult {
         (false, _) => format!("Fields of the World {year} fields"),
         (true, false) => format!("Fields of the World {year} density"),
     };
+    // Looks that would draw over one another: the year's both, or the same part, goes.
+    let url = fields_url(year);
+    let both = format!("Fields of the World {year}");
+    s.map_mut().tiles.retain(|t| !(t.url == url && t.overlay && (t.name == both || t.name == name || (density && fields))));
     let mut r = super::tiles::add(
         s,
         &json!({"url": fields_url(year), "kind": "pmtiles", "name": name, "overlay": true, "maxZoom": 16,

@@ -53,7 +53,7 @@ pub struct State {
     pub date: String,
     /// Layers to add once their service's document is read: (service, its type, `service.add`'s
     /// layer, the name).
-    adding: Vec<(String, &'static str, String, String)>,
+    adding: Vec<(String, &'static str, String, String, String)>,
     /// Fields of the World's year and lowest score.
     year: Option<i64>,
     min_score: f64,
@@ -102,20 +102,21 @@ pub fn forget_failed(app: &mut RustGisApp) {
 
 /// Adds a service's layer now, or once its document is read.
 fn add_layer(app: &mut RustGisApp, url: &str, kind: &'static str, layer: &str, name: &str) {
-    app.ui.web_services.adding.push((url.to_string(), kind, layer.to_string(), name.to_string()));
+    // The date as it was when Add was clicked.
+    let date = app.ui.web_services.date.trim().to_string();
+    app.ui.web_services.adding.push((url.to_string(), kind, layer.to_string(), name.to_string(), date));
     poll(app);
 }
 
 /// Adds the layers whose documents have arrived. Run by every panel each frame.
 fn poll(app: &mut RustGisApp) {
     let waiting = std::mem::take(&mut app.ui.web_services.adding);
-    for (url, kind, layer, name) in waiting {
+    for (url, kind, layer, name, date) in waiting {
         match listing(app, &url, kind) {
-            Look::Loading => app.ui.web_services.adding.push((url, kind, layer, name)),
+            Look::Loading => app.ui.web_services.adding.push((url, kind, layer, name, date)),
             Look::Failed(e) => app.ui.web_services.note = Some((false, e)),
             Look::Ready(text, v) => {
                 // The date goes only to a layer that changes with time, and names it.
-                let date = app.ui.web_services.date.trim().to_string();
                 let timed = layers_of(&v).iter().any(|l| text_of(l, "name") == layer && l.get("time").is_some());
                 let dated = kind == "wmts" && timed && !date.is_empty();
                 let name = if dated { format!("{name} {date}") } else { name };
@@ -542,7 +543,11 @@ pub fn fema_nfhl(app: &mut RustGisApp, ui: &mut egui::Ui) {
     }
     if let Some((url, name)) = features {
         let r = app.run("ui.addUrl", json!({"url": url, "name": name, "service": true}));
-        done(app, r.map(|_| tl!("Downloading…").to_string()));
+        // Not added yet: on its way.
+        app.ui.web_services.note = Some(match r {
+            Ok(_) => (true, tl!("Downloading…").to_string()),
+            Err(e) => (false, e),
+        });
     }
     status(app, ui, Some(&look));
     repaint_while_waiting(app, ui);
