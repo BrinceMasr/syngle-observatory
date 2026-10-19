@@ -677,7 +677,7 @@ pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
             ("ui.addUrl", "Add Data From URL…", "Home › Add"),
             ("ui.addZarr", "Add Zarr Variable…", "Home › Add"),
             ("ui.addService", "Add From Service…", "Home › Add"),
-            ("ui.searchOpenData", "Search Open Data…", "Home › Add"),
+            ("ui.searchOpenData", "Search Open Data…", "Home › Web Data"),
             ("ui.pane.sources", "Data Sources Pane", "View › Windows"),
             ("ui.plugins", "Plugin Manager…", "Plugins"),
             ("ui.mcpRelay", "MCP Relay", "Help › Help"),
