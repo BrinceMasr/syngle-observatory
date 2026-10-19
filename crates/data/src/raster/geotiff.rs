@@ -976,15 +976,30 @@ pub fn write(r: &Raster, band: usize) -> Result<Vec<u8>> {
             img.write_data(&data).map_err(err)?;
         }
     } else if rgb && let (Some(red), Some(green), Some(blue)) = (r.bands.first(), r.bands.get(1), r.bands.get(2)) {
-        // Colour bands that aren't bytes (three embedding dimensions): kept as 32-bit floats.
+        // Colour bands that aren't bytes (three embedding dimensions): kept as 32-bit floats, with
+        // their alpha band when they have one.
         let n = (w as usize) * (h as usize);
-        let mut data = Vec::with_capacity(n * 3);
-        for i in 0..n {
-            data.extend([red.data.get(i), green.data.get(i), blue.data.get(i)].map(|v| v.copied().unwrap_or(f32::NAN)));
+        let at = |b: &crate::raster::Band, i: usize| b.data.get(i).copied().unwrap_or(f32::NAN);
+        match r.bands.get(3).filter(|_| matches!(r.color, ColorHint::Rgb { alpha: true })) {
+            Some(alpha) => {
+                let mut data = Vec::with_capacity(n * 4);
+                for i in 0..n {
+                    data.extend([at(red, i), at(green, i), at(blue, i), at(alpha, i)]);
+                }
+                let mut img = enc.new_image::<colortype::RGBA32Float>(w, h).map_err(err)?;
+                tags!(img);
+                img.write_data(&data).map_err(err)?;
+            }
+            None => {
+                let mut data = Vec::with_capacity(n * 3);
+                for i in 0..n {
+                    data.extend([at(red, i), at(green, i), at(blue, i)]);
+                }
+                let mut img = enc.new_image::<colortype::RGB32Float>(w, h).map_err(err)?;
+                tags!(img);
+                img.write_data(&data).map_err(err)?;
+            }
         }
-        let mut img = enc.new_image::<colortype::RGB32Float>(w, h).map_err(err)?;
-        tags!(img);
-        img.write_data(&data).map_err(err)?;
     } else {
         let b = r.bands.get(band).ok_or_else(|| err(format!("the raster has no band {}", band + 1)))?;
         let mut img = enc.new_image::<colortype::Gray32Float>(w, h).map_err(err)?;
@@ -1009,6 +1024,12 @@ mod tests {
         assert_eq!(back.bands.len(), 3);
         assert_eq!(back.value(2, 1, 1), c.value(2, 1, 1));
         assert!(matches!(back.color, ColorHint::Rgb { .. }));
+        // With an alpha band: four bands back.
+        let bands = (0..4).map(|b| (0..n).map(|i| i as f32 * 0.5 - b as f32).collect()).collect();
+        let a = Raster::new("a", r.width, r.height, bands, r.transform, r.crs, None, ColorHint::Rgb { alpha: true }, "Float32").unwrap();
+        let back = read(std::io::Cursor::new(write(&a, 0).unwrap()), "back").unwrap();
+        assert_eq!(back.bands.len(), 4);
+        assert_eq!(back.value(3, 1, 1), a.value(3, 1, 1));
     }
 
     #[test]

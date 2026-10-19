@@ -20,7 +20,8 @@ pub fn commands() -> Vec<C> {
             Ok(json!({"datasets": emb::DATASETS.iter().map(|d| d.to_json()).collect::<Vec<_>>()}))
         })
         .view(),
-        C::new("embeddings.search", "Search Satellite Embeddings", "Home › Add › Web Data", search).view().params(
+        // Not a view: it adds the footprints layer (by default).
+        C::new("embeddings.search", "Search Satellite Embeddings", "Home › Add › Web Data", search).params(
             r#"{"dataset": "alphaearth" | "earth-index" | "tessera", "year"?: number (AlphaEarth and Tessera: 2017–2025, default 2024), "bbox"?: [west, south, east, north] | "view" (the map's extent, the default), "footprints"?: bool (adds the tiles' footprints as a layer, default true)}"#,
         ),
         C::new("embeddings.add", "Add Satellite Embeddings", "Home › Add › Web Data", add).params(
@@ -139,8 +140,12 @@ fn add(s: &mut Session, p: &Value) -> CmdResult {
             }
             let look = emb::aef_look(b, stretch);
             let file = crate::render::rustgis_tiles::cog::split(url).0;
-            let year = file.split('/').find(|s| s.len() == 4 && s.parse::<i32>().is_ok()).unwrap_or("");
-            let name = name.unwrap_or_else(|| format!("AlphaEarth {year} ({})", band_label(b)).replace("  ", " "));
+            // The year from the tile's address (…/annual/2024/10N/…), when it has one.
+            let year = file.split('/').find(|s| s.len() == 4 && s.parse::<i32>().is_ok());
+            let name = name.unwrap_or_else(|| {
+                let title = year.map(|y| format!("AlphaEarth {y}")).unwrap_or_else(|| "AlphaEarth".into());
+                format!("{title} ({})", band_label(b))
+            });
             super::layer::add_cog(s, &json!({"name": name}), &crate::render::rustgis_tiles::cog::with_look(file, &look))
         }
         "earth-index" => add_points(s, p, name),

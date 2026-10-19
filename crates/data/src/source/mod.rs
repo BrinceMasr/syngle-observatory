@@ -270,7 +270,7 @@ pub type Queried = (Vec<crate::Field>, Batch);
 
 fn query_now(file: &std::sync::Arc<remote::Remote>, columns: &[String], req: &Request) -> Result<Queried> {
     let cols: Vec<&str> = columns.iter().map(String::as_str).collect();
-    let src = parquet::ParquetSource::open_remote(file.clone(), &url_name(file.url()))?.with_columns(&cols);
+    let src = parquet::ParquetSource::open_remote(file.clone(), &url_name(file.url()))?.with_columns(&cols).exact();
     let batch = src.read(req)?;
     Ok((src.info().fields.clone(), batch))
 }

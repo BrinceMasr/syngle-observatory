@@ -16,8 +16,18 @@ use crate::{RustGisApp, Slot};
 enum Read {
     Search(Slot<Result<Found, String>>),
     /// Bytes to hand to `embeddings.add` (Earth Index's points as GeoJSON, Tessera's GeoTIFF),
-    /// and the layer's name.
-    Data(Slot<Result<Vec<u8>, String>>, String),
+    /// and what they were read for, as the read began.
+    Data(Slot<Result<Vec<u8>, String>>, Request),
+}
+
+/// What a read of a tile's data was started for: the choices may change while it runs.
+struct Request {
+    name: String,
+    dataset: &'static str,
+    year: i32,
+    bands: [usize; 3],
+    /// The session's download it is handed over as (dropped when another project opens).
+    id: u64,
 }
 
 /// The pane's choices, the read under way and what it found.
@@ -121,26 +131,27 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
             Err(e) => app.ui.embeddings.error = Some(e),
         },
         Err(data) => {
-            let name = match read {
-                Some(Read::Data(_, n)) => n,
-                _ => String::new(),
-            };
+            let Some(Read::Data(_, req)) = read else { return };
             match data {
                 Ok(bytes) => {
-                    let id = app.session.download_started();
-                    app.session.download_landed(id, bytes);
-                    let dataset = app.ui.embeddings.dataset;
-                    let mut p = json!({"dataset": dataset, "ran": id, "name": name});
-                    if dataset == "tessera" {
-                        p["year"] = json!(app.ui.embeddings.year);
-                        p["bands"] = json!(app.ui.embeddings.tessera_bands.map(|b| b + 1));
+                    // Read for a project since closed: dropped.
+                    if !app.session.download_landed(req.id, bytes) {
+                        return;
+                    }
+                    let mut p = json!({"dataset": req.dataset, "ran": req.id, "name": req.name});
+                    if req.dataset == "tessera" {
+                        p["year"] = json!(req.year);
+                        p["bands"] = json!(req.bands.map(|b| b + 1));
                     }
                     match app.run("embeddings.add", p) {
                         Ok(_) => app.map.invalidate(),
                         Err(e) => app.ui.embeddings.error = Some(e),
                     }
                 }
-                Err(e) => app.ui.embeddings.error = Some(e),
+                Err(e) => {
+                    app.session.download_failed(req.id);
+                    app.ui.embeddings.error = Some(e);
+                }
             }
         }
     }
@@ -229,7 +240,9 @@ fn add(app: &mut RustGisApp, i: usize) {
                     land(r);
                 }),
             );
-            app.ui.embeddings.reading = Some(Read::Data(slot, name));
+            let id = app.session.download_started();
+            let req = Request { name, dataset: "earth-index", year: emb::EARTH_INDEX_YEAR, bands: [0; 3], id };
+            app.ui.embeddings.reading = Some(Read::Data(slot, req));
         }
         _ => {
             let bbox = match view_bbox(app) {
@@ -261,7 +274,8 @@ fn add(app: &mut RustGisApp, i: usize) {
                     }
                 }),
             );
-            app.ui.embeddings.reading = Some(Read::Data(slot, name));
+            let id = app.session.download_started();
+            app.ui.embeddings.reading = Some(Read::Data(slot, Request { name, dataset: "tessera", year, bands, id }));
         }
     }
 }

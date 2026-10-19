@@ -211,7 +211,12 @@ pub fn check_bbox(b: [f64; 4]) -> Result<[f64; 4], String> {
     if !(w.is_finite() && s.is_finite() && e.is_finite() && n.is_finite()) || w >= e || s >= n {
         return Err("bbox is [west, south, east, north], west of east and south of north".into());
     }
-    Ok([w.max(-180.0), s.max(-90.0), e.min(180.0), n.min(90.0)])
+    let c = [w.max(-180.0), s.max(-90.0), e.min(180.0), n.min(90.0)];
+    // A box wholly past the globe's edges is nowhere.
+    if c[0] >= c[2] || c[1] >= c[3] {
+        return Err("bbox is outside the globe".into());
+    }
+    Ok(c)
 }
 
 // AlphaEarth Foundations.
@@ -396,7 +401,8 @@ pub fn mgrs_tile(lon: f64, lat: f64) -> Option<String> {
         return None;
     }
     let zone = utm_zone(lon, lat);
-    let band = *b"CDEFGHJKLMNPQRSTUVWX".get(((lat + 80.0) / 8.0).floor() as usize)?;
+    // Band X runs from 72° N to 84° N (12°, not 8°).
+    let band = *b"CDEFGHJKLMNPQRSTUVWX".get((((lat + 80.0) / 8.0).floor() as usize).min(19))?;
     let code = if lat >= 0.0 { 32600 + zone } else { 32700 + zone };
     let t = rustgis_data::raster::Crs::from_epsg(code)?.transformer().ok()?;
     let c = t.from_lonlat(Coord::new(lon, lat))?;
@@ -703,6 +709,8 @@ mod tests {
         assert_eq!(mgrs_tile(18.42, -33.92).as_deref(), Some("34HBH"));
         assert_eq!(mgrs_tile(5.32, 60.39).map(|t| t[..3].to_string()).as_deref(), Some("32V"));
         assert!(mgrs_tile(0.0, 85.0).is_none() && mgrs_tile(f64::NAN, 0.0).is_none());
+        // Band X reaches 84° N (northern Greenland, Svalbard).
+        assert_eq!(mgrs_tile(-40.0, 82.0).map(|t| t[2..3].to_string()).as_deref(), Some("X"));
         let t = mgrs_tiles([-84.0, 35.9, -83.8, 36.0]);
         assert_eq!(t.first().map(|(k, _)| k.as_str()), Some("17SKV"));
         // A huge box names a bounded number of tiles.
@@ -720,6 +728,7 @@ mod tests {
         assert_eq!((look.bands, look.range, look.aef), (vec![1, 16, 63], Some((-0.3, 0.3)), true));
         assert!(check_bbox([1.0, 0.0, 0.0, 1.0]).is_err() && check_bbox([f64::NAN, 0.0, 1.0, 1.0]).is_err());
         assert_eq!(check_bbox([-200.0, -95.0, 200.0, 95.0]), Ok([-180.0, -90.0, 180.0, 90.0]));
+        assert!(check_bbox([200.0, 0.0, 210.0, 1.0]).is_err() && check_bbox([0.0, 91.0, 1.0, 95.0]).is_err());
     }
 
     #[test]

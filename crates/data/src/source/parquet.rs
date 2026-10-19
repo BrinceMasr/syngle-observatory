@@ -78,11 +78,8 @@ impl ParquetSource {
 
     /// Adds nested columns (a struct's fields, by dotted path such as `assets.data.href`) to the
     /// fields read, as top-level columns are read. Paths the file hasn't, repeated columns and types
-    /// not read are left out. Reads then take every row group an extent meets (a catalog's
-    /// index, whose matches are all wanted), not a sample of them.
+    /// not read are left out.
     pub fn with_columns(mut self, paths: &[&str]) -> Self {
-        // A catalog's index: its matches all, not a sample spread over the file.
-        self.exact = true;
         let reader = self.reader.clone();
         let schema = reader.metadata().file_metadata().schema_descr();
         for p in paths.iter().take(64) {
@@ -99,6 +96,14 @@ impl ParquetSource {
                 self.field_cols.push(i);
             }
         }
+        self
+    }
+
+    /// Reads take every row group an extent meets (a catalog's index, whose matches are all
+    /// wanted), not a sample spread over the file; an extent needing more than one read may fetch
+    /// is an error.
+    pub fn exact(mut self) -> Self {
+        self.exact = true;
         self
     }
 }
@@ -731,6 +736,7 @@ pub fn read_vectors(file: &Arc<Remote>, extent: &Extent, column: &str, max_group
     // The points in the extent, by row group.
     let mut found: Vec<(usize, Vec<(usize, (f64, f64))>)> = Vec::new();
     let mut total = 0usize;
+    let mut hit = 0usize;
     for &g in &groups {
         let rg = reader.get_row_group(g).map_err(err)?;
         let rows = usize::try_from(rg.metadata().num_rows()).unwrap_or(0).min(MAX_GROUP_ROWS);
@@ -745,14 +751,15 @@ pub fn read_vectors(file: &Arc<Remote>, extent: &Extent, column: &str, max_group
             .collect();
         if !inside.is_empty() {
             total = total.saturating_add(inside.len());
-            found.push((g, inside));
+            hit += 1;
+            // Past the limits the points are only counted, for the error.
+            if total <= max_points && hit <= max_groups {
+                found.push((g, inside));
+            }
         }
     }
-    if found.len() > max_groups || total > max_points {
-        return Err(DataError::Format(format!(
-            "the area holds {total} points in {} row groups, more than are read at once: zoom in",
-            found.len()
-        )));
+    if hit > max_groups || total > max_points {
+        return Err(DataError::Format(format!("the area holds {total} points in {hit} row groups, more than are read at once: zoom in")));
     }
     let used: Vec<usize> = found.iter().map(|(g, _)| *g).collect();
     if !want_chunks(file, md, &used, &[vec_col])? {
