@@ -42,6 +42,13 @@ pub const NETWORK: &[&str] = &[
     "portal.files",
     "embeddings.search",
     "embeddings.add",
+    "earthdata.collections",
+    "earthdata.granules",
+    "nldi.flowline",
+    "nldi.comid",
+    "nldi.basin",
+    "nldi.sources",
+    "nldi.navigate",
 ];
 
 pub fn commands() -> Vec<C> {

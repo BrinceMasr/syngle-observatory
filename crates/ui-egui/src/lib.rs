@@ -22,6 +22,7 @@ mod connectui;
 mod cswui;
 mod dialogs;
 mod docpanes;
+mod earthaccessui;
 mod editpanes;
 mod embeddingsui;
 mod failureui;
@@ -36,6 +37,7 @@ mod mapmenu;
 mod mapview;
 mod modelbuilder;
 mod navui;
+mod nldiui;
 mod opendataui;
 mod panes;
 mod pluginpanel;
@@ -498,6 +500,10 @@ pub struct UiState {
     pub opendata: opendataui::State,
     /// Satellite Embeddings: the dataset, its choices, the read under way and the tiles found.
     pub embeddings: embeddingsui::State,
+    /// NASA Earthaccess: the dataset, the granules found and the request under way.
+    pub earthaccess: earthaccessui::State,
+    /// USGS NLDI: the point traced, its COMID, the navigation and the request under way.
+    pub nldi: nldiui::State,
     /// Find Place searches and Geocode Addresses runs under way.
     pub geocode: geocodeui::State,
     /// The Directions pane: places, routes and a simulated drive.
@@ -613,6 +619,8 @@ impl Default for UiState {
             catalogs: Default::default(),
             opendata: Default::default(),
             embeddings: Default::default(),
+            earthaccess: Default::default(),
+            nldi: Default::default(),
             geocode: Default::default(),
             nav: Default::default(),
             bookmarks: Default::default(),
@@ -2991,6 +2999,8 @@ impl RustGisApp {
         catalogsui::poll(self, ctx);
         opendataui::poll(self, ctx);
         embeddingsui::poll(self, ctx);
+        earthaccessui::poll(self, ctx);
+        nldiui::poll(self, ctx);
         geocodeui::poll(self, ctx);
         navui::poll(self, ctx);
         zarrui::poll(self, ctx);
