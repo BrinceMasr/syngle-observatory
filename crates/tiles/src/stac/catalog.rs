@@ -231,8 +231,10 @@ impl Walk {
         &self.found
     }
 
-    /// The items found, taken.
-    pub fn into_items(self) -> Vec<Item> {
+    /// The items found, taken: by date, then id (documents are read several at a time, so the
+    /// order they were found in isn't the catalog's).
+    pub fn into_items(mut self) -> Vec<Item> {
+        self.found.sort_by(|a, b| a.datetime.cmp(&b.datetime).then_with(|| a.id.cmp(&b.id)));
         self.found
     }
 
