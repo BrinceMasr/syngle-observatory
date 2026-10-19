@@ -2,7 +2,7 @@
 //! timeline whose bars count the features of each step, choose the step and the window shown, and
 //! bind layers to it.
 
-use egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
+use egui::{Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
 use rustgis_engine::data::time::Unit;
 use rustgis_engine::map::time::{TimeSlider, histogram, instants, time_fields};
 use serde_json::{Value, json};
@@ -342,7 +342,10 @@ fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
     for (i, s) in steps.iter().enumerate().step_by(every) {
         let x = x_of(i as f64);
         p.line_segment([pos2(x, track.max.y), pos2(x, track.max.y + 3.0)], Stroke::new(1.0, tk.text_dim));
-        p.text(pos2(x, track.max.y + 4.0), Align2::CENTER_TOP, t.label(*s), regular(10.5), tk.text_dim);
+        // Kept inside the bar at its ends.
+        let g = p.layout_no_wrap(t.label(*s), regular(10.5), tk.text_dim);
+        let left = (x - g.size().x / 2.0).clamp(r.min.x, (r.max.x - g.size().x).max(r.min.x));
+        p.galley(pos2(left, track.max.y + 4.0), g, tk.text_dim);
     }
     // The current step.
     let x = x_of(t.index() as f64);
