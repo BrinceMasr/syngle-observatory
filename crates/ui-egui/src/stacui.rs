@@ -154,6 +154,10 @@ pub struct State {
     pub items: Vec<Item>,
     /// The asset chosen for each item.
     pub chosen: Vec<String>,
+    /// The item whose properties are shown.
+    pub details: Option<usize>,
+    /// Items' preview pictures, by address.
+    thumbs: std::collections::HashMap<String, Thumb>,
     /// The footprints layer of the last search.
     footprints: Option<u32>,
     waiting: Option<(Asked, Answer)>,
@@ -181,6 +185,8 @@ impl Default for State {
             walk: None,
             items: Vec::new(),
             chosen: Vec::new(),
+            details: None,
+            thumbs: Default::default(),
             footprints: None,
             waiting: None,
             error: None,
@@ -196,8 +202,68 @@ fn fetch(url: &str) -> Answer {
     slot
 }
 
+/// An item's preview picture: being fetched, shown, or not to be had.
+enum Thumb {
+    Loading(Answer),
+    Ready(egui::TextureHandle),
+    Failed,
+}
+
+/// The most preview pictures kept (more are dropped and fetched again when shown).
+const MAX_THUMBS: usize = 256;
+/// The longest side of a preview picture, in pixels.
+const THUMB_SIDE: u32 = 128;
+
+/// Lands preview pictures: decoded (bounded in size) and made textures.
+fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
+    let mut loading = false;
+    for (url, t) in app.ui.stac.thumbs.iter_mut() {
+        let Thumb::Loading(slot) = t else { continue };
+        let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
+            loading = true;
+            continue;
+        };
+        *t = match r.and_then(|b| crate::mapview::decode_picture(&b)) {
+            Ok(img) => {
+                let (w, h) = (img.width().max(1), img.height().max(1));
+                let k = (THUMB_SIDE as f32 / w.max(h) as f32).min(1.0);
+                let (tw, th) = (((w as f32 * k) as u32).max(1), ((h as f32 * k) as u32).max(1));
+                let small = image::imageops::thumbnail(&img, tw, th);
+                let color = egui::ColorImage::from_rgba_unmultiplied([tw as usize, th as usize], small.as_raw());
+                Thumb::Ready(ctx.load_texture(format!("stac_thumb:{url}"), color, egui::TextureOptions::LINEAR))
+            }
+            Err(_) => Thumb::Failed,
+        };
+    }
+    if loading {
+        ctx.request_repaint_after(std::time::Duration::from_millis(150));
+    }
+}
+
+/// Starts fetching the preview pictures of the items found (those on the web an item may point
+/// to, not ones that need signing).
+fn want_thumbs(st: &mut State) {
+    if st.thumbs.len() > MAX_THUMBS {
+        st.thumbs.clear();
+    }
+    for item in st.items.iter().take(MAX_THUMBS / 2) {
+        let Some(a) = item.thumbnail() else { continue };
+        if st.thumbs.contains_key(&a.href) {
+            continue;
+        }
+        let ok = !stac::needs_signing(&a.href)
+            && rustgis_engine::render::rustgis_tiles::address::check(
+                &a.href,
+                Some(item.origin.as_deref().unwrap_or("https://item.invalid/")),
+            )
+            .is_ok();
+        st.thumbs.insert(a.href.clone(), if ok { Thumb::Loading(fetch(&a.href)) } else { Thumb::Failed });
+    }
+}
+
 /// Lands collections and search results.
 pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+    poll_thumbs(app, ctx);
     poll_walk(app, ctx);
     let Some((_, slot)) = &app.ui.stac.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
@@ -216,13 +282,15 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
             }
             Err(e) => st.error = Some(e),
         },
-        Asked::Search(url) => match r.and_then(|b| stac::parse_items(&b, &url)) {
-            Ok((items, next)) => {
-                st.info = Some(if next.is_some() {
-                    i18n::fmt("{n} items (more match: narrow the search)", &[("n", &items.len().to_string())])
-                } else {
-                    i18n::fmt("{n} items", &[("n", &items.len().to_string())])
+        Asked::Search(url) => match r.and_then(|b| Ok((stac::parse_items(&b, &url)?, stac::parse_matched(&b)))) {
+            Ok(((items, next), matched)) => {
+                let n = items.len().to_string();
+                st.info = Some(match matched.filter(|m| *m as usize > items.len()) {
+                    Some(m) => i18n::fmt("Showing {n} of {m} items (narrow the search for others)", &[("n", &n), ("m", &m.to_string())]),
+                    None if next.is_some() => i18n::fmt("Showing {n} items (more match: narrow the search)", &[("n", &n)]),
+                    None => i18n::fmt("Showing {n} items", &[("n", &n)]),
                 });
+                st.details = None;
                 st.chosen = items.iter().map(|i| i.pick(None).map(|a| a.key.clone()).unwrap_or_default()).collect();
                 st.items = items;
                 show_footprints(app);
@@ -288,17 +356,18 @@ fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
     let st = &mut app.ui.stac;
     let n = walk.items().len().to_string();
     st.info = Some(if walk.complete() {
-        i18n::fmt("{n} items", &[("n", &n)])
+        i18n::fmt("Showing {n} items", &[("n", &n)])
     } else if walk.reads >= catalog::MAX_READS {
         i18n::fmt(
-            "{n} items (stopped after reading {r} documents: pick a catalog further down)",
+            "Showing {n} items (stopped after reading {r} documents: pick a catalog further down)",
             &[("n", &n), ("r", &walk.reads.to_string())],
         )
     } else if walk.failed > 0 && walk.items().len() < 50 {
-        i18n::fmt("{n} items ({f} documents couldn't be read)", &[("n", &n), ("f", &walk.failed.to_string())])
+        i18n::fmt("Showing {n} items ({f} documents couldn't be read)", &[("n", &n), ("f", &walk.failed.to_string())])
     } else {
-        i18n::fmt("{n} items (more match: narrow the search)", &[("n", &n)])
+        i18n::fmt("Showing {n} items (more match: narrow the search)", &[("n", &n)])
     });
+    st.details = None;
     let items = walk.into_items();
     st.chosen = items.iter().map(|i| i.pick(None).map(|a| a.key.clone()).unwrap_or_default()).collect();
     st.items = items;
@@ -755,41 +824,74 @@ fn find_items(app: &mut RustGisApp) {
     }
 }
 
-/// The items found: a click frames one; Add adds its chosen asset.
+/// The items found, as cards: the preview picture, the item's id, its collection, date and cloud
+/// cover, and Zoom, the asset to add, Add and Details (its properties).
 fn results(app: &mut RustGisApp, ui: &mut egui::Ui) {
     if app.ui.stac.items.is_empty() {
         return;
     }
-    let (mut zoom, mut add) = (None, None);
-    egui::ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+    want_thumbs(&mut app.ui.stac);
+    let (mut zoom, mut add, mut details) = (None, None, None);
+    // A window starts from its last size: without a floor the list would get egui's 64 px back.
+    let tall = (app.ui.stac.items.len() as f32 * 96.0 + if app.ui.stac.details.is_some() { 200.0 } else { 0.0 }).min(440.0);
+    egui::ScrollArea::vertical().max_height(440.0).min_scrolled_height(tall).show(ui, |ui| {
         let st = &mut app.ui.stac;
         for (i, item) in st.items.iter().enumerate() {
-            ui.horizontal(|ui| {
-                let date = item.datetime.get(..10).unwrap_or(&item.datetime);
-                let cloud = item.cloud.map(|c| format!(" · ☁ {c:.0}%")).unwrap_or_default();
-                if ui
-                    .add(
-                        egui::Button::new(format!("{date}{cloud}  {}", item.id))
-                            .truncate()
-                            .min_size(vec2((ui.available_width() - 160.0).max(120.0), 0.0)),
-                    )
-                    .clicked()
-                {
-                    zoom = Some(i);
-                }
-                if let Some(key) = st.chosen.get_mut(i) {
-                    egui::ComboBox::from_id_salt(("stac_asset", i)).selected_text(key.clone()).width(90.0).show_ui(ui, |ui| {
-                        for a in &item.assets {
-                            ui.selectable_value(key, a.key.clone(), &a.key);
+            egui::Frame::group(ui.style()).inner_margin(6.0).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.horizontal(|ui| {
+                    match item.thumbnail().and_then(|a| st.thumbs.get(&a.href)) {
+                        Some(Thumb::Ready(t)) => {
+                            let size = t.size_vec2();
+                            let k = 64.0 / size.x.max(size.y).max(1.0);
+                            ui.add(egui::Image::new(t).fit_to_exact_size(size * k));
                         }
+                        Some(Thumb::Loading(_)) => {
+                            ui.add_sized([64.0, 64.0], egui::Spinner::new());
+                        }
+                        _ => {}
+                    }
+                    ui.vertical(|ui| {
+                        ui.add(egui::Label::new(egui::RichText::new(&item.id).strong()).truncate());
+                        let date = item.datetime.get(..10).unwrap_or(&item.datetime);
+                        let cloud = item.cloud.map(|c| format!("☁ {c:.0}%"));
+                        let line: Vec<&str> = [item.collection.as_str(), date, cloud.as_deref().unwrap_or("")]
+                            .into_iter()
+                            .filter(|s| !s.is_empty())
+                            .collect();
+                        if !line.is_empty() {
+                            ui.add(egui::Label::new(egui::RichText::new(line.join(" · ")).weak().small()).truncate());
+                        }
+                        ui.horizontal_wrapped(|ui| {
+                            if item.bbox.is_some() && ui.button(tl!("Zoom")).clicked() {
+                                zoom = Some(i);
+                            }
+                            if let Some(key) = st.chosen.get_mut(i) {
+                                egui::ComboBox::from_id_salt(("stac_asset", i)).selected_text(key.clone()).width(90.0).show_ui(ui, |ui| {
+                                    for a in &item.assets {
+                                        let label = if a.title.is_empty() { a.key.clone() } else { format!("{} — {}", a.key, a.title) };
+                                        ui.selectable_value(key, a.key.clone(), label);
+                                    }
+                                });
+                            }
+                            if ui.button(tl!("Add")).clicked() {
+                                add = Some(i);
+                            }
+                            if ui.selectable_label(st.details == Some(i), tl!("Details")).clicked() {
+                                details = Some(i);
+                            }
+                        });
                     });
-                }
-                if ui.button(tl!("Add")).clicked() {
-                    add = Some(i);
+                });
+                if st.details == Some(i) {
+                    properties(ui, i, item);
                 }
             });
         }
     });
+    if let Some(i) = details {
+        app.ui.stac.details = if app.ui.stac.details == Some(i) { None } else { Some(i) };
+    }
     if let Some(e) = zoom.and_then(|i| app.ui.stac.items.get(i)).and_then(|i| i.bbox) {
         app.session.zoom_to(&rustgis_engine::geom::Extent::new(e[0], e[1], e[2], e[3]));
         app.map.invalidate();
@@ -799,6 +901,26 @@ fn results(app: &mut RustGisApp, ui: &mut egui::Ui) {
         let key = app.ui.stac.chosen.get(i).cloned().unwrap_or_default();
         add_item_asset(app, &item, Some(key.as_str()).filter(|k| !k.is_empty()));
     }
+}
+
+/// An item's properties, a row each (the first hundred, long values cut).
+fn properties(ui: &mut egui::Ui, i: usize, item: &Item) {
+    let Some(props) = item.properties.as_ref().and_then(|p| p.as_object()) else {
+        ui.label(egui::RichText::new(tl!("No properties")).weak());
+        return;
+    };
+    egui::Grid::new(("stac_props", i)).num_columns(2).striped(true).spacing(vec2(10.0, 2.0)).show(ui, |ui| {
+        for (k, v) in props.iter().take(100) {
+            let text = match v {
+                serde_json::Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            let short: String = text.chars().take(160).collect();
+            ui.label(egui::RichText::new(k).small());
+            ui.add(egui::Label::new(egui::RichText::new(short).small().weak()).wrap());
+            ui.end_row();
+        }
+    });
 }
 
 #[cfg(test)]

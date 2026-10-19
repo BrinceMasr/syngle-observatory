@@ -28,6 +28,8 @@ const MAX_ASSETS: usize = 100;
 const MAX_TEXT: usize = 2000;
 /// The most coordinates a footprint keeps.
 const MAX_FOOTPRINT: usize = 20_000;
+/// The longest properties kept with an item, as JSON text.
+const MAX_PROPERTIES: usize = 32 << 10;
 
 /// A collection an API offers.
 #[derive(Clone, Debug, PartialEq)]
@@ -66,6 +68,8 @@ pub struct Item {
     /// `self` link, which it could point anywhere); `None` for an item given whole, whose assets
     /// may then only be public web addresses.
     pub origin: Option<String>,
+    /// Its properties, as given (dropped when they are large: they are shown, not used).
+    pub properties: Option<Value>,
 }
 
 /// What a search asks for.
@@ -229,7 +233,13 @@ pub fn parse_items(bytes: &[u8], from: &str) -> Result<(Vec<Item>, Option<String
     Ok((items, next))
 }
 
-/// An item from its own document.
+/// How many items a search's answer says match in all (`numberMatched`, or the context
+/// extension's `matched`).
+pub fn parse_matched(bytes: &[u8]) -> Option<u64> {
+    let v = json(bytes).ok()?;
+    v.get("numberMatched").or_else(|| v.get("context").and_then(|c| c.get("matched"))).and_then(Value::as_u64)
+}
+
 /// The STAC API an item or collection fetched from `from` belongs to: the address before
 /// `/collections/`, else its `root` link's (a static catalog's `….json` root is no API), else the
 /// collection its `parent` link names. `None` when nothing says.
@@ -335,7 +345,19 @@ fn item(f: &Value, from: Option<&str>) -> Option<Item> {
         })
         .collect();
     assets.sort_by(|a, b| a.key.cmp(&b.key));
-    Some(Item { id, collection: text(f.get("collection")), datetime, bbox, geometry, cloud, assets, url, origin: from.map(str::to_string) })
+    let properties = props.filter(|p| p.is_object() && p.to_string().len() <= MAX_PROPERTIES).cloned();
+    Some(Item {
+        id,
+        collection: text(f.get("collection")),
+        datetime,
+        bbox,
+        geometry,
+        cloud,
+        assets,
+        url,
+        origin: from.map(str::to_string),
+        properties,
+    })
 }
 
 /// How many numbers a GeoJSON geometry holds (bounded by how deep it goes).
@@ -429,6 +451,25 @@ impl Item {
                 .or_else(|| self.assets.iter().filter(ok).find(|a| a.roles.iter().any(|r| r == "data")))
         };
         choose(true).or_else(|| choose(false)).ok_or_else(|| format!("{}: no asset RustGIS can add", self.id))
+    }
+
+    /// Its preview picture: the `thumbnail` asset (or one with that role, or a `preview`), a PNG
+    /// or JPEG on the web.
+    pub fn thumbnail(&self) -> Option<&Asset> {
+        let picture = |a: &&Asset| {
+            let t = a.media_type.to_ascii_lowercase();
+            let path = a.href.split(['?', '#']).next().unwrap_or("").to_ascii_lowercase();
+            is_web(&a.href)
+                && (t.starts_with("image/png")
+                    || t.starts_with("image/jpeg")
+                    || t.starts_with("image/jpg")
+                    || (t.is_empty() && [".png", ".jpg", ".jpeg"].iter().any(|e| path.ends_with(e))))
+        };
+        let named = |k: &str| self.assets.iter().filter(picture).find(|a| a.key == k);
+        named("thumbnail")
+            .or_else(|| self.assets.iter().filter(picture).find(|a| a.roles.iter().any(|r| r == "thumbnail")))
+            .or_else(|| named("preview"))
+            .or_else(|| self.assets.iter().filter(picture).find(|a| a.roles.iter().any(|r| r == "overview")))
     }
 
     /// The address of the asset to add (see [`Item::pick`]), checked: a plain web address the item
@@ -559,7 +600,7 @@ pub fn item_json(i: &Item) -> Value {
         "collection": i.collection,
         "bbox": i.bbox,
         "geometry": i.geometry,
-        "properties": {"datetime": i.datetime, "eo:cloud_cover": i.cloud},
+        "properties": i.properties.clone().unwrap_or_else(|| serde_json::json!({"datetime": i.datetime, "eo:cloud_cover": i.cloud})),
         "assets": i.assets.iter().map(|a| (a.key.clone(), serde_json::json!({"href": a.href, "type": a.media_type, "roles": a.roles, "title": a.title}))).collect::<serde_json::Map<_, _>>(),
         "links": i.url.as_ref().map(|u| vec![serde_json::json!({"rel": "self", "href": u})]).unwrap_or_default(),
     })
@@ -666,6 +707,10 @@ mod tests {
         let (items, next) = parse_items(page, "https://x.org/v1/search?limit=2").unwrap();
         assert_eq!(items.len(), 2);
         assert_eq!(next.as_deref(), Some("https://x.org/v1/search?token=abc"));
+        assert_eq!(parse_matched(page), None);
+        assert_eq!(parse_matched(br#"{"numberMatched": 1234}"#), Some(1234));
+        assert_eq!(parse_matched(br#"{"context": {"matched": 7}}"#), Some(7));
+        assert_eq!(parse_matched(br#"{"numberMatched": -1}"#), None);
         let i = &items[0];
         assert_eq!((i.datetime.as_str(), i.cloud, i.bbox), ("2024-06-02T10:30:00Z", Some(3.5), Some([7.0, 46.0, 8.0, 47.0])));
         assert_eq!(i.url.as_deref(), Some("https://x.org/v1/collections/sentinel-2-l2a/items/S2A_1"));
@@ -677,6 +722,10 @@ mod tests {
         // The asset added: the one named, else visual; an s3:// address is kept (fetched through
         // the S3 connection serving its bucket, or anonymously from AWS).
         assert_eq!(i.asset_href(None).unwrap().0, "visual");
+        // The thumbnail: by key, a picture on the web.
+        assert_eq!(i.thumbnail().unwrap().key, "thumbnail");
+        assert!(items[1].thumbnail().is_none());
+        assert_eq!(i.properties.as_ref().unwrap()["eo:cloud_cover"], 3.5);
         assert_eq!(i.asset_href(Some("b04")).unwrap().1, "s3://bucket/B04.tif");
         assert!(i.asset_href(Some("nope")).unwrap_err().contains("visual"));
         let mut pc = i.clone();

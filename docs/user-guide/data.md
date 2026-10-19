@@ -220,10 +220,12 @@ other assets: by collection, dates, the most cloud cover and (by default) where 
 default API is Element 84's [Earth Search](https://earth-search.aws.element84.com/v1)
 (Sentinel-2, Landsat, NAIP, Copernicus DEM and Sentinel-1 on AWS); Microsoft's [Planetary
 Computer](https://planetarycomputer.microsoft.com/api/stac/v1) is offered beside it, and any
-STAC API with item search works. **Collections** lists what the API offers, **Find Items** shows up to 50 items (date, cloud
-cover, id) and draws their footprints as a layer; a click frames an item, and **Add** adds the
-asset chosen beside it: `visual` (true colour) when there is one, else the first GeoTIFF, else the
-first data asset. A cloud-optimised GeoTIFF is read in place, the tiles each view needs by range
+STAC API with item search works. **Collections** lists what the API offers, and **Find Items** shows up to 50 items as cards
+(with "Showing 50 of 1,234 items" when the API says how many match) and draws their footprints as
+a layer. Each card has the item's preview picture when it has one, its id, a collection · date ·
+cloud cover line, and **Zoom** (to the item), the asset to add, **Add** and **Details** (the item's
+properties). The asset chosen at first is `visual` (true colour) when there is one, else the first
+GeoTIFF, else the first point cloud, else the first data asset. A cloud-optimised GeoTIFF is read in place, the tiles each view needs by range
 (see [Files on the web](data-formats.md#files-on-the-web)); other assets download whole.
 
 The commands do the same: `stac.collections` (`"url"`), `stac.search` (`"collections"`,
