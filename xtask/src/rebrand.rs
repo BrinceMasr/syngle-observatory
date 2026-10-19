@@ -17,6 +17,7 @@
 //! | `rustgis-model`, `rustgis_engine`, `RUSTGIS_*`, `rustgis-cli` | the Rust package, module, environment-variable and binary names of the ~15 crates; renaming them is a separate refactor with no user-visible effect |
 //! | `.rgis`, `.rgisx` | the document format's extensions, so projects people already have still open |
 //! | `RustGISError` | the exception class of the inherited `rustgis` Python package: not user-visible |
+//! | `b"RustGIS parts 1\n"` (`crates/data/src/raster/cog.rs`) | the parts container's on-disk magic: renaming it would stop the fork reading containers the upstream app wrote |
 //! | `NOTICE`, `ATTRIBUTION.md`, `LICENSE`, `README.md` | the Apache-2.0 notices must name the work they came from, including its repository, and the README's provenance section says once where the fork came from |
 //! | `crates/render/build.rs`'s `assets.rustgis.app/data` | the public-domain Natural Earth sample data the build fetches; the fork hosts no data mirror |
 //!
@@ -34,6 +35,11 @@ const PROVENANCE: &[&str] = &["NOTICE", "ATTRIBUTION.md", "LICENSE", "README.md"
 /// Natural Earth sample data. The exact host and path, not the domain.
 const SAMPLE_DATA: &str = "assets.rustgis.app/data";
 
+/// The strings that legitimately carry the upstream name inside code: the Python package's
+/// exception class (an inherited API identifier), and the parts container's on-disk magic, which
+/// must keep its bytes so a container the upstream app wrote still opens here.
+const IDENTIFIERS: &[&str] = &["RustGIS parts 1", "RustGISError"];
+
 /// Every finding in one line (or one file path): the offending token, with why.
 fn offences(file: &str, line: &str) -> Vec<String> {
     let mut out = Vec::new();
@@ -41,7 +47,9 @@ fn offences(file: &str, line: &str) -> Vec<String> {
     // The sample-data address is removed first, so its host alone does not trip the domain check,
     // and the Python package's exception class is an identifier, not a product string.
     let mut scan = line.replace(SAMPLE_DATA, "");
-    scan = scan.replace("RustGISError", "");
+    for identifier in IDENTIFIERS {
+        scan = scan.replace(identifier, "");
+    }
     if !provenance && scan.contains("RustGIS") {
         out.push("RustGIS (upstream product name)".into());
     }
@@ -133,6 +141,8 @@ mod tests {
         assert!(allowed("apps/rustgis-python/src/lib.rs", "create_exception!(_rustgis, RustGISError, PyException);"));
         // The sample data's real source, in the table that credits every asset.
         assert!(allowed("ATTRIBUTION.md", "from [rustgis-assets](https://github.com/opengeos/rustgis-assets)"));
+        // The parts container's on-disk magic keeps the upstream bytes.
+        assert!(allowed("crates/data/src/raster/cog.rs", "const CONTAINER_MAGIC: &[u8; 16] = b\"RustGIS parts 1\\n\";"));
         // The build-time sample data fetch is the one upstream address left.
         assert!(allowed("crates/render/build.rs", "const BASE: &str = \"https://assets.rustgis.app/data\";"));
     }

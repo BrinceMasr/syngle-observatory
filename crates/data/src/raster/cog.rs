@@ -41,7 +41,9 @@ pub struct Sparse {
 }
 
 /// What a container of a file's parts ([`Sparse::container`]) starts with.
-const CONTAINER_MAGIC: &[u8; 16] = b"Syngle Observatory parts 1\n";
+/// The format's own magic, upstream's: a container the upstream app wrote must still open here,
+/// so it keeps its bytes (the fork's readme says the same of the `.rgis` extensions).
+const CONTAINER_MAGIC: &[u8; 16] = b"RustGIS parts 1\n";
 /// The most parts a container may hold.
 const MAX_PARTS: u64 = 1 << 20;
 
