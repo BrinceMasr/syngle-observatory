@@ -567,9 +567,10 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
         ui.label(if is_static { tl!("STAC catalog") } else { tl!("STAC API") });
         ui.horizontal(|ui| {
             let named = APIS.iter().find(|(_, u)| *u == st.api.trim_end_matches('/')).map(|(l, _)| tl!(*l).to_string());
-            egui::ComboBox::from_id_salt("stac_api").selected_text(named.unwrap_or_else(|| tl!("Other").to_string())).width(150.0).show_ui(
-                ui,
-                |ui| {
+            egui::ComboBox::from_id_salt("stac_api")
+                .selected_text(named.unwrap_or_else(|| tl!("Other").to_string()))
+                .width((ui.available_width() * 0.4).clamp(90.0, 150.0))
+                .show_ui(ui, |ui| {
                     for (label, url) in APIS {
                         if ui.selectable_label(st.api == url, tl!(label)).clicked() && st.api != url {
                             st.api = url.to_string();
@@ -577,10 +578,9 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
                             api_changed = true;
                         }
                     }
-                },
-            );
+                });
             // A catalog typed in is browsed with Browse, from its top.
-            if ui.add(egui::TextEdit::singleline(&mut st.api).desired_width(230.0)).changed() {
+            if ui.add(egui::TextEdit::singleline(&mut st.api).desired_width(ui.available_width().max(80.0))).changed() {
                 (st.node, st.node_title) = (String::new(), String::new());
                 st.trail.clear();
                 st.children.clear();
@@ -591,19 +591,23 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
             ui.label(tl!("Catalog"));
             ui.horizontal(|ui| {
                 let shown = if st.node.is_empty() { tl!("all of it").to_string() } else { st.node_title.clone() };
-                egui::ComboBox::from_id_salt("stac_node").selected_text(shown).width(330.0).height(360.0).show_ui(ui, |ui| {
-                    for (i, (title, _)) in st.trail.iter().enumerate() {
-                        let title = if title.is_empty() { tl!("all of it").to_string() } else { title.clone() };
-                        if ui.selectable_label(false, format!("↑ {title}")).clicked() {
-                            go_up = Some(i);
+                egui::ComboBox::from_id_salt("stac_node")
+                    .selected_text(shown)
+                    .width((ui.available_width() - 90.0).max(120.0))
+                    .height(360.0)
+                    .show_ui(ui, |ui| {
+                        for (i, (title, _)) in st.trail.iter().enumerate() {
+                            let title = if title.is_empty() { tl!("all of it").to_string() } else { title.clone() };
+                            if ui.selectable_label(false, format!("↑ {title}")).clicked() {
+                                go_up = Some(i);
+                            }
                         }
-                    }
-                    for c in &st.children {
-                        if ui.selectable_label(false, &c.title).on_hover_text(&c.url).clicked() {
-                            go_to = Some((c.title.clone(), c.url.clone()));
+                        for c in &st.children {
+                            if ui.selectable_label(false, &c.title).on_hover_text(&c.url).clicked() {
+                                go_to = Some((c.title.clone(), c.url.clone()));
+                            }
                         }
-                    }
-                });
+                    });
                 list = ui.add_enabled(!busy, egui::Button::new(tl!("Browse"))).clicked();
             });
             ui.end_row();
@@ -611,16 +615,24 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
             ui.label(tl!("Collection"));
             ui.horizontal(|ui| {
                 if st.collections.is_empty() {
-                    ui.add(egui::TextEdit::singleline(&mut st.collection).hint_text(tl!("any")).desired_width(270.0));
+                    ui.add(
+                        egui::TextEdit::singleline(&mut st.collection)
+                            .hint_text(tl!("any"))
+                            .desired_width((ui.available_width() - 110.0).max(100.0)),
+                    );
                 } else {
                     let shown = if st.collection.is_empty() { tl!("any").to_string() } else { st.collection.clone() };
-                    egui::ComboBox::from_id_salt("stac_collection").selected_text(shown).width(270.0).height(320.0).show_ui(ui, |ui| {
-                        ui.selectable_value(&mut st.collection, String::new(), tl!("any"));
-                        for (id, title) in &st.collections {
-                            let label = if title.is_empty() { id.clone() } else { format!("{id} — {title}") };
-                            ui.selectable_value(&mut st.collection, id.clone(), label);
-                        }
-                    });
+                    egui::ComboBox::from_id_salt("stac_collection")
+                        .selected_text(shown)
+                        .width((ui.available_width() - 110.0).max(100.0))
+                        .height(320.0)
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut st.collection, String::new(), tl!("any"));
+                            for (id, title) in &st.collections {
+                                let label = if title.is_empty() { id.clone() } else { format!("{id} — {title}") };
+                                ui.selectable_value(&mut st.collection, id.clone(), label);
+                            }
+                        });
                 }
                 list = ui.add_enabled(!busy, egui::Button::new(tl!("Collections"))).clicked();
             });
@@ -628,13 +640,17 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
         }
         ui.label(tl!("Dates"));
         ui.horizontal(|ui| {
-            ui.add(egui::TextEdit::singleline(&mut st.from).hint_text("2024-06-01").desired_width(110.0));
+            ui.add(
+                egui::TextEdit::singleline(&mut st.from)
+                    .hint_text("2024-06-01")
+                    .desired_width(((ui.available_width() - 30.0) / 2.0).clamp(70.0, 110.0)),
+            );
             ui.label("–");
-            ui.add(egui::TextEdit::singleline(&mut st.to).hint_text("2024-06-30").desired_width(110.0));
+            ui.add(egui::TextEdit::singleline(&mut st.to).hint_text("2024-06-30").desired_width(ui.available_width().clamp(70.0, 110.0)));
         });
         ui.end_row();
         ui.label(tl!("Most cloud cover (%)"));
-        ui.add(egui::TextEdit::singleline(&mut st.max_cloud).hint_text(tl!("any")).desired_width(110.0));
+        ui.add(egui::TextEdit::singleline(&mut st.max_cloud).hint_text(tl!("any")).desired_width(ui.available_width().clamp(70.0, 110.0)));
         ui.end_row();
         if is_static && (st.preset == Some(Preset::Vantor) || !st.phase.is_empty()) {
             ui.label(tl!("Phase"));
@@ -751,11 +767,18 @@ fn results(app: &mut RustGisApp, ui: &mut egui::Ui) {
             ui.horizontal(|ui| {
                 let date = item.datetime.get(..10).unwrap_or(&item.datetime);
                 let cloud = item.cloud.map(|c| format!(" · ☁ {c:.0}%")).unwrap_or_default();
-                if ui.add(egui::Button::new(format!("{date}{cloud}  {}", item.id)).truncate().min_size(vec2(300.0, 0.0))).clicked() {
+                if ui
+                    .add(
+                        egui::Button::new(format!("{date}{cloud}  {}", item.id))
+                            .truncate()
+                            .min_size(vec2((ui.available_width() - 160.0).max(120.0), 0.0)),
+                    )
+                    .clicked()
+                {
                     zoom = Some(i);
                 }
                 if let Some(key) = st.chosen.get_mut(i) {
-                    egui::ComboBox::from_id_salt(("stac_asset", i)).selected_text(key.clone()).width(110.0).show_ui(ui, |ui| {
+                    egui::ComboBox::from_id_salt(("stac_asset", i)).selected_text(key.clone()).width(90.0).show_ui(ui, |ui| {
                         for a in &item.assets {
                             ui.selectable_value(key, a.key.clone(), &a.key);
                         }
