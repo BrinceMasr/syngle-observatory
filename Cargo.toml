@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/*", "xtask"]
+members = ["crates/*", "apps/*", "xtask", "syngle-spike/engine"]
 default-members = ["crates/*", "apps/rustgis", "apps/rustgis-cli", "xtask"]
 
 [workspace.package]

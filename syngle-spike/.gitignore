@@ -1,0 +1,9 @@
+# Spike-generated artefacts: the generator, the sidecar, the host and the bench scripts are
+# committed; their outputs are not. The datasets are 63–522 MB and every measured run writes a JSON
+# plus screenshots.
+data/
+results/
+logs/
+bench/results/
+bench/*.log
+host/node_modules/

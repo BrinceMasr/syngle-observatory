@@ -1,0 +1,66 @@
+{
+  "engine": "C:\\Users\\omarf\\syngle-spikes\\observatory\\target\\release\\syngle-spike-engine.exe",
+  "web": "C:\\Users\\omarf\\syngle-spikes\\observatory\\dist\\web",
+  "extras": [],
+  "measuredAt": "2026-10-19T07:47:39.725Z",
+  "sets": [
+    {
+      "name": "engine",
+      "count": 1,
+      "rawBytes": 34301440,
+      "zip9Bytes": 12879618,
+      "lzma2Bytes": 8453253,
+      "zipStatus": 0,
+      "sevenStatus": 0,
+      "biggest": [
+        {
+          "path": "syngle-spike-engine.exe",
+          "bytes": 34301440,
+          "full": "C:\\Users\\omarf\\syngle-spikes\\observatory\\target\\release\\syngle-spike-engine.exe"
+        }
+      ]
+    },
+    {
+      "name": "view (wasm + glue + assets)",
+      "count": 5,
+      "rawBytes": 32133174,
+      "zip9Bytes": 10421657,
+      "lzma2Bytes": 6932943,
+      "zipStatus": 0,
+      "sevenStatus": 0,
+      "biggest": [
+        {
+          "path": "rustgis-web-7229bb481568b960_bg.wasm",
+          "bytes": 31953960
+        },
+        {
+          "path": "rustgis-web-7229bb481568b960.js",
+          "bytes": 170478
+        },
+        {
+          "path": "index.html",
+          "bytes": 5615
+        },
+        {
+          "path": "snippets\\rustgis-web-78b73f8c13a26ca9\\inline0.js",
+          "bytes": 2346
+        },
+        {
+          "path": "manifest.webmanifest",
+          "bytes": 775
+        }
+      ]
+    }
+  ],
+  "total": {
+    "rawBytes": 66434614,
+    "zip9Bytes": 23301275,
+    "lzma2Bytes": 15386196,
+    "combined": {
+      "zip9Bytes": 23301253,
+      "lzma2Bytes": 15386083,
+      "zipStatus": 0,
+      "sevenStatus": 0
+    }
+  }
+}

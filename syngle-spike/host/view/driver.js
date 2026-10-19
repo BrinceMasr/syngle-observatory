@@ -1,0 +1,189 @@
+// Spike A (#43): the embedding page's driver.
+//
+// The host page holds the WASM view in an iframe and speaks the fork's documented `?embed`
+// postMessage contract with it (see apps/rustgis-web/src/embed.rs): the page sends a whole project,
+// the view posts `ready`, `project` (600 ms after a change settles) and `result`.
+//
+// Everything below is measurement scaffolding for the Electron main process, which drives this
+// page with `webContents.executeJavaScript`: `spike.waitReady()`, `spike.sendProject(text)`,
+// `spike.reset()`, `spike.snapshot()`, `spike.info()`.
+(function () {
+  var frame = document.getElementById("view");
+  var hud = document.getElementById("hud");
+  var state = {
+    ready: null,
+    readyAt: 0,
+    sentAt: 0,
+    posts: [],
+    results: [],
+    pageT0: performance.now(),
+    pageDate0: Date.now(),
+  };
+  var waiters = [];
+
+  window.addEventListener("message", function (event) {
+    if (event.origin !== window.location.origin) return;
+    var data = event.data;
+    if (!data || typeof data !== "object" || typeof data.rustgis !== "string") return;
+    var at = performance.now();
+    var date = Date.now();
+    if (data.rustgis === "ready") {
+      state.ready = { at: at, date: date };
+      state.readyAt = at;
+      waiters.splice(0).forEach(function (resolve) {
+        resolve({ at: at, date: date });
+      });
+    } else if (data.rustgis === "project") {
+      var short = { at: at, date: date, bytes: (data.text || "").length };
+      try {
+        var project = JSON.parse(data.text);
+        var layer = project.maps && project.maps[0] && project.maps[0].layers && project.maps[0].layers[0];
+        short.layers = project.maps && project.maps[0] ? project.maps[0].layers.length : 0;
+        short.features = layer && layer.dataset && layer.dataset.features ? layer.dataset.features.length : 0;
+        short.source = layer && layer.source ? layer.source.path : null;
+        short.res = project.maps && project.maps[0] ? project.maps[0].camera.res : null;
+        short.center = project.maps && project.maps[0] ? [project.maps[0].camera.center.x, project.maps[0].camera.center.y] : null;
+        short.revision = project.maps ? project.revision : null;
+      } catch (e) {
+        short.parseError = String(e);
+      }
+      state.posts.push(short);
+      hud.textContent =
+        "frames=" + (spike.snapshot().frames.length) + " posts=" + state.posts.length + " features=" + (short.features || 0);
+    } else if (data.rustgis === "result") {
+      state.results.push({ at: at, id: data.id, ok: data.ok });
+    }
+  });
+
+  var spike = {
+    state: state,
+    frame: frame,
+
+    /// Resolves when the view posted `ready` (it is listening for the page's messages).
+    waitReady: function (timeoutMs) {
+      if (state.ready) return Promise.resolve(state.ready);
+      return new Promise(function (resolve, reject) {
+        var timer = setTimeout(function () {
+          reject(new Error("the view never posted ready"));
+        }, timeoutMs || 60000);
+        waiters.push(function (r) {
+          clearTimeout(timer);
+          resolve(r);
+        });
+      });
+    },
+
+    /// Sends a whole project over the documented contract; returns when the message is posted.
+    sendProject: function (text) {
+      frame.contentWindow.postMessage({ rustgis: "project", text: text }, window.location.origin);
+      var at = performance.now();
+      var date = Date.now();
+      state.sentAt = at;
+      return { at: at, date: date, bytes: text.length };
+    },
+
+    /// The longest the page waits for the *next* project post, so `waitForPost` can time out.
+    waitForPost: function (afterIndex, timeoutMs) {
+      var start = state.posts.length;
+      var from = afterIndex === undefined ? start : afterIndex;
+      return new Promise(function (resolve, reject) {
+        var deadline = performance.now() + (timeoutMs || 30000);
+        var tick = setInterval(function () {
+          if (state.posts.length > from) {
+            clearInterval(tick);
+            resolve(state.posts[state.posts.length - 1]);
+          } else if (performance.now() > deadline) {
+            clearInterval(tick);
+            reject(new Error("no project post arrived"));
+          }
+        }, 10);
+      });
+    },
+
+    /// The view's own frame/draw counters (the injected instrument).
+    snapshot: function () {
+      try {
+        var w = frame.contentWindow;
+        if (w && w.__spike) return w.__spike.snapshot();
+      } catch (e) {
+        return { error: String(e) };
+      }
+      return { frames: [], draws: 0, error: "no instrument" };
+    },
+
+    reset: function () {
+      try {
+        var w = frame.contentWindow;
+        if (w && w.__spike) w.__spike.reset();
+        return true;
+      } catch (e) {
+        return String(e);
+      }
+    },
+
+    /// What the renderer actually got: the WebGPU adapter or the WebGL2 renderer string, plus the
+    /// backend the instrument saw the app use.
+    info: async function () {
+      var out = { href: window.location.href, ready: state.ready, posts: state.posts.length };
+      try {
+        out.instrument = this.snapshot();
+      } catch (e) {
+        out.instrumentError = String(e);
+      }
+      try {
+        if (navigator.gpu) {
+          var adapter = await navigator.gpu.requestAdapter();
+          // GPUAdapterInfo's fields live on the prototype, so they are read one by one.
+          var info = adapter && adapter.info;
+          out.webgpu = adapter
+            ? {
+                vendor: info && info.vendor,
+                architecture: info && info.architecture,
+                device: info && info.device,
+                description: info && info.description,
+                featureCount: adapter.features ? adapter.features.size : null,
+                limits: adapter.limits ? { maxTextureDimension2D: adapter.limits.maxTextureDimension2D, maxBufferSize: adapter.limits.maxBufferSize } : null,
+              }
+            : null;
+        } else {
+          out.webgpu = "navigator.gpu missing";
+        }
+      } catch (e) {
+        out.webgpuError = String(e);
+      }
+      try {
+        var canvas = document.createElement("canvas");
+        var gl = canvas.getContext("webgl2");
+        if (gl) {
+          var ext = gl.getExtension("WEBGL_debug_renderer_info");
+          out.webgl2 = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+        }
+      } catch (e) {
+        out.webglError = String(e);
+      }
+      // Which backend the app really took: a canvas keeps the first context type it is given, so
+      // asking for `webgl2` answers "webgl2" only when the app itself created a WebGL2 context.
+      try {
+        var doc = frame.contentWindow.document;
+        var appCanvas = doc.getElementById("rustgis_canvas") || doc.querySelector("canvas");
+        if (appCanvas) {
+          out.appCanvas = { width: appCanvas.width, height: appCanvas.height };
+          var existing = appCanvas.getContext("webgl2");
+          out.appCanvasContext = existing ? "webgl2" : "not webgl2 (WebGPU, or another context)";
+          if (existing) {
+            var info2 = existing.getExtension("WEBGL_debug_renderer_info");
+            out.appCanvasRenderer = info2 ? existing.getParameter(info2.UNMASKED_RENDERER_WEBGL) : existing.getParameter(existing.RENDERER);
+            out.appCanvasHasWebgpuMarker = typeof WebGPU !== "undefined" && appCanvas.__webgpu !== undefined;
+          }
+        } else {
+          out.appCanvas = "none found";
+        }
+      } catch (e) {
+        out.appCanvasError = String(e);
+      }
+      out.userAgent = navigator.userAgent;
+      return out;
+    },
+  };
+  window.spike = spike;
+})();

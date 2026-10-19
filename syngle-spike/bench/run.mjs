@@ -1,0 +1,188 @@
+// Spike A (#43): the repeatable runner. One Electron process per measured run, then the medians.
+//
+//   node run.mjs --runs 5 --mode cold --tag rtx-webgpu-cold --backend webgpu
+//   node run.mjs --runs 3 --mode pan  --tag uhd-webgl2-pan  --backend webgl2 --gpu low
+//
+// It knows nothing the host does not report: it spawns `electron .` with the engine path, reads the
+// run's JSON, and aggregates. A `--gpu low|high` run also needs `node gpu-pref.mjs low|high` around
+// it (the runner does it itself and always restores the previous value).
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const hostDir = path.resolve(here, "..", "host");
+const root = path.resolve(here, "..", "..");
+
+function parse(argv) {
+  const out = { runs: 1, mode: "both", backend: "webgpu", gpu: "default", poll: 20, panMs: 10000, outdir: path.resolve(here, "results") };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith("--")) continue;
+    const key = a.slice(2);
+    const v = argv[i + 1];
+    if (v === undefined || v.startsWith("--")) out[key] = true;
+    else {
+      out[key] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v;
+      i++;
+    }
+  }
+  return out;
+}
+
+const args = parse(process.argv.slice(2));
+const engineExe = args.engine || path.join(root, "target", "release", "syngle-spike-engine.exe");
+const tag = args.tag || `${args.mode}-${args.backend}-${args.gpu}`;
+const electron = args.electron || path.join(hostDir, "node_modules", "electron", "dist", "electron.exe");
+const outdir = path.resolve(args.outdir);
+
+function log(line) {
+  process.stdout.write(line + "\n");
+}
+
+const median = (xs) => {
+  const v = xs.filter((x) => typeof x === "number" && Number.isFinite(x)).sort((a, b) => a - b);
+  return v.length ? v[Math.floor(v.length / 2)] : null;
+};
+const mean = (xs) => {
+  const v = xs.filter((x) => typeof x === "number" && Number.isFinite(x));
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+};
+
+function setGpuPreference(kind) {
+  // HKCU only, and only for this executable: the documented per-app GPU preference.
+  const value = kind === "low" ? "GpuPreference=1;" : kind === "high" ? "GpuPreference=2;" : null;
+  if (!value) return () => {};
+  const key = "HKCU\\Software\\Microsoft\\DirectX\\UserGpuPreferences";
+  const query = spawnSync("reg.exe", ["query", key, "/v", electron], { encoding: "utf8" });
+  const previous = query.status === 0 && /REG_SZ\s+(.*)/.exec(query.stdout) ? /REG_SZ\s+(.*)/.exec(query.stdout)[1].trim() : null;
+  spawnSync("reg.exe", ["add", key, "/v", electron, "/t", "REG_SZ", "/d", value, "/f"], { encoding: "utf8" });
+  return () => {
+    if (previous) spawnSync("reg.exe", ["add", key, "/v", electron, "/t", "REG_SZ", "/d", previous, "/f"], { encoding: "utf8" });
+    else spawnSync("reg.exe", ["delete", key, "/v", electron, "/f"], { encoding: "utf8" });
+  };
+}
+
+async function runOne(index, warmup) {
+  const name = warmup ? `${tag}-warmup` : `${tag}-run${index}`;
+  const out = path.join(outdir, `${name}.json`);
+  const logFile = path.join(outdir, `${name}.log`);
+  fs.mkdirSync(outdir, { recursive: true });
+  const argv = [
+    ".",
+    "--engine",
+    engineExe,
+    "--root",
+    root,
+    "--mode",
+    args.mode === true ? "both" : String(args.mode),
+    "--backend",
+    String(args.backend),
+    "--poll",
+    String(args.poll),
+    "--pan-ms",
+    String(args.panMs),
+    "--out",
+    out,
+    "--tag",
+    name,
+  ];
+  if (args["engine-open"]) argv.push("--engine-open", args["engine-open"]);
+  else argv.push("--engine-open", "AUTO");
+  if (args["engine-data"]) argv.push("--engine-data", String(args["engine-data"]));
+  if (args["low-power"]) argv.push("--low-power");
+  if (args["high-perf"]) argv.push("--high-perf");
+  if (args.screenshot) argv.push("--screenshot", path.join(outdir, `${name}.png`));
+  const spawnWall = Date.now();
+  log(`\n=== ${name}: electron ${argv.join(" ")}`);
+  const child = spawn(electron, argv, { cwd: hostDir, env: { ...process.env } });
+  const logStream = fs.createWriteStream(logFile);
+  let bytes = "";
+  child.stdout.on("data", (c) => {
+    const text = c.toString();
+    logStream.write(text);
+    bytes += text;
+    if (process.env.SPIKE_VERBOSE) process.stdout.write(text);
+  });
+  child.stderr.on("data", (c) => logStream.write(c));
+  const code = await new Promise((resolve) => child.on("exit", resolve));
+  logStream.end();
+  let result = null;
+  try {
+    result = JSON.parse(fs.readFileSync(out, "utf8"));
+  } catch (e) {
+    log(`!! ${name}: no result file (${e.message}); log ${logFile}`);
+    return { name, ok: false, spawnWall, code };
+  }
+  result.runnerSpawnWall = spawnWall;
+  result.warmup = Boolean(warmup);
+  fs.writeFileSync(out, JSON.stringify(result, null, 2));
+  const fromSpawn = result.started && result.started.firstData ? result.started.firstData - spawnWall : null;
+  log(
+    `${name}: ok=${result.ok} firstData=${fromSpawn} ms (from spawn) engineLoad=${result.engineOpen && result.engineOpen.loadMs && result.engineOpen.loadMs.toFixed(0)} ms pan=${result.pan ? result.pan.fpsFromMedianMs + " fps median " + result.pan.medianFrameMs + " ms" : "-"} gpu=${describeGpu(result)}`
+  );
+  return { name, ok: Boolean(result.ok), warmup: Boolean(warmup), spawnWall, code, result, firstDataFromSpawn: fromSpawn };
+}
+
+function describeGpu(result) {
+  const g = result.gpu || {};
+  const webgpu = g.webgpu && typeof g.webgpu === "object" ? `${g.webgpu.vendor || ""} ${g.webgpu.architecture || ""} ${g.webgpu.device || ""}`.trim() : String(g.webgpu);
+  const instrument = g.instrument ? `backend=${g.instrument.backend || "?"}` : "";
+  return `webgpu[${webgpu}] webgl2[${g.webgl2 || "?"}] ${instrument}`;
+}
+
+const restore = args.gpu && args.gpu !== "default" ? setGpuPreference(args.gpu) : () => {};
+const runs = [];
+try {
+  if (args.warmup !== false) {
+    log("warm-up run (the OS file cache is cold, this one is not counted)");
+    runs.push(await runOne(0, true));
+  }
+  for (let i = 1; i <= args.runs; i++) runs.push(await runOne(i, false));
+} finally {
+  restore();
+}
+
+const measured = runs.filter((r) => r.ok && !r.warmup);
+const summary = {
+  tag,
+  mode: args.mode,
+  backend: args.backend,
+  gpu: args.gpu,
+  runs: measured.length,
+  warmup: runs.filter((r) => r.warmup).map((r) => ({ firstDataFromSpawn: r.firstDataFromSpawn, ok: r.ok })),
+  cold: {
+    fromSpawnMs: measured.map((r) => r.firstDataFromSpawn),
+    medianFromSpawnMs: median(measured.map((r) => r.firstDataFromSpawn)),
+    engineReadyMs: median(measured.map((r) => r.result.coldOpen && r.result.coldOpen.engineReadyMs)),
+    engineLoadMs: median(measured.map((r) => r.result.engineOpen && r.result.engineOpen.loadMs)),
+    viewReadyMs: median(measured.map((r) => r.result.coldOpen && r.result.coldOpen.viewReadyMs)),
+    projectSentMs: median(measured.map((r) => r.result.coldOpen && r.result.coldOpen.projectSentMs)),
+    firstDataMs: median(measured.map((r) => r.result.coldOpen && r.result.coldOpen.firstDataMs)),
+  },
+  pan: {
+    fpsMedianMs: median(measured.map((r) => r.result.pan && r.result.pan.fpsFromMedianMs)),
+    medianFrameMs: median(measured.map((r) => r.result.pan && r.result.pan.medianFrameMs)),
+    p95FrameMs: median(measured.map((r) => r.result.pan && r.result.pan.p95FrameMs)),
+    p99FrameMs: median(measured.map((r) => r.result.pan && r.result.pan.p99FrameMs)),
+    droppedOver1p5: measured.map((r) => r.result.pan && r.result.pan.droppedOver1p5Period),
+    fpsPerRun: measured.map((r) => r.result.pan && r.result.pan.fpsFromMedianMs),
+    intervals: measured.map((r) => r.result.pan && r.result.pan.intervals),
+  },
+  memoryKb: {
+    perRun: measured.map((r) => r.result.memory),
+    rendererMedianKb: median(measured.flatMap((r) => (r.result.memory ? r.result.memory.appMetrics.filter((m) => m.type === "Tab" || m.type === "Renderer").map((m) => m.workingSetKb) : []))),
+    gpuMedianKb: median(measured.flatMap((r) => (r.result.memory ? r.result.memory.appMetrics.filter((m) => m.type === "GPU").map((m) => m.workingSetKb) : []))),
+    engineMedianKb: median(measured.map((r) => r.result.memory && r.result.memory.engineRssKb)),
+    totalMeanKb: mean(measured.map((r) => (r.result.memory ? r.result.memory.appMetrics.reduce((a, m) => a + (m.workingSetKb || 0), 0) + (r.result.memory.engineRssKb || 0) : null))),
+  },
+  gpu: measured.length ? describeGpu(measured[0].result) : null,
+  gpuPerRun: measured.map((r) => describeGpu(r.result)),
+  files: runs.map((r) => r.name + ".json"),
+  ok: measured.length > 0 && measured.every((r) => r.ok),
+};
+const summaryPath = path.join(outdir, `${tag}-summary.json`);
+fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+log("\n=== summary " + summaryPath);
+log(JSON.stringify(summary, null, 2));
