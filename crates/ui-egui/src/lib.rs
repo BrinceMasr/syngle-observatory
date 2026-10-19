@@ -26,6 +26,7 @@ mod editpanes;
 mod failureui;
 mod geocodeui;
 mod globe_drape;
+mod globe_frame;
 pub mod icons;
 mod layoutview;
 #[cfg(not(target_arch = "wasm32"))]

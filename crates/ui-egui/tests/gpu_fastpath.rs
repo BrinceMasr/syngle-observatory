@@ -25,12 +25,25 @@ fn serve_planet_tiles() {
     image::RgbaImage::from_fn(256, 256, |x, y| image::Rgba([100 + (x / 2) as u8, 30 + (y / 8) as u8, 50, 255]))
         .write_to(&mut png, image::ImageFormat::Png)
         .expect("tile");
-    rustgis_tiles::cache::set_fetcher(move |_, done| done(Ok(png.get_ref().clone())));
+    let mut sharp = std::io::Cursor::new(Vec::new());
+    image::RgbaImage::from_fn(256, 256, |x, y| {
+        let c = if (x + y) % 2 == 0 { 240 } else { 20 };
+        image::Rgba([c, c, c, 255])
+    })
+    .write_to(&mut sharp, image::ImageFormat::Png)
+    .expect("sharp tile");
+    rustgis_tiles::cache::set_fetcher(move |url, done| {
+        done(Ok(if url.contains("quality-wms.test") { sharp.get_ref().clone() } else { png.get_ref().clone() }))
+    });
 }
 
 /// A wgpu harness sharing one render state with the app (the ui_shot pattern), so the GPU
 /// backend engages. `None` on hosts without an adapter.
 fn harness() -> Option<egui_kittest::Harness<'static, RustGisApp>> {
+    harness_at_density(1.0)
+}
+
+fn harness_at_density(ppp: f32) -> Option<egui_kittest::Harness<'static, RustGisApp>> {
     let setup = egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew::without_display_handle());
     let instance = pollster::block_on(setup.new_instance());
     let rs = pollster::block_on(egui_wgpu::RenderState::create(
@@ -46,7 +59,7 @@ fn harness() -> Option<egui_kittest::Harness<'static, RustGisApp>> {
     Some(
         egui_kittest::Harness::builder()
             .with_size(egui::vec2(900.0, 550.0))
-            .with_pixels_per_point(1.0)
+            .with_pixels_per_point(ppp)
             .with_max_steps(10_000)
             .renderer(egui_kittest::wgpu::WgpuTestRenderer::from_render_state(rs))
             .build_ui_state(
@@ -234,5 +247,199 @@ fn tiled_camera_playback_does_not_start_settling_jobs() {
             assert_eq!(h.state().map.full_frame_camera(), h.state().session.map().camera);
         }
         assert_ne!(h.state().session.map().camera.res, start.res, "playback moved the camera");
+    }
+}
+
+#[test]
+fn dragging_a_planet_globe_keeps_point_symbols_their_settled_size() {
+    use rustgis_ui_egui::rustgis_engine::{
+        data::{GeometryType, io::read_geojson},
+        geom::{Coord, lonlat_to_merc},
+        map::{Camera, Projection, Renderer, Rgba, Symbol},
+    };
+    for (body, lat, ppp) in [("moon", 0.0, 1.0), ("moon", 0.0, 2.0), ("mars", 45.0, 1.0), ("mars", 45.0, 2.0), ("earth", 60.0, 2.0)] {
+        for gpu in [false, true] {
+            let Some(mut h) = harness_at_density(ppp) else { return };
+            h.state_mut().run("ui.map.gpu", json!({"on": gpu})).expect("backend");
+            h.state_mut().run("map.body", json!({"name": body, "basemap": false})).expect("body");
+            let m = h.state_mut().session.map_mut();
+            m.layers.clear();
+            m.tiles.clear();
+            m.graticule = false;
+            m.projection = Projection::Globe;
+            m.camera = Camera { center: lonlat_to_merc(Coord::new(0.0, lat)), res: 5_000.0, bearing: 0.0, pitch: 0.0 };
+            let geojson = json!({"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [0.0, lat]}});
+            let (data, _) = read_geojson(&geojson.to_string(), "Point").expect("point");
+            let id = m.add_dataset(data);
+            m.layer_mut(id).expect("layer").renderer = Renderer::Single(Symbol {
+                fill: Rgba::rgb(20, 240, 20),
+                stroke_width: 0.0,
+                size: 16.0,
+                ..Symbol::default_for(GeometryType::Point, 0)
+            });
+            wait_for_frame(&mut h);
+            let point_width = |h: &mut egui_kittest::Harness<'_, RustGisApp>| {
+                let rect = h.state().map.view_rect.expect("map").0;
+                let image = h.render().expect("point screenshot");
+                let mut xs = Vec::new();
+                for y in (rect.top() * ppp).ceil() as u32..(rect.bottom() * ppp).floor() as u32 {
+                    for x in (rect.left() * ppp).ceil() as u32..(rect.right() * ppp).floor() as u32 {
+                        let p = image.get_pixel(x, y);
+                        if p[1] > 80 && u16::from(p[1]) > u16::from(p[0]) * 2 && u16::from(p[1]) > u16::from(p[2]) * 2 {
+                            xs.push(x);
+                        }
+                    }
+                }
+                assert!(!xs.is_empty(), "point must be visible");
+                xs.iter().max().unwrap() - xs.iter().min().unwrap() + 1
+            };
+            let settled = point_width(&mut h);
+            let from = h.state().map.view_rect.expect("map").0.center() + egui::vec2(80.0, 50.0);
+            h.input_mut().events.push(egui::Event::PointerMoved(from));
+            h.input_mut().events.push(egui::Event::PointerButton {
+                pos: from,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: Default::default(),
+            });
+            h.step();
+            let to = from + egui::vec2(12.0, 0.0);
+            h.input_mut().events.push(egui::Event::PointerMoved(to));
+            h.step();
+            let dragging = point_width(&mut h);
+            h.input_mut().events.push(egui::Event::PointerButton {
+                pos: to,
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: Default::default(),
+            });
+            wait_for_frame(&mut h);
+            let stopped = point_width(&mut h);
+            assert!(settled.abs_diff(stopped) <= (2.0 * ppp) as u32, "small pan must keep point size");
+            assert!(
+                dragging.abs_diff(stopped) <= (2.0 * ppp) as u32,
+                "{body} GPU={gpu} density={ppp}: point width while dragging {dragging}, settled {stopped}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_globe_keeps_native_wms_and_vector_detail_during_navigation_and_release() {
+    use rustgis_ui_egui::rustgis_engine::{
+        data::{GeometryType, io::read_geojson},
+        geom::{Coord, lonlat_to_merc},
+        map::{Camera, Projection, Renderer, Rgba, Symbol, TileKind, TileLayer},
+        render::{View, render},
+    };
+    serve_planet_tiles();
+    for gpu in [false, true] {
+        let Some(mut h) = harness_at_density(2.0) else { return };
+        h.state_mut().run("ui.map.gpu", json!({"on":gpu})).expect("backend");
+        h.state_mut().run("map.body", json!({"name":"moon", "basemap":false})).expect("body");
+        let m = h.state_mut().session.map_mut();
+        m.layers.clear();
+        m.tiles.clear();
+        m.graticule = false;
+        m.projection = Projection::Globe;
+        m.camera = Camera { center: lonlat_to_merc(Coord::new(15.0, 25.0)), res: 5_000.0, bearing: 0.0, pitch: 0.0 };
+        let mut wms = TileLayer::new(
+            "WMS",
+            TileKind::Raster,
+            "https://quality-wms.test/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=imagery&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH={width}&HEIGHT={height}&FORMAT=image/png",
+        );
+        // Keep the fixture's ground pattern identical across zoom levels.
+        wms.max_zoom = 4;
+        m.tiles.push(wms);
+        for (kind, coordinates) in [
+            ("Point", json!([15.0, 25.0])),
+            ("LineString", json!([[14.0, 24.7], [16.0, 24.7]])),
+            ("Polygon", json!([[[14.5, 25.3], [15.5, 25.3], [15.5, 25.8], [14.5, 25.8], [14.5, 25.3]]])),
+        ] {
+            let text = json!({"type":"Feature","properties":{},"geometry":{"type":kind,"coordinates":coordinates}}).to_string();
+            let (data, _) = read_geojson(&text, kind).expect("vector");
+            let id = m.add_dataset(data);
+            m.layer_mut(id).expect("layer").renderer = Renderer::Single(Symbol {
+                fill: Rgba::rgb(20, 240, 20).with_alpha(if kind == "Polygon" { 0 } else { 255 }),
+                stroke: Rgba::rgb(20, 240, 20),
+                stroke_width: 2.0,
+                size: 16.0,
+                ..Symbol::default_for(GeometryType::Point, 0)
+            });
+        }
+        wait_for_frame(&mut h);
+        let check = |h: &mut egui_kittest::Harness<'_, RustGisApp>, stage: &str| {
+            let rect = h.state().map.view_rect.expect("map").0;
+            let image = h.render().expect("native globe screenshot");
+            let view = View {
+                width: f64::from(rect.width()),
+                height: f64::from(rect.height()),
+                pixels_per_point: 2.0,
+                camera: h.state().session.map().camera,
+                sky: true,
+            };
+            let reference = render(&mut h.state().session.map().clone(), &view).expect("native reference");
+            let (w, hpx) = (reference.pixmap.width(), reference.pixmap.height());
+            let mut error = 0u64;
+            let mut samples = 0u64;
+            let (mut darkest, mut brightest) = (255u8, 0u8);
+            for y in (hpx / 4..hpx * 3 / 4).step_by(3) {
+                for x in (w / 4..w * 3 / 4).step_by(3) {
+                    let actual = image.get_pixel((rect.min.x * 2.0).round() as u32 + x, (rect.min.y * 2.0).round() as u32 + y);
+                    let expected = reference.pixmap.pixel(x, y).expect("reference pixel");
+                    darkest = darkest.min(expected.red());
+                    brightest = brightest.max(expected.red());
+                    error += u64::from(actual[0].abs_diff(expected.red()));
+                    samples += 1;
+                }
+            }
+            assert!(brightest.saturating_sub(darkest) > 120, "WMS test must actually display fine image detail");
+            // Allow one image reprojection, but reject the additional coarse Mercator copy.
+            assert!(error < samples * 17, "GPU={gpu} {stage}: native detail changed by {} gray levels", error / samples);
+        };
+        let from = h.state().map.view_rect.expect("map").0.center() + egui::vec2(100.0, 80.0);
+        h.input_mut().events.push(egui::Event::PointerMoved(from));
+        h.input_mut().events.push(egui::Event::PointerButton {
+            pos: from,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: Default::default(),
+        });
+        h.step();
+        let to = from + egui::vec2(12.0, 0.0);
+        h.input_mut().events.push(egui::Event::PointerMoved(to));
+        h.step();
+        check(&mut h, "dragging");
+        let before = h.state().map.full_frame_camera();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        let mut offset = 0.0;
+        while h.state().map.full_frame_camera() == before {
+            assert!(std::time::Instant::now() < deadline, "native globe frames must refresh before the drag ends");
+            offset += 0.1;
+            h.input_mut().events.push(egui::Event::PointerMoved(to + egui::vec2(offset, 0.0)));
+            h.step();
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        h.input_mut().events.push(egui::Event::PointerButton {
+            pos: to,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: Default::default(),
+        });
+        h.step();
+        // Check the first released frame, before waiting for any background render.
+        check(&mut h, "first frame after release");
+        for delta in [12.0, -24.0] {
+            h.input_mut().events.push(egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: egui::vec2(0.0, delta),
+                phase: egui::TouchPhase::Move,
+                modifiers: Default::default(),
+            });
+            h.step();
+            check(&mut h, "zooming");
+        }
+        wait_for_frame(&mut h);
+        check(&mut h, "settled");
     }
 }

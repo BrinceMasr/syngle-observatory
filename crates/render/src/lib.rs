@@ -2998,7 +2998,7 @@ pub struct DrapePatch {
 /// globe view then drapes them over the sphere ([`rustgis_map::Globe::drape_mesh`]) while it
 /// turns, with no drawing per frame. Labels are left out (the view hides them while it moves).
 pub fn render_globe_drape(map: &mut Map, view: &View, boxes: &[Extent], max_side: u32) -> Vec<DrapePatch> {
-    let ppp = if view.pixels_per_point.is_finite() { view.pixels_per_point.clamp(0.25, 4.0) } else { 1.0 };
+    let ppp = if view.pixels_per_point.is_finite() && view.pixels_per_point > 0.0 { view.pixels_per_point.min(4.0) } else { 1.0 };
     let res = view.camera.res;
     if !(res.is_finite() && res > 0.0) {
         return Vec::new();
@@ -3013,17 +3013,21 @@ pub fn render_globe_drape(map: &mut Map, view: &View, boxes: &[Extent], max_side
         if merc.is_empty() || !(merc.width() > 0.0 && merc.height() > 0.0) {
             continue;
         }
-        // Metres per point: the view's, or coarser to fit the size limit.
-        let res = res.max(merc.width().max(merc.height()) * ppp / max_side);
-        // Whole points, rounded down so the picture never passes the size limit.
-        let (w, h) = ((merc.width() / res).floor().max(1.0), (merc.height() / res).floor().max(1.0));
-        if w * ppp < 2.0 || h * ppp < 2.0 {
+        let (w, h) = (merc.width() / res, merc.height() / res);
+        if !(w.is_finite() && h.is_finite()) {
+            continue;
+        }
+        // Preserve metres per logical point so symbols retain their ground size. Limit the
+        // physical pixels instead, including when a caller supplies a coarse preview density.
+        let ppp = ppp.min(max_side / w.max(h));
+        let (pw, ph) = ((w * ppp).floor(), (h * ppp).floor());
+        if pw < 2.0 || ph < 2.0 {
             continue;
         }
         let camera = Camera { center: merc.center(), res, bearing: 0.0, pitch: 0.0 };
-        let v = View { width: w, height: h, pixels_per_point: ppp, camera, sky: false };
-        // The picture is given the box asked for, though rounding to whole points made it show
-        // up to a point less: stretched by under a point, its edges stay exactly where asked, so
+        let v = View { width: pw / ppp, height: ph / ppp, pixels_per_point: ppp, camera, sky: false };
+        // The picture is given the box asked for, though rounding to whole pixels made it show
+        // up to a pixel less: stretched by under a pixel, its edges stay exactly where asked, so
         // one at the Web Mercator limit is still stretched on to the pole (drape_mesh).
         if let Some(r) = render(map, &v) {
             out.push(DrapePatch { pixmap: r.pixmap, merc });
@@ -3257,6 +3261,41 @@ mod tests {
         assert!(names(&def).iter().any(|n| n == "Taiwan"));
         assert!(!names(&chn).iter().any(|n| n == "Taiwan"));
         assert!(names(&chn).iter().any(|n| n == "China"));
+    }
+
+    #[test]
+    fn a_coarse_globe_drape_preserves_point_symbol_scale() {
+        let mut m = Map::new("Map");
+        m.body = "moon".into();
+        m.graticule = false;
+        m.projection = rustgis_map::Projection::Globe;
+        let mut d = Dataset::new("Point", GeometryType::Point, vec![]);
+        d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![]);
+        let id = m.add_dataset(d);
+        m.layer_mut(id).unwrap().renderer = rustgis_map::Renderer::Single(Symbol {
+            fill: Rgba::rgb(20, 240, 20),
+            stroke_width: 0.0,
+            size: 32.0,
+            ..Symbol::default_for(GeometryType::Point, 0)
+        });
+        let camera = Camera { center: Coord::new(0.0, 0.0), res: 1_000.0, bearing: 0.0, pitch: 0.0 };
+        for (ppp, max_side) in [(1.0, 64), (2.0, 128), (0.125, 128)] {
+            let view = View { width: 400.0, height: 300.0, pixels_per_point: ppp, camera, sky: false };
+            let patches = render_globe_drape(&mut m, &view, &[Extent::new(-2.0, -2.0, 2.0, 2.0)], max_side);
+            let patch = patches.first().unwrap();
+            assert!(patch.pixmap.width() <= max_side && patch.pixmap.height() <= max_side);
+            let y = patch.pixmap.height() / 2;
+            let xs: Vec<u32> = (0..patch.pixmap.width())
+                .filter(|x| {
+                    let p = patch.pixmap.pixel(*x, y).unwrap();
+                    p.green() > 80 && u16::from(p.green()) > 2 * u16::from(p.red())
+                })
+                .collect();
+            let width = xs.last().unwrap() - xs.first().unwrap() + 1;
+            let logical_width = f64::from(width) * patch.merc.width() / f64::from(patch.pixmap.width()) / camera.res;
+            assert!((logical_width - 32.0).abs() < 10.0, "density={ppp} limit={max_side}: point grew to {logical_width} points");
+        }
+        assert!(m.projection.is_globe());
     }
 
     #[test]

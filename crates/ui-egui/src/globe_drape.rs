@@ -1,7 +1,7 @@
-//! The moving globe. While the globe turns or zooms, the map drawn flat once (in Web Mercator)
-//! is laid over the sphere as a textured mesh, so a frame only moves vertices, as MapLibre's
-//! globe does; the atmosphere and lighting are sprites scaled with the disc. The exact frame is
-//! drawn again once the globe settles. Space around it is starry (`render::starfield`).
+//! A bounded Mercator preview fills newly exposed ground and shows layer changes while
+//! full-resolution globe frames draw in the background (see `globe_frame`). Its textured
+//! mesh moves over the sphere; atmosphere and lighting are sprites scaled with the disc.
+//! Space around it is starry (`render::starfield`).
 
 use egui::epaint::Vertex;
 use egui::{Color32, Mesh, Painter, Rect, Shape, TextureFilter, TextureHandle, TextureOptions, TextureWrapMode, pos2, vec2};
@@ -103,8 +103,9 @@ impl GlobeDrape {
             let p = f64::from(drape_ppp);
             let pixels = (w * h * p * p).clamp(65_536.0, 1_048_576.0);
             let render_res = detail.max((area / pixels).sqrt() * p);
-            let camera = rustgis_engine::map::Camera { res: render_res, ..map.camera };
-            let view = View { width: w, height: h, pixels_per_point: f64::from(drape_ppp), camera, sky: true };
+            // Coarsen the texture's sampling, not the camera's logical scale: changing that
+            // scale makes point symbols and strokes grow when the texture is draped back.
+            let view = View { width: w, height: h, pixels_per_point: p * res / render_res, camera: map.camera, sky: true };
             let pictures = render::render_globe_drape(map, &view, &boxes, max_side);
             if pictures.is_empty() {
                 self.drape = None;

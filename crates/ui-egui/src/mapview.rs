@@ -75,6 +75,8 @@ pub struct MapView {
     key: Option<Key>,
     /// A preview is attempted once for each frame key, including when drawing fails.
     preview_attempt: Option<Key>,
+    /// The last sharp globe image, reprojected during navigation and background rendering.
+    globe_frame: Option<crate::globe_frame::GlobeFrame>,
     tex_camera: Camera,
     /// The size (points) of the view the texture was drawn for: larger than the map while it
     /// moves, so zooming out and panning have more of it to show.
@@ -181,6 +183,7 @@ impl Default for MapView {
             texture: None,
             key: None,
             preview_attempt: None,
+            globe_frame: None,
             tex_camera: Camera::world(),
             tex_size: (0.0, 0.0),
             tex_rect: Rect::NOTHING,
@@ -268,6 +271,7 @@ impl MapView {
     pub fn invalidate(&mut self) {
         self.key = None;
         self.preview_attempt = None;
+        self.globe_frame = None;
         self.gpu_frame = None;
         self.tilt_settle = Default::default();
     }
@@ -472,11 +476,9 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
     interact(app, ui, &resp, rect);
 
-    // Render when the map changed and we're not in the middle of a pan/zoom: meanwhile the flat
-    // map's last frame is shifted and scaled. The globe can't be faked that way (turning and
-    // zooming in perspective aren't shifts and scales): while it moves, the map drawn flat is
-    // draped over the sphere (see `globe_drape`), or failing that it redraws every frame at
-    // reduced resolution; it is drawn exactly once it settles.
+    // During navigation the flat map's last frame is shifted and scaled. Globe frames instead
+    // reproject their ground coordinates while native-resolution replacements draw in the
+    // background; Mercator drapes fill newly exposed ground (see `globe_drape`).
     let cam = app.session.map().camera;
     let globe_view = app.session.map().projection == Projection::Globe;
     let dragging = app.map.drag.is_some_and(|(_, k)| k == DragKind::Pan || k == DragKind::Turn);
@@ -504,6 +506,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     } else {
         if !globe_view {
             app.map.drape.clear();
+            app.map.globe_frame = None;
         }
         false
     };
@@ -520,7 +523,9 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         }
         false
     };
-    let draft = globe_view && moving && !draped;
+    // Native globe workers always draw at full density. Only the synchronous fallback
+    // (browser navigation or playback) needs a draft when no drape can cover the view.
+    let draft = globe_view && moving && !draped && (cfg!(target_arch = "wasm32") || app.ws.playing.is_some());
     let render_ppp = if draft { (ppp * 0.6).max(0.5) } else { ppp };
     let key = Key {
         rev: app.session.revision,
@@ -563,13 +568,17 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         app.map.label_lonlat.clear();
         app.map.label_map.clear();
     }
-    // Exact globe, tilted and tiled flat frames are composed off the UI thread. A drape or
-    // cached flat picture keeps navigation and layer changes responsive while they finish.
+    // Exact globe, tilted and tiled flat frames are composed off the UI thread. Reprojected
+    // full-detail globe frames and cached flat pictures stay on screen while they finish;
+    // the drapes fill newly exposed areas and preview layer changes.
     let tiled_flat = !globe_view && cam.bearing == 0.0 && cam.pitch == 0.0 && !app.session.map().tiles.is_empty();
-    let settling = (tilted || globe_view || tiled_flat) && !moving && app.ws.playing.is_none();
+    // Globe frames refresh at native resolution even during gestures. Their last completed
+    // image is reprojected until the worker catches up, instead of going coarse until release.
+    let globe_refresh = globe_view && (!moving || !cfg!(target_arch = "wasm32"));
+    let settling = (globe_refresh || ((tilted || tiled_flat) && !moving)) && app.ws.playing.is_none();
     let mut tilt_draped = tilt_draped;
-    // A frame finishing during a new gesture is obsolete. Drain it now so it neither holds
-    // the worker slot nor keeps screenshot/idle waiters waiting for a frame we will not show.
+    // A view without globe-frame reprojection cannot use an old frame during a gesture.
+    // Drain it so it neither holds the worker slot nor keeps idle waiters waiting for it.
     if !settling && let Some((_, done)) = app.map.tilt_settle.take() {
         app.session.map_mut().adopt_caches(&done.map);
     }
@@ -578,7 +587,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         if let Some((k, done)) = app.map.tilt_settle.take() {
             app.session.map_mut().adopt_caches(&done.map);
             // One drawn before tiles or data arrived still shows; the next follows.
-            if same_view(k, key)
+            if (same_view(k, key) || (globe_view && k.rev == key.rev && k.sources == key.sources && k.size == key.size))
                 && let Some(r) = done.rendered
             {
                 app.map.render_ms = done.ms;
@@ -595,10 +604,6 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                         }
                     }
                 }
-                if app.map.camera_moved {
-                    app.session.record_extent();
-                    app.map.camera_moved = false;
-                }
             }
         }
         if app.map.key != Some(key) && !app.map.tilt_settle.busy() {
@@ -608,6 +613,12 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             }
             let backend = if gpu_ok { rustgis_engine::render::Backend::Gpu } else { rustgis_engine::render::Backend::Cpu };
             app.map.tilt_settle.start_backend(ui.ctx(), key, app.session.map().clone(), view, backend);
+        }
+        // Several native frames can complete during one gesture. Keep that gesture as one
+        // extent-history entry, including when its final frame completed before release.
+        if !moving && app.map.camera_moved && app.map.key.is_some_and(|k| same_view(k, key)) {
+            app.session.record_extent();
+            app.map.camera_moved = false;
         }
         let shown = (app.map.texture.is_some() || app.map.gpu_frame.is_some())
             && app.map.key.is_some_and(|k| same_view(Key { draft: false, ..k }, key));
@@ -785,6 +796,13 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     let background = app.session.map().palette().0;
     if draped {
         app.map.drape.paint(ui.ctx(), &painter, rect, app.session.map(), ppp);
+        // Keep the last native-resolution image sharp while the worker catches up. A changed
+        // layer/data revision must never show the old image over its visibility preview.
+        if app.map.key.is_some_and(|old| !old.draft && old.rev == key.rev && old.sources == key.sources && old.size == key.size)
+            && let Some(frame) = &app.map.globe_frame
+        {
+            frame.paint(&painter, rect, &cam);
+        }
     } else if globe_view {
         app.map.drape.paint_space(ui.ctx(), &painter, rect, app.session.map(), ppp);
     } else if tilt_draped {
@@ -930,6 +948,11 @@ fn show_frame(
         Some(tex) => tex.set(img, egui::TextureOptions::LINEAR),
         None => app.map.texture = Some(ctx.load_texture("map", img, egui::TextureOptions::LINEAR)),
     }
+    app.map.globe_frame = if globe_view && !key.draft {
+        app.map.texture.as_ref().map(|texture| crate::globe_frame::GlobeFrame::new(texture.clone(), view))
+    } else {
+        None
+    };
     // A globe drawn roughly mid-motion keeps the last labels, which it would re-place
     // differently every frame.
     if !(globe_view && key.draft) {
