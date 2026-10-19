@@ -530,6 +530,7 @@ fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
     let pane = |name: &str| json!({"name": name});
     menu_item(ui, app, "", "ArcGIS Portal…", "ui.searchOpenData", svc("arcgis-portal"));
     menu_item(ui, app, "", "Boundaries…", "ui.dialog", pane("boundaries"));
+    menu_item(ui, app, "", "Dynamical…", "ui.searchOpenData", svc("dynamical"));
     menu_item(ui, app, "", "Earthdata GIS…", "ui.searchOpenData", svc("earthdata-gis"));
     menu_item(ui, app, "", "Fields of the World…", "ui.dialog", pane("fieldsOfTheWorld"));
     menu_item(ui, app, "", "GeoLens…", "ui.searchOpenData", svc("geolens"));
@@ -551,12 +552,13 @@ fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
     submenu_row(ui, "", tl!("United States"), |ui| {
         menu_item(ui, app, "", "EnviroAtlas…", "ui.dialog", pane("enviroAtlas"));
         menu_item(ui, app, "", "FEMA NFHL…", "ui.dialog", pane("femaNfhl"));
+        menu_item(ui, app, "", "Tennessee GIS…", "ui.searchOpenData", svc("tennessee"));
         menu_item(ui, app, "", "The National Map…", "ui.dialog", pane("nationalMap"));
         menu_item(ui, app, "", "US Federal GIS…", "ui.searchOpenData", svc("us-federal"));
         menu_item(ui, app, "", "US Local GIS…", "ui.searchOpenData", svc("us-local"));
         menu_item(ui, app, "", "US State GIS…", "ui.searchOpenData", svc("us-state"));
         menu_item(ui, app, "", "USGS 3DEP DEM…", "ui.searchOpenData", svc("usgs-dem"));
-        menu_item(ui, app, "", "USGS NLDI…", "ui.dialog", json!({"name": "nldi"}));
+        menu_item(ui, app, "", "USGS NLDI…", "ui.dialog", pane("nldi"));
     });
 }
 
