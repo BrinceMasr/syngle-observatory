@@ -44,7 +44,7 @@ pub const NETWORK: &[&str] = &[
 pub fn commands() -> Vec<C> {
     vec![
         C::new("map.addTiles", "Add Tile Layer", "Home › Add", add).params(
-            r#"{"url": "https://…/{z}/{x}/{y}.png" | vector tiles ".pbf" or TileJSON | MapLibre style.json | a PMTiles archive (web address or file path) | an MBTiles file path, "kind"?: "raster"|"vector"|"style"|"pmtiles"|"mbtiles" (guessed from the url), "name"?: text, "attribution"?: text, "minZoom"?: number, "maxZoom"?: number, "tileSize"?: 256|512, "tms"?: bool, "subdomains"?: [text], "layers"?: [vector tile layer names, drawn in colours of their own], "opacity"?: 0–1, "blend"?: "normal"|"multiply"|"screen"|"overlay"|"darken"|"lighten"|"difference" (how it combines with what is beneath), "overlay"?: bool (a transparent layer kept on top), "replace"?: bool (removes the other tile basemaps, not overlays), "id"?: catalog id, "view"?: bool (a MapLibre style: go to the place, zoom, bearing and pitch its root properties give, once it loads)}"#,
+            r#"{"url": "https://…/{z}/{x}/{y}.png" | vector tiles ".pbf" or TileJSON | MapLibre style.json | a PMTiles archive (web address or file path) | an MBTiles file path, "kind"?: "raster"|"vector"|"style"|"pmtiles"|"mbtiles" (guessed from the url), "name"?: text, "attribution"?: text, "minZoom"?: number, "maxZoom"?: number, "tileSize"?: 256|512, "tms"?: bool, "subdomains"?: [text], "layers"?: [vector tile layer names, drawn in colours of their own], "opacity"?: 0–1, "blend"?: "normal"|"multiply"|"screen"|"overlay"|"darken"|"lighten"|"difference" (how it combines with what is beneath), "overlay"?: bool (a transparent layer kept on top), "replace"?: bool (removes the other tile basemaps, not overlays), "id"?: catalog id, "view"?: bool (a MapLibre style: go to the place, zoom, bearing and pitch its root properties give, once it loads), "start"?, "end"?: dates a url with date placeholders ({date:YYYY-MM-DD}, {YYYY}) spans, turning the time slider on, "unit"?, "interval"?, "dates"?: its steps (as in time.set)}"#,
         ),
         C::new("map.removeTiles", "Remove Tile Layer", "Home › Add", remove)
             .params(r#"{"name"?: text, "index"?: number, "id"?: catalog id} (removes every tile layer when none is given)"#),
@@ -130,7 +130,19 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
         Some(k) => TileKind::from_code(k).ok_or_else(|| format!("unknown kind '{k}' (raster, vector, style, pmtiles or mbtiles)"))?,
         None => TileKind::guess(url),
     };
-    let mut t = TileLayer::new(ps(p, "name").unwrap_or_default(), kind, url);
+    // A dated address (`{date:YYYY-MM-DD}`) follows the time slider, which the layer's span
+    // (`start`, `end`) turns on when it is off.
+    let dated = rustgis_data::time::is_template(url) && matches!(kind, TileKind::Raster | TileKind::Vector | TileKind::Cog);
+    let at = if dated { dated_start(s, p)? } else { 0.0 };
+    let mut t = TileLayer::new(
+        ps(p, "name").unwrap_or_default(),
+        kind,
+        if dated { rustgis_data::time::fill_template(url, at) } else { url.to_string() },
+    );
+    if dated {
+        t.time_url = Some(url.to_string());
+        t.time_at = at;
+    }
     if let Some(a) = ps(p, "attribution") {
         t.attribution = a.to_string();
     }
@@ -185,13 +197,31 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     }
     // Overlays go on top; basemaps go on top of the other basemaps, under the overlays.
     let at = if t.overlay { 0 } else { m.tiles.iter().position(|o| !o.overlay).unwrap_or(m.tiles.len()) };
-    let out = json!({"name": t.name, "kind": t.kind.code(), "index": at});
+    let mut out = json!({"name": t.name, "kind": t.kind.code(), "index": at});
+    if t.time_url.is_some() {
+        out["url"] = json!(t.url);
+        out["dated"] = json!(true);
+    }
     m.tiles.insert(at, t);
     if view {
         s.style_view = Some((url, s.map().camera));
         follow_style_view(s, web_time::Duration::ZERO);
     }
     Ok(out)
+}
+
+/// The date a dated tile layer starts at: the time slider's step when it is on, else its
+/// `start`, turning the slider on over `start`–`end` (with `unit`, `interval` or `dates`).
+fn dated_start(s: &mut Session, p: &Value) -> Result<f64, String> {
+    if let Some(t) = &s.map().time {
+        return Ok(t.current);
+    }
+    let keys = ["start", "end", "unit", "interval", "dates"];
+    let given: serde_json::Map<String, Value> = keys.iter().filter_map(|k| p.get(*k).map(|v| (k.to_string(), v.clone()))).collect();
+    if given.contains_key("start") || given.contains_key("dates") {
+        super::time::set(s, &Value::Object(given))?;
+    }
+    Ok(s.map().time.as_ref().map_or(0.0, |t| t.current))
 }
 
 /// The most passes made waiting for a style to load (each waits for the fetches under way).

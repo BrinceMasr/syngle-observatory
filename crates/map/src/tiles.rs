@@ -130,6 +130,17 @@ pub struct TileLayer {
     /// Vector tiles' layer names, when the service gave them (each drawn in a colour of its own).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub layers: Vec<String>,
+    /// A URL with date placeholders (`{date:YYYY-MM-DD}`), filled from the time slider into
+    /// `url` at each step.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_url: Option<String>,
+    /// The date `url` was last filled with.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub time_at: f64,
+}
+
+fn is_zero(x: &f64) -> bool {
+    *x == 0.0
 }
 
 fn max_zoom() -> u8 {
@@ -172,6 +183,8 @@ impl TileLayer {
             blend: crate::effects::Blend::Normal,
             id: String::new(),
             layers: Vec::new(),
+            time_url: None,
+            time_at: 0.0,
         }
     }
 
@@ -179,6 +192,10 @@ impl TileLayer {
     /// file or a command.
     pub fn repair(&mut self) -> Result<(), String> {
         self.url = self.url.trim().to_string();
+        // A dated address is a web address whose date is filled in after the scheme and host.
+        if self.time_url.as_ref().is_some_and(|u| !(u.starts_with("https://") || u.starts_with("http://")) || u.len() > 4096) {
+            self.time_url = None;
+        }
         let local = matches!(self.kind, TileKind::PmTiles | TileKind::MbTiles) && is_local_archive(&self.url);
         if let Some(name) = self.url.strip_prefix(UPLOAD).filter(|_| self.kind == TileKind::MbTiles) {
             if name.is_empty() || name.len() > 512 || name.chars().any(char::is_control) {

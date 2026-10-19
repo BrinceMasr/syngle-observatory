@@ -1677,6 +1677,16 @@ fn layer_menu(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, reorder: bool) {
             let _ = app.run("ui.dialog", json!({"name": "definitionQuery"}));
             ui.close();
         }
+        if l.time.is_some() {
+            if ui.button(tl!("Unbind From Time Slider")).clicked() {
+                let _ = app.run("time.unbind", json!({"layer": l.id}));
+                ui.close();
+            }
+        } else if ui.button(tl!("Bind To Time Slider")).clicked() {
+            app.time.hidden = false;
+            let _ = app.run("time.bind", json!({"layer": l.id}));
+            ui.close();
+        }
         if ui.button(tl!("Export Features…")).clicked() {
             let _ = app.run("ui.exportLayer", Value::Null);
             ui.close();

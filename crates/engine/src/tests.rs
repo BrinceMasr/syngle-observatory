@@ -9247,3 +9247,135 @@ fn legends_leave_layers_out() {
     s.run("layer.rename", &json!({"layer": "Lakes", "name": "Countries"})).unwrap();
     assert!(left_out(&s, lakes).is_empty(), "the other Countries isn't taken out");
 }
+
+/// A point layer of events, one a month through 2015 (two in March), with their dates as text,
+/// epoch milliseconds and years.
+fn timed_events() -> Session {
+    isolate_plugins();
+    let mut feats = Vec::new();
+    let dates = ["2015-01-10", "2015-02-03", "2015-03-01", "2015-03-30", "2015-04-15", "2015-06-20", "2015-09-09", "2015-12-25"];
+    for (i, d) in dates.iter().enumerate() {
+        let ms = rustgis_data::time::parse_text(d).unwrap();
+        feats.push(json!({"type": "Feature", "geometry": {"type": "Point", "coordinates": [i as f64, 0.0]},
+            "properties": {"name": format!("e{i}"), "when": d, "ms": ms, "year": 2010 + i}}));
+    }
+    let text = json!({"type": "FeatureCollection", "features": feats}).to_string();
+    let (ds, _) = rustgis_data::io::read_geojson(&text, "Events").unwrap();
+    let mut s = Session::new(Project::default());
+    let id = s.map_mut().add_dataset(ds);
+    s.active_layer = Some(id);
+    s
+}
+
+fn shown(s: &Session) -> Vec<String> {
+    let l = s.map().layer_by_name("Events").unwrap();
+    let fi = l.dataset.field_index("name").unwrap();
+    l.drawn_rows(s.scale()).iter().enumerate().filter(|(_, k)| **k).map(|(r, _)| l.dataset.value(r, fi).to_string()).collect()
+}
+
+#[test]
+fn time_slider_shows_the_features_of_its_window() {
+    let mut s = timed_events();
+    // The date fields, best first: text dates and epoch milliseconds all read; years too.
+    let fields = s.run("time.fields", &Value::Null).unwrap();
+    let names: Vec<&str> = fields["fields"].as_array().unwrap().iter().map(|f| f["field"].as_str().unwrap()).collect();
+    assert!(names.contains(&"when") && names.contains(&"ms") && names.contains(&"year"), "{names:?}");
+    assert!(!names.contains(&"name"));
+    // Bound by its text dates: a slider by month over the layer's year, at January.
+    let r = s.run("time.bind", &json!({"field": "when"})).unwrap();
+    assert_eq!((r["unit"].as_str(), r["steps"].as_u64(), r["date"].as_str()), (Some("month"), Some(12), Some("2015-01")), "{r}");
+    assert_eq!(shown(&s), ["e0"]);
+    s.run("time.goTo", &json!({"date": "2015-03-15"})).unwrap();
+    assert_eq!(shown(&s), ["e2", "e3"]);
+    // Stepping: May is empty, wrapping goes back to January.
+    s.run("time.step", &json!({"by": 2})).unwrap();
+    assert!(shown(&s).is_empty());
+    s.run("time.step", &json!({"by": 8, "wrap": true})).unwrap();
+    assert_eq!(s.run("time.info", &Value::Null).unwrap()["date"], "2015-01");
+    // Wider and cumulative windows.
+    s.run("time.set", &json!({"date": "2015-04", "show": "wide"})).unwrap();
+    assert_eq!(shown(&s), ["e2", "e3", "e4"]);
+    s.run("time.set", &json!({"show": "cumulative"})).unwrap();
+    assert_eq!(shown(&s), ["e0", "e1", "e2", "e3", "e4"]);
+    // Epoch milliseconds read the same, and the layer's legend follows the window.
+    s.run("time.set", &json!({"show": "step", "date": "2015-12"})).unwrap();
+    s.run("time.bind", &json!({"field": "ms"})).unwrap();
+    assert_eq!(shown(&s), ["e7"]);
+    // A quarter a step.
+    s.run("time.set", &json!({"date": "2015-01", "interval": 3})).unwrap();
+    assert_eq!(s.run("time.info", &Value::Null).unwrap()["steps"], 4);
+    assert_eq!(shown(&s), ["e0", "e1", "e2", "e3"]);
+    // Saved and opened again, the slider and the binding hold.
+    let text = serde_json::to_string(&s.project).unwrap();
+    let mut t = Session::new(Project::from_json(&text).unwrap());
+    assert_eq!(shown(&t), ["e0", "e1", "e2", "e3"]);
+    t.run("time.step", &Value::Null).unwrap();
+    assert_eq!(shown(&t), ["e4", "e5"]);
+    // Bound by year numbers (2010–2017), a step a year.
+    t.run("time.set", &json!({"off": true})).unwrap();
+    assert_eq!(shown(&t).len(), 8);
+    t.run("time.bind", &json!({"layer": "Events", "field": "year"})).unwrap();
+    assert_eq!(t.run("time.info", &Value::Null).unwrap()["unit"], "year");
+    t.run("time.goTo", &json!({"date": 2012})).unwrap();
+    assert_eq!(shown(&t), ["e2"]);
+    // Unbound, everything shows again; undo binds it again.
+    t.run("time.unbind", &json!({"layer": "Events"})).unwrap();
+    assert_eq!(shown(&t).len(), 8);
+    t.run("edit.undo", &Value::Null).unwrap();
+    assert_eq!(shown(&t), ["e2"]);
+    // Irregular dates: steps only at those, each window up to the next.
+    t.run("time.bind", &json!({"layer": "Events", "field": "when"})).unwrap();
+    t.run("time.set", &json!({"dates": ["2015-01-01", "2015-03-01", "2015-09-01"], "date": "2015-03-01"})).unwrap();
+    assert_eq!(t.run("time.info", &Value::Null).unwrap()["steps"], 3);
+    assert_eq!(shown(&t), ["e2", "e3", "e4", "e5"]);
+    for bad in [json!({"layer": "Events", "field": "nope"}), json!({"layer": "Events", "field": "name"})] {
+        assert!(t.run("time.bind", &bad).is_err(), "{bad}");
+    }
+    for bad in [json!({"unit": "fortnight"}), json!({"start": "soon"}), json!({"show": "all"}), json!({"dates": "2015"})] {
+        assert!(t.run("time.set", &bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn time_slider_fills_dated_tile_addresses_and_exports_its_steps() {
+    let mut s = timed_events();
+    let r = s
+        .run(
+            "map.addTiles",
+            &json!({"url": "https://example.com/{date:YYYY-MM-DD}/{z}/{x}/{y}.png", "start": "2023-08-01", "end": "2023-08-31"}),
+        )
+        .unwrap();
+    assert_eq!(r["url"], "https://example.com/2023-08-01/{z}/{x}/{y}.png");
+    let i = s.run("time.info", &Value::Null).unwrap();
+    assert_eq!((i["unit"].as_str(), i["steps"].as_u64()), (Some("day"), Some(31)), "{i}");
+    s.run("time.goTo", &json!({"date": "2023-08-30"})).unwrap();
+    assert_eq!(s.map().tiles[0].url, "https://example.com/2023-08-30/{z}/{x}/{y}.png");
+    // Kept in the project as its template, filled again when opened.
+    let text = serde_json::to_string(&s.project).unwrap();
+    let t = Project::from_json(&text).unwrap();
+    assert_eq!(t.maps[0].tiles[0].url, "https://example.com/2023-08-30/{z}/{x}/{y}.png");
+    // A template from a file that isn't a web address is dropped, its layer left as it was.
+    let mut p: Value = serde_json::from_str(&text).unwrap();
+    p["maps"][0]["tiles"][0]["timeUrl"] = json!("file:///etc/{date:YYYY}");
+    let t = Project::from_json(&p.to_string()).unwrap();
+    assert_eq!(t.maps[0].tiles[0].time_url, None);
+    // Exported: a frame a step, the slider back where it was.
+    s.run("time.set", &json!({"start": "2015-01-01", "end": "2015-12-31", "unit": "month"})).unwrap();
+    s.run("map.removeTiles", &Value::Null).unwrap();
+    s.run("time.bind", &json!({"field": "when"})).unwrap();
+    s.run("time.goTo", &json!({"date": "2015-06"})).unwrap();
+    let dir = std::env::temp_dir().join(format!("rustgis-time-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let gif = dir.join("events.gif");
+    let r = s
+        .run("time.export", &json!({"path": gif.display().to_string(), "width": 96, "height": 64, "from": "2015-02", "to": "2015-05"}))
+        .unwrap();
+    assert_eq!(r["frames"], 4);
+    let bytes = std::fs::read(&gif).unwrap();
+    assert!(bytes.starts_with(b"GIF89a"));
+    let zip = dir.join("events.zip");
+    assert_eq!(s.run("time.export", &json!({"path": zip.display().to_string(), "width": 96, "height": 64})).unwrap()["frames"], 12);
+    assert_eq!(s.run("time.info", &Value::Null).unwrap()["date"], "2015-06");
+    assert!(s.run("time.export", &json!({"path": zip.display().to_string(), "from": "2016"})).is_err());
+    std::fs::remove_dir_all(&dir).ok();
+}

@@ -1,0 +1,369 @@
+//! The time slider, docked under the map: play, pause and step through the map's time span on a
+//! timeline whose bars count the features of each step, choose the step and the window shown, and
+//! bind layers to it.
+
+use egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
+use rustgis_engine::data::time::Unit;
+use rustgis_engine::map::time::{TimeSlider, histogram, instants, time_fields};
+use serde_json::{Value, json};
+
+use crate::theme::{Tokens, regular, semibold};
+use crate::widgets::small;
+use crate::{RustGisApp, icons};
+
+/// The bar's own state.
+#[derive(Default)]
+pub struct TimeBarState {
+    /// Closed by its close button (the slider stays on; Time Slider opens it again).
+    pub hidden: bool,
+    /// Playing: the milliseconds since the last step.
+    pub playing: Option<f64>,
+    /// The features of each step, and what they were counted for.
+    counts: Option<(String, Vec<u32>)>,
+}
+
+/// The window presets, as the Show menu names them.
+const SHOWS: [(&str, &str); 4] =
+    [("step", "This step"), ("wide", "Wide (±1 step)"), ("wider", "Wider (±3 steps)"), ("cumulative", "Cumulative")];
+
+fn unit_label(u: Unit) -> String {
+    match u {
+        Unit::Hour => tl!("Hour"),
+        Unit::Day => tl!("Day"),
+        Unit::Month => tl!("Month"),
+        Unit::Year => tl!("Year"),
+    }
+    .to_string()
+}
+
+/// Whether the bar shows: the map has a slider and the bar wasn't closed.
+pub fn open(app: &RustGisApp) -> bool {
+    app.session.map().time.is_some() && !app.time.hidden
+}
+
+/// Opens the time slider: shows the bar when the map has one, else binds the active layer (or the
+/// first with a date field).
+pub fn toggle(app: &mut RustGisApp) -> Result<Value, String> {
+    if app.session.map().time.is_some() {
+        app.time.hidden = !app.time.hidden;
+        if app.time.hidden {
+            app.time.playing = None;
+        }
+        return Ok(Value::Null);
+    }
+    let m = app.session.map();
+    let dated = |id: u32| m.layer(id).is_some_and(|l| !l.is_raster() && !time_fields(&l.dataset).is_empty());
+    let layer = app
+        .session
+        .active_layer
+        .filter(|id| dated(*id))
+        .or_else(|| m.layers.iter().find(|l| !l.is_raster() && !time_fields(&l.dataset).is_empty()).map(|l| l.id))
+        .ok_or("no layer has a field of dates: add one that has, or a tile layer whose address has a date (map.addTiles)")?;
+    app.time.hidden = false;
+    app.run("time.bind", json!({"layer": layer}))
+}
+
+/// Starts or stops playing (from the start when at the end and not looping).
+pub fn play(app: &mut RustGisApp) -> Result<Value, String> {
+    let Some(t) = app.session.map().time.clone() else { return Err("the time slider is off".into()) };
+    if app.time.playing.take().is_none() {
+        if t.at_end() && !t.looping {
+            app.run("time.goTo", json!({"date": t.start}))?;
+        }
+        app.time.playing = Some(0.0);
+        app.time.hidden = false;
+    }
+    Ok(Value::Null)
+}
+
+/// Exports the steps as an animated GIF.
+pub fn export(app: &mut RustGisApp) -> Result<Value, String> {
+    if app.services.download.is_some() {
+        return Err("exporting time animations needs the desktop app".into());
+    }
+    let name = format!("{} time.gif", app.session.map().name);
+    match crate::dialogs::pick_save(&name, &["gif"], tl!("Animated GIF")) {
+        Some(path) => app.run("time.export", json!({"path": path})),
+        None => Ok(Value::Null),
+    }
+}
+
+/// Steps while playing.
+fn advance(app: &mut RustGisApp, ui: &Ui) {
+    let Some(elapsed) = app.time.playing else { return };
+    let Some(t) = app.session.map().time.clone() else {
+        app.time.playing = None;
+        return;
+    };
+    let elapsed = elapsed + f64::from(ui.input(|i| i.stable_dt).min(0.25)) * 1000.0;
+    if elapsed >= f64::from(t.speed_ms) {
+        if t.at_end() && !t.looping {
+            app.time.playing = None;
+            return;
+        }
+        let _ = app.run("time.step", json!({"by": 1, "wrap": t.looping}));
+        app.time.playing = Some(0.0);
+    } else {
+        app.time.playing = Some(elapsed);
+    }
+    ui.ctx().request_repaint();
+}
+
+/// The features of the bound layers in each step's own span (a step, whatever the window);
+/// worked out again only when the layers or steps change.
+fn counts(app: &mut RustGisApp, t: &TimeSlider, steps: &[f64]) -> Vec<u32> {
+    let m = app.session.map();
+    let bound: Vec<_> = m.layers.iter().filter_map(|l| l.time.as_ref().map(|b| (l, b.field.clone()))).collect();
+    let key = format!(
+        "{}|{:?}|{}",
+        app.session.project.active_map,
+        (steps.first(), steps.last(), steps.len(), t.unit, t.interval),
+        bound.iter().map(|(l, f)| format!("{}:{f}:{}:{};", l.id, l.dataset.features.len(), l.geometry_rev)).collect::<String>(),
+    );
+    if let Some((k, c)) = &app.time.counts
+        && *k == key
+    {
+        return c.clone();
+    }
+    let mut out = vec![0u32; steps.len()];
+    for (l, field) in &bound {
+        let h = histogram(instants(&l.dataset, field).into_iter().flatten(), steps, t.unit, t.interval);
+        for (o, c) in out.iter_mut().zip(h) {
+            *o = o.saturating_add(c);
+        }
+    }
+    app.time.counts = Some((key, out.clone()));
+    out
+}
+
+pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+    if !open(app) {
+        app.time.playing = None;
+        return;
+    }
+    advance(app, ui);
+    let Some(t) = app.session.map().time.clone() else { return };
+    let tk = Tokens::get(ui.ctx());
+    egui::Panel::bottom("time_slider").exact_size(92.0).frame(egui::Frame::NONE.fill(tk.pane)).show(ui, |ui| {
+        let full = ui.max_rect();
+        ui.painter().line_segment([full.left_top(), full.right_top()], Stroke::new(1.0, tk.border_strong));
+        // Header: the date, the window, and the settings.
+        let (hr, _) = ui.allocate_exact_size(vec2(ui.available_width(), 32.0), Sense::hover());
+        let mut h = ui.new_child(
+            egui::UiBuilder::new().max_rect(hr.shrink2(vec2(10.0, 3.0))).layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        header(app, &mut h, &t, &tk);
+        // Transport and timeline.
+        let (br, _) = ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height()), Sense::hover());
+        let mut b = ui.new_child(
+            egui::UiBuilder::new().max_rect(br.shrink2(vec2(10.0, 4.0))).layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        transport(app, &mut b, &t);
+        timeline(app, &mut b, &t, &tk);
+    });
+}
+
+fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
+    let (r, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
+    icons::paint(ui.painter(), r, "time_slider", tk.icon, tk.accent);
+    ui.label(egui::RichText::new(tl!("Time Slider")).font(semibold(13.0)));
+    ui.add_space(8.0);
+    ui.label(egui::RichText::new(t.label(t.current)).font(semibold(15.0)).color(tk.accent_text));
+    // The window by the steps it takes in: the first, and the last before its end.
+    let (from, to) = t.window();
+    let steps = t.steps();
+    let last = steps.iter().rev().find(|s| **s < to).copied().unwrap_or(t.current);
+    let window = if !from.is_finite() {
+        crate::i18n::fmt("showing everything through {to}", &[("to", &t.label(last))])
+    } else if t.label(from) == t.label(last) {
+        crate::i18n::fmt("showing {date}", &[("date", &t.label(from))])
+    } else {
+        crate::i18n::fmt("showing {from} to {to}", &[("from", &t.label(from)), ("to", &t.label(last))])
+    };
+    ui.label(egui::RichText::new(window).font(regular(11.5)).color(tk.text_dim));
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        small(
+            ui,
+            app,
+            "close",
+            "",
+            "Close the time slider (it stays on; Time Slider opens it again).",
+            "ui.timeSlider",
+            Value::Null,
+            false,
+        );
+        if small(ui, app, "time_off", "", "Turn the time slider off: every feature shows again.", "time.set", json!({"off": true}), false)
+            .clicked()
+        {
+            app.time.playing = None;
+        }
+        small(ui, app, "export", "", "Export the steps as an animated GIF.", "ui.timeExport", Value::Null, false);
+        ui.separator();
+        layers_menu(app, ui);
+        // Speed, show, step.
+        let speeds = [(2000u32, "0.5×"), (1200, "0.75×"), (800, "1×"), (400, "2×"), (200, "4×")];
+        let now = speeds.iter().min_by_key(|(ms, _)| ms.abs_diff(t.speed_ms)).map_or("1×", |(_, l)| *l);
+        egui::ComboBox::from_id_salt("time_speed").selected_text(now).width(56.0).show_ui(ui, |ui| {
+            for (ms, l) in speeds {
+                if ui.selectable_label(t.speed_ms == ms, l).clicked() {
+                    let _ = app.run("time.set", json!({"speed": ms}));
+                }
+            }
+        });
+        let looped = t.looping;
+        if ui.selectable_label(looped, tl!("Loop")).on_hover_text(tl!("Start over at the end while playing.")).clicked() {
+            let _ = app.run("time.set", json!({"loop": !looped}));
+        }
+        let shown = rustgis_engine::cmd::time::SHOWS
+            .iter()
+            .position(|(_, b, a, c)| *b == t.before && *a == t.after && *c == t.cumulative)
+            .and_then(|i| SHOWS.get(i))
+            .map_or_else(|| tl!("Custom").to_string(), |(_, l)| tl!(l).to_string());
+        egui::ComboBox::from_id_salt("time_show").selected_text(shown).width(130.0).show_ui(ui, |ui| {
+            for (code, l) in SHOWS {
+                if ui.button(tl!(l)).clicked() {
+                    let _ = app.run("time.set", json!({"show": code}));
+                }
+            }
+        });
+        ui.label(egui::RichText::new(tl!("Show")).font(regular(11.5)).color(tk.text_dim));
+        let mut every = t.interval;
+        let changed = ui.add(egui::DragValue::new(&mut every).range(1..=1000).speed(0.1)).on_hover_text(tl!("Units per step")).changed();
+        if changed {
+            let _ = app.run("time.set", json!({"interval": every}));
+        }
+        egui::ComboBox::from_id_salt("time_unit").selected_text(unit_label(t.unit)).width(70.0).show_ui(ui, |ui| {
+            for u in Unit::ALL {
+                if ui.selectable_label(t.unit == u, unit_label(u)).clicked() {
+                    let _ = app.run("time.set", json!({"unit": u.code()}));
+                }
+            }
+        });
+        ui.label(egui::RichText::new(tl!("Step")).font(regular(11.5)).color(tk.text_dim));
+    });
+}
+
+/// Binds and unbinds layers, choosing each one's date field.
+fn layers_menu(app: &mut RustGisApp, ui: &mut Ui) {
+    let layers: Vec<(u32, String, Option<String>, Vec<(String, f64)>)> = app
+        .session
+        .map()
+        .layers
+        .iter()
+        .filter(|l| !l.is_raster())
+        .map(|l| (l.id, l.name.clone(), l.time.as_ref().map(|t| t.field.clone()), time_fields(&l.dataset)))
+        .filter(|(_, _, bound, fields)| bound.is_some() || !fields.is_empty())
+        .collect();
+    let dated_tiles: Vec<String> = app.session.map().tiles.iter().filter(|t| t.time_url.is_some()).map(|t| t.name.clone()).collect();
+    let n = layers.iter().filter(|l| l.2.is_some()).count() + dated_tiles.len();
+    ui.menu_button(crate::i18n::fmt("Layers ({n})", &[("n", &n.to_string())]), |ui| {
+        if layers.is_empty() && dated_tiles.is_empty() {
+            ui.label(tl!("No layer has a field of dates."));
+        }
+        for (id, name, bound, fields) in &layers {
+            ui.horizontal(|ui| {
+                let mut on = bound.is_some();
+                if ui.checkbox(&mut on, name.as_str()).changed() {
+                    let _ = if on { app.run("time.bind", json!({"layer": id})) } else { app.run("time.unbind", json!({"layer": id})) };
+                }
+                let current = bound.clone().or_else(|| fields.first().map(|f| f.0.clone())).unwrap_or_default();
+                egui::ComboBox::from_id_salt(("time_field", *id)).selected_text(current.as_str()).show_ui(ui, |ui| {
+                    for (f, share) in fields {
+                        let label = format!("{f} ({:.0}%)", share * 100.0);
+                        if ui.selectable_label(*f == current, label).clicked() {
+                            let _ = app.run("time.bind", json!({"layer": id, "field": f}));
+                        }
+                    }
+                });
+            });
+        }
+        if !dated_tiles.is_empty() {
+            ui.separator();
+            for name in &dated_tiles {
+                ui.label(crate::i18n::fmt("{name} (dated tiles)", &[("name", name)]));
+            }
+        }
+    });
+}
+
+fn transport(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider) {
+    let playing = app.time.playing.is_some();
+    small(ui, app, "time_first", "", "Go to the first step.", "time.goTo", json!({"date": t.start}), false);
+    small(ui, app, "time_prev", "", "Go back a step.", "time.step", json!({"by": -1}), false);
+    small(
+        ui,
+        app,
+        if playing { "time_pause" } else { "run" },
+        "",
+        if playing { "Pause." } else { "Play through the steps." },
+        "ui.timePlay",
+        Value::Null,
+        playing,
+    );
+    small(ui, app, "time_next", "", "Go forward a step.", "time.step", json!({"by": 1}), false);
+    let last = t.steps().last().copied().unwrap_or(t.end);
+    small(ui, app, "time_last", "", "Go to the last step.", "time.goTo", json!({"date": last}), false);
+    ui.add_space(6.0);
+}
+
+/// The timeline: a bar per step (its height the features it holds), the window shaded, and the
+/// current step marked; click or drag to move.
+fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, tk: &Tokens) {
+    let steps = t.steps();
+    let counts = counts(app, t, &steps);
+    let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height().max(40.0)), Sense::click_and_drag());
+    let p = ui.painter_at(r);
+    let track = Rect::from_min_max(pos2(r.min.x + 6.0, r.min.y + 2.0), pos2(r.max.x - 6.0, r.max.y - 16.0));
+    p.rect_filled(track, 3.0, tk.input);
+    p.rect_stroke(track, 3.0, Stroke::new(1.0, tk.input_border), egui::StrokeKind::Inside);
+    let n = steps.len().max(1);
+    let x_of = |i: f64| track.min.x + (i as f32 + 0.5) / n as f32 * track.width();
+    let i_of = |x: f32| (((x - track.min.x) / track.width() * n as f32 - 0.5).round().max(0.0) as usize).min(n - 1);
+    // The window, shaded.
+    let (from, to) = t.window();
+    let first = steps.iter().position(|s| *s >= from).unwrap_or(0);
+    let last = steps.iter().rposition(|s| *s < to).unwrap_or(t.index());
+    if last >= first {
+        let a = x_of(first as f64) - track.width() / n as f32 / 2.0;
+        let b = x_of(last as f64) + track.width() / n as f32 / 2.0;
+        p.rect_filled(Rect::from_min_max(pos2(a.max(track.min.x), track.min.y), pos2(b.min(track.max.x), track.max.y)), 2.0, tk.checked);
+    }
+    // Feature counts.
+    let top = counts.iter().copied().max().unwrap_or(0).max(1) as f32;
+    let bw = (track.width() / n as f32 * 0.7).clamp(1.0, 14.0);
+    for (i, c) in counts.iter().enumerate().filter(|(_, c)| **c > 0) {
+        let x = x_of(i as f64);
+        let h = (*c as f32 / top) * (track.height() - 6.0);
+        let col = if i == t.index() { tk.accent } else { tk.accent.gamma_multiply(0.45) };
+        p.rect_filled(Rect::from_min_max(pos2(x - bw / 2.0, track.max.y - 3.0 - h), pos2(x + bw / 2.0, track.max.y - 3.0)), 1.0, col);
+    }
+    // Tick labels: about one per 90 px.
+    let every = ((n as f32 * 90.0 / track.width().max(1.0)).ceil() as usize).max(1);
+    for (i, s) in steps.iter().enumerate().step_by(every) {
+        let x = x_of(i as f64);
+        p.line_segment([pos2(x, track.max.y), pos2(x, track.max.y + 3.0)], Stroke::new(1.0, tk.text_dim));
+        p.text(pos2(x, track.max.y + 4.0), Align2::CENTER_TOP, t.label(*s), regular(10.5), tk.text_dim);
+    }
+    // The current step.
+    let x = x_of(t.index() as f64);
+    p.line_segment([pos2(x, track.min.y - 1.0), pos2(x, track.max.y + 1.0)], Stroke::new(2.0, tk.accent));
+    p.circle_filled(pos2(x, track.min.y + 3.0), 4.5, tk.accent);
+    p.circle_stroke(pos2(x, track.min.y + 3.0), 4.5, Stroke::new(1.5, Color32::WHITE));
+    if let Some(pos) = resp.interact_pointer_pos()
+        && (resp.clicked() || resp.dragged())
+    {
+        let i = i_of(pos.x);
+        if i != t.index()
+            && let Some(s) = steps.get(i)
+        {
+            let _ = app.run("time.goTo", json!({"date": s}));
+        }
+    }
+    if let Some(pos) = resp.hover_pos() {
+        let i = i_of(pos.x);
+        if let Some(s) = steps.get(i) {
+            let c = counts.get(i).copied().unwrap_or(0);
+            resp.on_hover_text(crate::i18n::fmt("{date}: {n} features", &[("date", &t.label(*s)), ("n", &c.to_string())]));
+        }
+    }
+}

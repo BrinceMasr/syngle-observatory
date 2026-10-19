@@ -56,6 +56,7 @@ mod textform;
 pub mod theme;
 mod tilt_drape;
 mod tilt_settle;
+mod timebar;
 mod update;
 mod vertexedit;
 mod widgets;
@@ -645,6 +646,8 @@ pub struct RustGisApp {
     /// ModelBuilder's view: the model on its canvas.
     pub mb: modelbuilder::ModelBuilder,
     pub ws: workspacepanes::WorkspaceState,
+    /// The time slider bar.
+    pub time: timebar::TimeBarState,
     /// The Plugin Manager and plugin downloads.
     pub plugins: pluginsui::PluginsState,
     /// Help › Check for Updates.
@@ -724,6 +727,7 @@ impl RustGisApp {
             workflow: analysispane::Workflow::default(),
             mb: modelbuilder::ModelBuilder::default(),
             ws: workspacepanes::WorkspaceState::default(),
+            time: timebar::TimeBarState::default(),
             plugins: pluginsui::PluginsState::default(),
             update: update::UpdateState::default(),
             reports: reportpane::ReportState::default(),
@@ -2455,6 +2459,9 @@ impl RustGisApp {
                     return self.run(cmd, json!({"path": path}));
                 }
             }
+            "ui.timeSlider" => return timebar::toggle(self),
+            "ui.timePlay" => return timebar::play(self),
+            "ui.timeExport" => return timebar::export(self),
             "ui.animationPlay" => {
                 if self.session.map().animation.len() < 2 {
                     return Err("add at least two keyframes".into());
@@ -3108,6 +3115,7 @@ impl RustGisApp {
             chrome::status_bar(self, ui);
             panes::show(self, ui);
             table::show(self, ui);
+            timebar::show(self, ui);
             egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.canvas)).show(ui, |ui| {
                 mapview::show(self, ui);
             });

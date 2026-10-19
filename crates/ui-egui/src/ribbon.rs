@@ -2025,6 +2025,19 @@ fn view_tab(app: &mut RustGisApp, ui: &mut Ui) {
             small(ui, app, "export", "Export", "Export the animation as PNG frames (zip).", "ui.exportAnimation", Value::Null, false);
         });
     });
+    group(ui, "Time", |ui| {
+        big(
+            ui,
+            app,
+            "time_slider",
+            "Time\nSlider",
+            "Show layers through time: only the features whose date falls in the slider's window, and dated imagery for its date.",
+            "ui.timeSlider",
+            Value::Null,
+            crate::timebar::open(app),
+            false,
+        );
+    });
     group(ui, "Profile", |ui| {
         big(
             ui,

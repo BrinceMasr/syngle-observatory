@@ -1,0 +1,260 @@
+//! The time slider: a moving window of time that shows only the features of bound layers whose
+//! date falls in it, and fills the dates of tile layers whose URL names one.
+
+use std::sync::Arc;
+
+use rustgis_data::Dataset;
+use rustgis_data::time::{self, Unit};
+use serde::{Deserialize, Serialize};
+
+/// The most steps a slider lists (an hourly slider over centuries stops here).
+pub const MAX_STEPS: usize = 20_000;
+
+/// A map's time slider: the span it covers, where it is, and the window it shows.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TimeSlider {
+    /// The first step (milliseconds since 1970, UTC).
+    pub start: f64,
+    /// The last moment covered.
+    pub end: f64,
+    /// The current step.
+    pub current: f64,
+    /// What a step is: an hour, a day, a month or a year…
+    pub unit: Unit,
+    /// …times this many.
+    pub interval: u32,
+    /// Explicit dates to step through instead (irregular data); empty for regular steps.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub dates: Vec<f64>,
+    /// Steps before the current one the window takes in.
+    pub before: u32,
+    /// Steps from the current one the window takes in (1: just this step).
+    pub after: u32,
+    /// The window reaches back to the start: everything up to now shows.
+    pub cumulative: bool,
+    /// Milliseconds a step shows for while playing.
+    pub speed_ms: u32,
+    /// Playing starts over at the end.
+    #[serde(rename = "loop")]
+    pub looping: bool,
+    /// The date format (empty: the unit's own, as `YYYY-MM`).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub format: String,
+}
+
+impl Default for TimeSlider {
+    fn default() -> Self {
+        TimeSlider {
+            start: 0.0,
+            end: 0.0,
+            current: 0.0,
+            unit: Unit::Day,
+            interval: 1,
+            dates: Vec::new(),
+            before: 0,
+            after: 1,
+            cumulative: false,
+            speed_ms: 800,
+            looping: true,
+            format: String::new(),
+        }
+    }
+}
+
+impl TimeSlider {
+    /// A slider over `[start, end]` in steps that suit its length, at its start.
+    pub fn spanning(start: f64, end: f64) -> TimeSlider {
+        let (start, end) = if start <= end { (start, end) } else { (end, start) };
+        let unit = Unit::for_span(end - start);
+        let start = time::floor(start, unit);
+        TimeSlider { start, end, current: start, unit, ..TimeSlider::default() }
+    }
+
+    /// The steps it moves through, in order.
+    pub fn steps(&self) -> Vec<f64> {
+        if !self.dates.is_empty() {
+            return self.dates.clone();
+        }
+        let s = time::steps(self.start, self.end, self.unit, self.interval, MAX_STEPS);
+        if s.is_empty() { vec![self.start] } else { s }
+    }
+
+    /// The index of the step at or before the current one.
+    pub fn index(&self) -> usize {
+        let s = self.steps();
+        s.iter().rposition(|t| *t <= self.current).unwrap_or(0)
+    }
+
+    /// Moves `n` steps (back when negative); wraps around when `wrap`, else stops at the ends.
+    /// Whether it moved.
+    pub fn step(&mut self, n: i64, wrap: bool) -> bool {
+        let s = self.steps();
+        let len = s.len() as i64;
+        if len == 0 {
+            return false;
+        }
+        let i = self.index() as i64 + n;
+        let i = if wrap { i.rem_euclid(len) } else { i.clamp(0, len - 1) };
+        let t = s.get(i as usize).copied().unwrap_or(self.start);
+        let moved = t != self.current;
+        self.current = t;
+        moved
+    }
+
+    /// Moves to the step at or before `t` (clamped to the span).
+    pub fn go_to(&mut self, t: f64) {
+        let s = self.steps();
+        self.current = s.iter().rev().find(|x| **x <= t).or(s.first()).copied().unwrap_or(self.start);
+    }
+
+    /// Whether it is at its last step.
+    pub fn at_end(&self) -> bool {
+        self.index() + 1 >= self.steps().len()
+    }
+
+    /// The window shown: `[from, to)`.
+    pub fn window(&self) -> (f64, f64) {
+        let k = i64::from(self.interval.max(1));
+        let (from, to) = if self.dates.is_empty() {
+            (time::add(self.current, self.unit, -i64::from(self.before) * k), time::add(self.current, self.unit, i64::from(self.after) * k))
+        } else {
+            // Irregular dates: the window runs from one listed date to another.
+            let i = self.index();
+            let at = |j: i64| self.dates.get(j.clamp(0, self.dates.len() as i64 - 1) as usize).copied();
+            let from = at(i as i64 - i64::from(self.before)).unwrap_or(self.current);
+            let last = i as i64 + i64::from(self.after);
+            let to = match self.dates.get(last as usize) {
+                Some(t) => *t,
+                None => self.dates.last().map_or(self.current, |l| l + 1.0),
+            };
+            (from, to)
+        };
+        let from = if self.cumulative { f64::NEG_INFINITY } else { from };
+        (from, to.max(from))
+    }
+
+    /// The format dates show in.
+    pub fn date_format(&self) -> &str {
+        if self.format.trim().is_empty() { self.unit.format() } else { &self.format }
+    }
+
+    /// A date in its format.
+    pub fn label(&self, t: f64) -> String {
+        time::format(t, self.date_format())
+    }
+
+    /// Keeps it usable whatever a file or command gave it: finite, ordered, bounded.
+    pub fn normalize(&mut self) {
+        let fix = |x: f64| if x.is_finite() { x.clamp(-3.0e16, 3.0e16) } else { 0.0 };
+        self.start = fix(self.start);
+        self.end = fix(self.end).max(self.start);
+        self.interval = self.interval.clamp(1, 10_000);
+        self.before = self.before.min(10_000);
+        self.after = self.after.min(10_000);
+        self.speed_ms = self.speed_ms.clamp(16, 60_000);
+        self.dates.retain(|t| t.is_finite());
+        self.dates.sort_by(f64::total_cmp);
+        self.dates.dedup();
+        self.dates.truncate(MAX_STEPS);
+        let current = fix(self.current);
+        self.go_to(current);
+    }
+}
+
+/// A layer bound to the time slider: the field its dates are in, and the window it shows.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct TimeBinding {
+    pub field: String,
+    /// The window last applied (`None`: the slider is off and every feature shows).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub window: Option<(f64, f64)>,
+    /// The rows that window keeps, worked out when it was applied.
+    #[serde(skip)]
+    shown: Arc<Vec<bool>>,
+}
+
+impl TimeBinding {
+    pub fn new(field: impl Into<String>) -> TimeBinding {
+        TimeBinding { field: field.into(), ..TimeBinding::default() }
+    }
+
+    /// Sets the window and works out the rows it keeps.
+    pub fn apply(&mut self, ds: &Dataset, window: Option<(f64, f64)>) {
+        self.window = window;
+        self.shown = Arc::new(match window {
+            Some(w) => rows_in(ds, &self.field, w),
+            None => Vec::new(),
+        });
+    }
+
+    /// Whether row `r` is in the window (every row is when there is none).
+    pub fn keeps(&self, ds: &Dataset) -> Option<Vec<bool>> {
+        let w = self.window?;
+        let n = ds.features.len();
+        Some(if self.shown.len() == n { self.shown.as_ref().clone() } else { rows_in(ds, &self.field, w) })
+    }
+}
+
+/// The rows of `ds` whose `field` names a moment in `[from, to)` (a moment, when they are one).
+pub fn rows_in(ds: &Dataset, field: &str, (from, to): (f64, f64)) -> Vec<bool> {
+    let n = ds.features.len();
+    let Some(fi) = ds.field_index(field) else { return vec![false; n] };
+    let Some((kind, _)) = time::detect((0..n).map(|r| ds.value(r, fi)), 500) else { return vec![false; n] };
+    (0..n).map(|r| time::instant(ds.value(r, fi), kind).is_some_and(|t| if from == to { t == from } else { t >= from && t < to })).collect()
+}
+
+/// Each row's moment in `field` (`None` where it has none).
+pub fn instants(ds: &Dataset, field: &str) -> Vec<Option<f64>> {
+    let n = ds.features.len();
+    let Some(fi) = ds.field_index(field) else { return vec![None; n] };
+    let Some((kind, _)) = time::detect((0..n).map(|r| ds.value(r, fi)), 500) else { return vec![None; n] };
+    (0..n).map(|r| time::instant(ds.value(r, fi), kind)).collect()
+}
+
+/// How many moments fall in each step: from a step up to the next (the last one `interval`
+/// units long).
+pub fn histogram(moments: impl Iterator<Item = f64>, steps: &[f64], unit: Unit, interval: u32) -> Vec<u32> {
+    let mut out = vec![0u32; steps.len()];
+    let Some(last) = steps.last() else { return out };
+    let end = time::add(*last, unit, i64::from(interval.max(1)));
+    for t in moments.filter(|t| *t < end) {
+        // The step at or before it.
+        let i = steps.partition_point(|s| *s <= t);
+        if let Some(c) = i.checked_sub(1).and_then(|i| out.get_mut(i)) {
+            *c = c.saturating_add(1);
+        }
+    }
+    out
+}
+
+/// The span of the dates in a field: (first, last).
+pub fn field_span(ds: &Dataset, field: &str) -> Option<(f64, f64)> {
+    let fi = ds.field_index(field)?;
+    let n = ds.features.len();
+    let (kind, _) = time::detect((0..n).map(|r| ds.value(r, fi)), 500)?;
+    (0..n).filter_map(|r| time::instant(ds.value(r, fi), kind)).fold(None, |acc, t| match acc {
+        None => Some((t, t)),
+        Some((a, b)) => Some((t.min(a), t.max(b))),
+    })
+}
+
+/// The fields of `ds` that hold dates, best first, with the share of values that read as one
+/// (at least 60%).
+pub fn time_fields(ds: &Dataset) -> Vec<(String, f64)> {
+    let n = ds.features.len();
+    let mut out: Vec<(String, f64, usize)> = ds
+        .fields
+        .iter()
+        .enumerate()
+        .filter_map(|(fi, f)| {
+            let (_, share) = time::detect((0..n).map(|r| ds.value(r, fi)), 500)?;
+            let mut distinct: Vec<String> = (0..n.min(500)).map(|r| ds.value(r, fi).to_string()).collect();
+            distinct.sort();
+            distinct.dedup();
+            (share >= 0.6).then(|| (f.name.clone(), share, distinct.len()))
+        })
+        .collect();
+    out.sort_by(|a, b| b.1.total_cmp(&a.1).then(b.2.cmp(&a.2)));
+    out.into_iter().map(|(n, s, _)| (n, s)).collect()
+}

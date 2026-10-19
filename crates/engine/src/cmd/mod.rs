@@ -35,6 +35,7 @@ pub mod sources;
 pub mod sql;
 pub mod stac;
 pub mod tiles;
+pub mod time;
 pub mod view;
 pub mod workflows;
 pub mod workspace;
@@ -85,6 +86,7 @@ pub fn all() -> Vec<CommandSpec> {
     v.extend(stac::commands());
     v.extend(portals::commands());
     v.extend(catalogs::commands());
+    v.extend(time::commands());
     v
 }
 
