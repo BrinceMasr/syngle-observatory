@@ -607,8 +607,11 @@ fn head(status: u16, ty: &str, length: u64, content_range: Option<&str>, cache: 
         404 => "Not Found",
         _ => "OK",
     };
+    // No CORS headers: the view and the canvas page are served from this same origin, so nothing
+    // here is a cross-origin read. `Access-Control-Allow-Origin: *` (until #66) handed every page
+    // that could reach the port the same access the framing host has.
     let mut h = format!(
-        "HTTP/1.1 {status} {reason}\r\nContent-Type: {ty}\r\nContent-Length: {length}\r\nAccept-Ranges: bytes\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Range, Content-Type\r\nAccess-Control-Expose-Headers: Content-Range, Accept-Ranges, Content-Length\r\nCache-Control: {}\r\nConnection: close\r\n",
+        "HTTP/1.1 {status} {reason}\r\nContent-Type: {ty}\r\nContent-Length: {length}\r\nAccept-Ranges: bytes\r\nCache-Control: {}\r\nConnection: close\r\n",
         if cache { "public, max-age=31536000, immutable" } else { "no-store" }
     );
     if let Some(cr) = content_range {
@@ -735,7 +738,9 @@ mod tests {
         assert_eq!(len, 2);
         assert_eq!(body, b"hi");
         assert!(head.contains("Accept-Ranges: bytes"));
-        assert!(head.contains("Access-Control-Allow-Origin: *"));
+        // The view is same-origin with this gateway, so no response carries a CORS grant: a page
+        // that is not the view cannot read the project or a dataset through the port either.
+        assert!(!head.to_ascii_lowercase().contains("access-control-allow-origin"));
         assert!(head.contains("Content-Type: application/json"));
     }
 

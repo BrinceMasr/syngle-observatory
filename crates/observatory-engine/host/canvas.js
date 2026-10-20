@@ -85,9 +85,12 @@
     return app && app.frames ? app.frames.slice(-20000) : [];
   }
 
-  // The project the engine currently holds, fetched from the gateway (never from disk here).
+  // The project the engine currently holds, fetched from the gateway (never from disk here). The
+  // document sits beside the launch token's path, not under the canvas page: this page is
+  // `/t/<token>/canvas/`, and `../project.json` is `/t/<token>/project.json` (or `/project.json`
+  // when the launch has no token) — the address the gateway actually routes.
   function projectFromEngine(done) {
-    var url = new URL("project.json", window.location.href);
+    var url = new URL("../project.json", window.location.href);
     fetch(url.href, { cache: "no-store" })
       .then(function (r) {
         return r.text();
@@ -147,14 +150,27 @@
     tell({ observatory: "error", error: "unknown input " + message.kind });
   }
 
+  // Only this page's parent may drive it. The launch token guards the address; it does not decide
+  // who is allowed to speak, and a `project` message repaints the map. The host's origin is learned
+  // from its first message and every later one has to match it, so a page that is framed elsewhere
+  // and then navigated to the gateway's port cannot take the channel over.
+  var hostOrigin = null;
+
   window.addEventListener("message", function (event) {
     var data = event.data;
     if (!data || typeof data !== "object") return;
     // The view's own contract, on its way to whoever framed us (only the view's messages).
-    if (data.rustgis && event.source === (view && view.contentWindow)) {
-      return tell({ observatory: "view", message: data });
+    if (data.rustgis) {
+      if (event.source === (view && view.contentWindow)) tell({ observatory: "view", message: data });
+      return;
     }
     if (!data.observatory) return;
+    if (event.source !== window.parent) return;
+    if (hostOrigin === null) {
+      hostOrigin = event.origin;
+    } else if (event.origin !== hostOrigin) {
+      return;
+    }
     switch (data.observatory) {
       case "hello":
         return tell({ observatory: "ready", href: window.location.href, view: view && view.src });
