@@ -4,7 +4,7 @@ const emptyState = document.querySelector("#empty-state");
 const platformNav = document.querySelector("#platform-nav");
 let artifacts = [];
 
-const platformOrder = ["Windows", "macOS", "Linux", "Python", "Other"];
+const platformOrder = ["Windows", "macOS", "Python", "Other"];
 
 const bytes = new Intl.NumberFormat("en", {
   style: "unit",
@@ -26,7 +26,6 @@ function platformFor(name) {
     return "Windows";
   if (/\.(dmg|pkg)$/.test(value) || value.includes("macos") || value.includes(".app."))
     return "macOS";
-  if (/\.(deb|rpm|appimage|zsync)$/.test(value) || value.includes("linux")) return "Linux";
   return "Other";
 }
 

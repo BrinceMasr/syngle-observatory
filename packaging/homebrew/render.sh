@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Renders the Homebrew tap (BrinceMasr/homebrew-syngle-observatory) for one release: the `rustgis` cask
 # (the signed and notarized Syngle Observatory.app from the macOS DMGs) and the `rustgis-cli` formula
-# (the command line tool from the macOS CLI and Linux tarballs).
+# (the command line tool from the macOS CLI tarball).
 #
 #   packaging/homebrew/render.sh <version> <SHA256SUMS> <tap folder>
 #
@@ -31,8 +31,6 @@ dmg_arm="$(sha "syngle-observatory-$version-macos-aarch64.dmg")"
 dmg_intel="$(sha "syngle-observatory-$version-macos-x86_64.dmg")"
 cli_mac_arm="$(sha "rustgis-cli-$version-macos-aarch64.tar.gz")"
 cli_mac_intel="$(sha "rustgis-cli-$version-macos-x86_64.tar.gz")"
-cli_linux_arm="$(sha "syngle-observatory-$version-linux-aarch64.tar.gz")"
-cli_linux_intel="$(sha "syngle-observatory-$version-linux-x86_64.tar.gz")"
 
 mkdir -p "$tap/Casks" "$tap/Formula"
 releases="https://github.com/$repo/releases/download/v#{version}"
@@ -86,17 +84,6 @@ class RustgisCli < Formula
     on_intel do
       url "$releases/rustgis-cli-#{version}-macos-x86_64.tar.gz"
       sha256 "$cli_mac_intel"
-    end
-  end
-
-  on_linux do
-    on_arm do
-      url "$releases/syngle-observatory-#{version}-linux-aarch64.tar.gz"
-      sha256 "$cli_linux_arm"
-    end
-    on_intel do
-      url "$releases/syngle-observatory-#{version}-linux-x86_64.tar.gz"
-      sha256 "$cli_linux_intel"
     end
   end
 
