@@ -58,6 +58,11 @@ struct Cfg {
     /// carry it, as a `/t/<token>/…` path, `?token=<token>` or an `X-Observatory-Token` header.
     /// Without one the gateway serves openly, which is what the #43 bench runs against.
     token: Option<String>,
+    /// This gateway's own origin (`http://127.0.0.1:<port>`), for the addresses it writes into a
+    /// page: the view's `?project=` fetches through `ui.openUrl`, which only accepts an absolute
+    /// `http(s)` address, so a path like `/t/<token>/project.json` is refused and the layer never
+    /// opens (measured natively in #66).
+    base: String,
 }
 
 /// What the gateway served, for the report: how many requests, how many bytes, how many of them
@@ -79,13 +84,6 @@ pub fn run(args: &[String]) -> i32 {
     // `--cache` makes the view's content-hashed assets cacheable: the second launch reuses the
     // fetched (and code-cached) WebAssembly instead of re-downloading 32 MB. Off by default, so the
     // as-shipped cold-open numbers stay the pessimistic ones.
-    let cfg = Arc::new(Cfg {
-        web: opt("--web").map(PathBuf::from).unwrap_or_else(|| root.join("dist/web")),
-        host: opt("--host").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/host/view")),
-        data: opt("--data").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/data")),
-        cache: args.iter().any(|a| a == "--cache"),
-        token: opt("--token").filter(|t| !t.is_empty()),
-    });
     let port_wanted: u16 = opt("--port").and_then(|p| p.parse().ok()).unwrap_or(0);
     let listener = match TcpListener::bind(("127.0.0.1", port_wanted)) {
         Ok(l) => l,
@@ -95,6 +93,15 @@ pub fn run(args: &[String]) -> i32 {
         }
     };
     let port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
+    let base = format!("http://127.0.0.1:{port}");
+    let cfg = Arc::new(Cfg {
+        web: opt("--web").map(PathBuf::from).unwrap_or_else(|| root.join("dist/web")),
+        host: opt("--host").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/host/view")),
+        data: opt("--data").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/data")),
+        cache: args.iter().any(|a| a == "--cache"),
+        token: opt("--token").filter(|t| !t.is_empty()),
+        base,
+    });
     let serve_cfg = Arc::clone(&cfg);
     let counters = Arc::new(Counters::default());
     let serve_counters = Arc::clone(&counters);
@@ -120,7 +127,7 @@ pub fn run(args: &[String]) -> i32 {
         }
     });
     let pid = std::process::id();
-    let base = format!("http://127.0.0.1:{port}");
+    let base = cfg.base.clone();
     // `auth` tells the host the gateway is token-guarded; the token itself is the host's (it
     // minted it) and never travels back over this channel.
     emit(&json!({"event":"ready","port":port,"pid":pid,"base":base,"auth":cfg.token.is_some(),"t":now_ms()}));
@@ -352,14 +359,19 @@ fn token_prefix(token: Option<&String>) -> String {
 /// requesting page asked for. `?project=1` makes the view fetch the project document itself
 /// (`?project=<url>` is the fork's own flag); `?backend=webgl2` picks the WebGL2 backend;
 /// `?spike` turns on the view's own per-frame samples, which is what the measurements read.
-fn view_embed(target: &str, token: Option<&String>) -> String {
+///
+/// The project address is absolute, on this gateway's own origin: the view opens it with
+/// `ui.openUrl`, whose fetch refuses anything that isn't `http://` or `https://`. A token'd path
+/// (`/t/<token>/project.json`) was handed over here until #66 and never opened — the view drew its
+/// basemap with `features 0` for ever and asked for nothing, natively on the RTX 3080 Ti as well.
+fn view_embed(target: &str, token: Option<&String>, base: &str) -> String {
     let t = token_prefix(token);
     let mut embed = format!("{t}/web/?embed");
     if target.contains("backend=webgl2") {
         embed.push_str("&webgl");
     }
     if target.contains("project=1") {
-        embed.push_str(&format!("&project={t}/project.json"));
+        embed.push_str(&format!("&project={base}{t}/project.json"));
     }
     if target.contains("spike") {
         embed.push_str("&spike");
@@ -467,7 +479,7 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
             // The page's own addresses are relative, so the launch token's prefix comes from the
             // URL the host framed it with; its one view address is rewritten the same way the
             // spike host page's is.
-            let bytes = CANVAS_HTML.replace("/web/?embed", &view_embed(&req.target, cfg.token.as_ref())).into_bytes();
+            let bytes = CANVAS_HTML.replace("/web/?embed", &view_embed(&req.target, cfg.token.as_ref(), &cfg.base)).into_bytes();
             return (200, (head(200, "text/html; charset=utf-8", bytes.len() as u64, None, false), bytes.len() as u64), bytes);
         }
         "/canvas/canvas.js" => {
@@ -532,12 +544,18 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
         if handle.read_to_string(&mut html).is_ok() {
             let mut injected = html;
             if req.target.starts_with("/web") {
-                injected = injected.replace("</head>", "<script src=\"/spike/instrument.js\"></script></head>");
+                // The instrument is the gateway's own file, so it carries the launch token's path
+                // exactly as the page's other addresses do; a bare `/spike/instrument.js` is 403
+                // on a token'd launch and the measurement silently loses its frame counters.
+                injected = injected.replace(
+                    "</head>",
+                    &format!("<script src=\"{}/spike/instrument.js\"></script></head>", token_prefix(cfg.token.as_ref())),
+                );
             }
             // One replacement, so the flags compose: the host page's own query decides what
             // the view's iframe address carries. Every address the page hands the view carries
             // the launch token's path, so the view's own asset and range requests are served.
-            let embed = view_embed(&req.target, cfg.token.as_ref());
+            let embed = view_embed(&req.target, cfg.token.as_ref(), &cfg.base);
             injected = injected.replace("/web/?embed", &embed);
             let bytes = injected.into_bytes();
             return (200, (head(200, ty, bytes.len() as u64, None, false), bytes.len() as u64), bytes);
@@ -665,7 +683,14 @@ mod tests {
     }
 
     fn cfg(root: &Path) -> Cfg {
-        Cfg { web: root.join("web"), host: root.join("host"), data: root.join("data"), cache: false, token: None }
+        Cfg {
+            web: root.join("web"),
+            host: root.join("host"),
+            data: root.join("data"),
+            cache: false,
+            token: None,
+            base: "http://127.0.0.1:7391".into(),
+        }
     }
 
     /// The same roots, with the launch token a SyngleCode launch passes.
@@ -821,22 +846,33 @@ mod tests {
     }
 
     #[test]
-    fn the_views_address_carries_the_token_and_the_flags_that_were_asked_for() {
+    fn the_views_address_carries_the_token_the_flags_that_were_asked_for_and_an_absolute_project() {
         let token = String::from("5f2a");
-        assert_eq!(view_embed("/host/", None), "/web/?embed");
-        assert_eq!(view_embed("/host/?project=1&spike=1", None), "/web/?embed&project=/project.json&spike");
-        assert_eq!(view_embed("/canvas/?project=1&spike=1", Some(&token)), "/t/5f2a/web/?embed&project=/t/5f2a/project.json&spike");
-        assert_eq!(view_embed("/canvas/?backend=webgl2", Some(&token)), "/t/5f2a/web/?embed&webgl");
+        let base = "http://127.0.0.1:7391";
+        assert_eq!(view_embed("/host/", None, base), "/web/?embed");
+        // An absolute http address, not a path: `ui.openUrl` refuses anything else, so a path
+        // here is a view that never opens the project (measured natively in #66).
+        assert_eq!(view_embed("/host/?project=1&spike=1", None, base), "/web/?embed&project=http://127.0.0.1:7391/project.json&spike");
+        assert_eq!(
+            view_embed("/canvas/?project=1&spike=1", Some(&token), base),
+            "/t/5f2a/web/?embed&project=http://127.0.0.1:7391/t/5f2a/project.json&spike"
+        );
+        assert_eq!(view_embed("/canvas/?backend=webgl2", Some(&token), base), "/t/5f2a/web/?embed&webgl");
+        // Whatever the base, the project address stays absolute and on it.
+        assert!(view_embed("/canvas/?project=1", Some(&token), base).contains("&project=http://127.0.0.1:7391/t/5f2a/project.json"));
+        assert!(!view_embed("/canvas/?project=1", Some(&token), base).contains("&project=/t/5f2a/project.json"));
     }
 
     #[test]
     fn the_canvas_page_is_the_engines_own_and_frames_the_token_guarded_view() {
         let root = tmp_dir("canvas");
-        let (status, (_, len), body) = route(&req("/canvas/"), &cfg_with_token(&root, "5f2a"), &the_project());
+        let (status, (_, len), body) = route(&req("/canvas/?project=1&spike=1"), &cfg_with_token(&root, "5f2a"), &the_project());
         assert_eq!(status, 200);
         assert_eq!(len, body.len() as u64);
         let html = String::from_utf8_lossy(&body).to_string();
-        assert!(html.contains("src=\"/t/5f2a/web/?embed\""), "{html}");
+        // The view is framed with the token and an ABSOLUTE project address: what the view's
+        // `ui.openUrl` accepts, and what #66 measured a path failing to open.
+        assert!(html.contains("src=\"/t/5f2a/web/?embed&project=http://127.0.0.1:7391/t/5f2a/project.json&spike\""), "{html}");
         // Its script is served from beside it, not from disk.
         let (js_status, (_, js_len), js) = route(&req("/canvas/canvas.js"), &cfg_with_token(&root, "5f2a"), &the_project());
         assert_eq!((js_status, js_len), (200, CANVAS_JS.len() as u64));
@@ -844,12 +880,31 @@ mod tests {
     }
 
     #[test]
+    fn the_view_page_carries_the_instrument_behind_the_launch_token() {
+        let root = tmp_dir("instrument");
+        std::fs::create_dir_all(root.join("web")).ok();
+        std::fs::write(root.join("web/index.html"), "<head></head>").ok();
+        let (status, _, body) = route(&req("/web/index.html?embed"), &cfg_with_token(&root, "5f2a"), &the_project());
+        assert_eq!(status, 200);
+        let html = String::from_utf8_lossy(&body).to_string();
+        // A bare `/spike/instrument.js` is 403 on a token'd launch (measured in #66), so the
+        // instrument would never load and the frame counters would be silently missing.
+        assert!(html.contains("<script src=\"/t/5f2a/spike/instrument.js\"></script>"), "{html}");
+        // The instrument answers on that path.
+        let (js_status, _, js) = route(&req("/spike/instrument.js"), &cfg_with_token(&root, "5f2a"), &the_project());
+        assert_eq!(js_status, 200);
+        assert_eq!(js, INSTRUMENT.as_bytes());
+    }
+
+    #[test]
     fn the_spike_host_page_still_gets_the_token_and_its_own_flags() {
         let root = tmp_dir("host-inject");
+        // The page has to exist for the route to serve and rewrite it; `tmp_dir` only makes `data`.
+        std::fs::create_dir_all(root.join("host")).ok();
         std::fs::write(root.join("host/index.html"), "<iframe src=\"/web/?embed\"></iframe><head></head>").ok();
         let (status, _, body) = route(&req("/host/?project=1&spike=1"), &cfg_with_token(&root, "5f2a"), &the_project());
         assert_eq!(status, 200);
         let html = String::from_utf8_lossy(&body).to_string();
-        assert!(html.contains("src=\"/t/5f2a/web/?embed&project=/t/5f2a/project.json&spike\""), "{html}");
+        assert!(html.contains("src=\"/t/5f2a/web/?embed&project=http://127.0.0.1:7391/t/5f2a/project.json&spike\""), "{html}");
     }
 }
