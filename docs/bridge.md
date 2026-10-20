@@ -27,7 +27,13 @@ not just the handshake, so a stale page or a stale sidecar is refused the moment
   (`/canvas/`, served from this binary). The page relays down the fork's own embed contract
   (`{"rustgis": …}`): a project document pushed whole, or one of the app's `ui.*` commands run.
 * **Engine half** — JSON lines on the sidecar's stdin and stdout. SyngleCode's desktop process owns
-  the pipe and forwards lines for the renderer.
+  the pipe and forwards lines for the renderer. A host that does **not** own the pipe — the agent's
+  map tools in a dev or headless run, a browser talking to a gateway directly — posts the same line
+  to `POST /bridge` on the token-guarded gateway and gets back the lines the engine would have
+  written, as a JSON array. It is the same dispatch (`bridge_lines` in `src/lib.rs`), the same
+  session and the same history: one handshake per launch covers both, and a version refusal on
+  either transport closes both. Even a body that is not JSON is refused in the bridge's own
+  `bad-params` shape, never with a bare 400 page.
 
 The **state after every command** travels twice: as the `result` event's own `state`, and as the
 `bridge.state` line after it. The result is what SyngleCode's bridge reads the undo depth from when
@@ -37,6 +43,18 @@ the command's promise settles, so it can tell an edit from a read.
 `/render` route, and the command loop draws the project offscreen with the fork's own renderer
 (`cmd::share::map_png`), so the image is the map the project describes and cannot race an open or an
 edit.
+
+## One script, one undo step
+
+The engine's depth is what a *command* costs; what the user undoes is the app's step. A codemode
+script is several commands, so SyngleCode's bridge opens an **agent batch** before its first command
+and closes it after the last (`openAgentBatch` / `closeAgentBatch` in
+`t3-fork/apps/web/src/syngle/observatory/bridge/observatoryBridge.ts`, ecosystem #76): while a batch
+is open no command records a step of its own, and the close records one, labelled `Agent: …`, whose
+undo takes back exactly the depth the script added (an `edit.undo` per step, through the fork's own
+registry) and whose redo puts it back. A script that only read — a query, a render — records nothing,
+because the depth did not move. The view commands a script ran are held in the same step and
+replayed after the engine's, so one click undoes the whole script and nothing of the user's own work.
 
 ## The fork's history is the authority
 

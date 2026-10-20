@@ -150,6 +150,30 @@ impl Engine {
         let content_type = head.lines().find_map(|l| l.strip_prefix("Content-Type: ")).unwrap_or("").to_string();
         (status, content_type, body)
     }
+
+    /// A `POST /bridge` on the token-guarded gateway: one bridge line in, the lines the engine
+    /// answered with, parsed. Answers (status, lines).
+    fn post(&self, line: &Value) -> (u16, Vec<Value>) {
+        use std::io::Read;
+        let body = line.to_string();
+        let request = format!(
+            "POST /t/{TOKEN}/bridge HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        );
+        let mut stream = std::net::TcpStream::connect(("127.0.0.1", self.port)).expect("the gateway's port");
+        stream.set_read_timeout(Some(ANSWER_TIMEOUT)).ok();
+        stream.write_all(request.as_bytes()).expect("a request");
+        let mut raw = Vec::new();
+        stream.read_to_end(&mut raw).expect("the answer");
+        let split = raw.windows(4).position(|w| w == b"\r\n\r\n").unwrap_or(raw.len());
+        let head = String::from_utf8_lossy(&raw[..split]).to_string();
+        let body = raw.get(split + 4..).unwrap_or(&[]).to_vec();
+        let status = head.split_whitespace().nth(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
+        let lines = serde_json::from_slice::<Vec<Value>>(&body)
+            .unwrap_or_else(|e| panic!("not a JSON line list: {}: {e}", String::from_utf8_lossy(&body)));
+        (status, lines)
+    }
 }
 
 impl Drop for Engine {
@@ -357,4 +381,84 @@ fn render_to_png_draws_the_project_off_screen() {
         String::from_utf8_lossy(&raw).split_whitespace().nth(1).unwrap_or("").to_string()
     };
     assert_eq!(refused, "403", "the gateway serves only this launch's token");
+}
+
+/// The gateway's `POST /bridge`: a host that does not own the engine's pipe (the agent's map tools,
+/// the headless verification run, a dev browser) drives the same bridge, against the same session
+/// and the same history. One JSON line in the body, the lines the engine would have written in the
+/// answer.
+#[test]
+fn post_bridge_is_the_same_dispatch_as_the_pipe() {
+    let engine = Engine::start("post-bridge");
+    // The handshake is the same one: a command before a hello is refused, a version that is not
+    // this one is refused.
+    let early = engine.post(&json!({"cmd": "bridge", "bridge": "command", "protocolVersion": 1, "id": 1, "command": {"name": "command", "id": "project.sample"}}));
+    assert_eq!(early.0, 200, "the route answers, it does not hang up");
+    assert_eq!(early.1[0]["payload"]["code"].as_str(), Some("no-handshake"), "{:?}", early.1);
+
+    let wrong = engine.post(&json!({"cmd": "bridge", "bridge": "hello", "protocolVersion": 99}));
+    assert_eq!(wrong.1[0]["payload"]["code"].as_str(), Some("version-mismatch"), "{:?}", wrong.1);
+    // And nothing is served afterwards until this version says hello, exactly as on the pipe.
+    let refused = engine.post(&json!({"cmd": "bridge", "bridge": "command", "protocolVersion": 99, "id": 2, "command": {"name": "command", "id": "project.sample"}}));
+    assert_eq!(refused.1[0]["payload"]["code"].as_str(), Some("version-mismatch"), "{:?}", refused.1);
+
+    let hello = engine.post(&json!({"cmd": "bridge", "bridge": "hello", "protocolVersion": 1}));
+    assert_eq!(hello.1[0]["event"].as_str(), Some("bridge.ready"), "{:?}", hello.1);
+
+    // A real dataset, opened over HTTP, into the same session the `/render` route draws.
+    let file = write(&engine.root, "post-bridge.geojson", GEOJSON.as_bytes());
+    let opened = engine.post(&json!({
+        "cmd": "bridge", "bridge": "command", "protocolVersion": 1, "id": 3,
+        "command": {"name": "dataset.open", "target": file.display().to_string(), "kind": "path", "layerName": "Post bridge"},
+    }));
+    let state = answer_state(&opened.1);
+    assert_eq!(state["layers"].as_u64(), Some(1), "the layer the file becomes: {state}");
+    let names: Vec<String> =
+        state["datasets"].as_array().cloned().unwrap_or_default().iter().filter_map(|v| v.as_str().map(str::to_string)).collect();
+    assert!(names.iter().any(|n| n == "Post bridge"), "the dataset is the one opened: {state}");
+
+    // A read is not a step; an edit is, and the fork's own label travels back with it.
+    let before = state["undoDepth"].as_u64().unwrap_or(0);
+    let queried = engine.post(&json!({
+        "cmd": "bridge", "bridge": "command", "protocolVersion": 1, "id": 4,
+        "command": {"name": "dataset.query", "dataset": "Post bridge"},
+    }));
+    assert_eq!(answer_state(&queried.1)["undoDepth"].as_u64(), Some(before), "a query is not a step");
+    let edited = engine.post(&json!({
+        "cmd": "bridge", "bridge": "command", "protocolVersion": 1, "id": 5,
+        "command": {"name": "command", "id": "layer.rename", "params": {"layer": "Post bridge", "name": "Post bridge (renamed)"}},
+    }));
+    let after = answer_state(&edited.1)["undoDepth"].as_u64().unwrap_or(0);
+    assert!(after > before, "the edit grew the fork's history: {before} -> {after}");
+
+    // The PNG the agent's `map_render` asks for comes from the same session, over the same token.
+    let rendered = engine.get("/render?width=400&height=300");
+    assert_eq!(rendered.0, 200, "a render after an HTTP edit");
+    assert_eq!(rendered.2.get(..8), Some(b"\x89PNG\r\n\x1a\n".as_slice()), "a real PNG: {} bytes", rendered.2.len());
+
+    // The pipe still answers, and the handshake it uses is the one HTTP set: one link per launch.
+    let mut engine = engine;
+    let (value, state, _) = engine.command(6, &json!({"name": "dataset.query", "dataset": "Post bridge (renamed)"}));
+    assert!(
+        value.get("rows").and_then(Value::as_array).map(|r| !r.is_empty()).unwrap_or(false),
+        "the pipe reads the dataset HTTP opened and renamed: {value}"
+    );
+    assert_eq!(state["datasets"].as_array().map(|d| d.len()), Some(1), "{state}");
+}
+
+/// A smaller fixture than the pipe's own tests need: two named polygons, a real GeoJSON.
+const GEOJSON: &str = r#"{"type":"FeatureCollection","features":[
+ {"type":"Feature","properties":{"name":"Ashfield","lga":"ASF"},"geometry":{"type":"Polygon","coordinates":[[[151.11,-33.90],[151.15,-33.90],[151.15,-33.87],[151.11,-33.87],[151.11,-33.90]]]}},
+ {"type":"Feature","properties":{"name":"Burwood","lga":"BWD"},"geometry":{"type":"Polygon","coordinates":[[[151.09,-33.88],[151.13,-33.88],[151.13,-33.85],[151.09,-33.85],[151.09,-33.88]]]}}
+]}"#;
+
+/// The `state` the answer's result line carries (the same state the `bridge.state` line does).
+fn answer_state(lines: &[Value]) -> Value {
+    lines
+        .iter()
+        .find_map(|l| {
+            let payload = l.get("payload")?;
+            (payload.get("type").and_then(Value::as_str) == Some("result")).then(|| payload.get("state").cloned())?
+        })
+        .unwrap_or(Value::Null)
 }

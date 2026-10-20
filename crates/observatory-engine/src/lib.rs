@@ -73,6 +73,10 @@ struct Cfg {
     /// The bridge's `render-to-png`, drawn by the command loop that owns the session: the gateway's
     /// `/render` route asks here and waits for the PNG. `None` in a test that never renders.
     render: Option<std::sync::mpsc::Sender<RenderJob>>,
+    /// Bridge commands that arrive over HTTP (`POST /bridge`) rather than on stdin: the command loop
+    /// owns the session, so the gateway asks here and waits for the lines to answer with. `None` in a
+    /// test that never posts one.
+    bridge: Option<std::sync::mpsc::Sender<BridgeJob>>,
 }
 /// What the gateway served, for the report: how many requests, how many bytes, how many of them
 /// were ranges (a "read in place" source is a long tail of small ranges — that is a cost of the
@@ -106,6 +110,12 @@ pub fn run(args: &[String]) -> i32 {
     // The bridge's `render-to-png` is drawn by the command loop below, which is the only owner of
     // the session, so the gateway asks through here and waits for the PNG.
     let (render_tx, render_rx) = std::sync::mpsc::channel::<RenderJob>();
+    // Bridge commands posted over HTTP take the same road: the loop that owns the session runs them,
+    // so an HTTP peer and the host's pipe can never disagree about the project or the history.
+    let (bridge_tx, bridge_rx) = std::sync::mpsc::channel::<BridgeJob>();
+    // The handshake is one fact per process, whichever transport carried it: a `hello` on the pipe
+    // links the HTTP peer too, and a version refusal on either closes both.
+    let linked = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let cfg = Arc::new(Cfg {
         web: opt("--web").map(PathBuf::from).unwrap_or_else(|| root.join("dist/web")),
         host: opt("--host").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/host/view")),
@@ -114,6 +124,7 @@ pub fn run(args: &[String]) -> i32 {
         token: opt("--token").filter(|t| !t.is_empty()),
         base,
         render: Some(render_tx),
+        bridge: Some(bridge_tx),
     });
     let serve_cfg = Arc::clone(&cfg);
     let counters = Arc::new(Counters::default());
@@ -147,8 +158,8 @@ pub fn run(args: &[String]) -> i32 {
 
     let mut session = Session::new(Project::default());
     // The bridge's handshake: false until a peer says hello with this protocol's version. A command
-    // that arrives before one is refused rather than guessed at.
-    let mut linked = false;
+    // that arrives before one is refused rather than guessed at. The flag is shared with the
+    // gateway's `/bridge` route (`linked` above), so both transports see the same link.
     if let Some(preload) = opt("--preload") {
         let kind = if preload.starts_with("http") { "url" } else { "path" };
         let out = open(&mut session, &preload, kind, None, true);
@@ -168,6 +179,12 @@ pub fn run(args: &[String]) -> i32 {
         }
     });
     loop {
+        while let Ok(job) = bridge_rx.try_recv() {
+            // The answer goes to the peer that asked, and nowhere else: a line on stdout belongs to
+            // the host's own pipe, and a host that did not post this command must not read its reply.
+            let lines = bridge_lines(&mut session, &project, &linked, &job.msg);
+            let _ = job.reply.send(lines);
+        }
         while let Ok(job) = render_rx.try_recv() {
             answer_render(&mut session, job);
         }
@@ -224,76 +241,10 @@ pub fn run(args: &[String]) -> i32 {
                 }))
             }
             Command::Bridge => {
-                // The bridge's own version check comes first and is loud: a peer that speaks another
-                // protocol is refused, and nothing it sends afterwards is served.
-                match bridge::check_version(&msg) {
-                    Err(e) => {
-                        linked = false;
-                        emit(&e.line(&id, None));
-                    }
-                    Ok(()) => match msg.get("bridge").and_then(Value::as_str).unwrap_or("") {
-                        "hello" => {
-                            linked = true;
-                            emit(&json!({
-                                "event": "bridge.ready",
-                                "protocolVersion": bridge::PROTOCOL_VERSION,
-                                "t": now_ms(),
-                                "state": bridge::state(&session),
-                            }));
-                        }
-                        "command" if !linked => {
-                            emit(&bridge::BridgeError::no_handshake().line(&id, None));
-                        }
-                        "command" => {
-                            let Some(command) = msg.get("command") else {
-                                emit(&bridge::BridgeError::bad_params("a bridge command line needs 'command'").line(&id, None));
-                                continue;
-                            };
-                            let name = command.get("name").and_then(Value::as_str).map(str::to_string);
-                            match bridge::EngineCommand::parse(command) {
-                                Err(e) => emit(&e.line(&id, name.as_deref())),
-                                Ok(command) => {
-                                    let name = command.name();
-                                    emit(&json!({
-                                        "event": "bridge.event",
-                                        "protocolVersion": bridge::PROTOCOL_VERSION,
-                                        "payload": {"type": "progress", "id": id, "name": name, "phase": "start"},
-                                    }));
-                                    let revision = session.revision;
-                                    match bridge::run(&mut session, &command) {
-                                        Ok(value) => {
-                                            // A command that changed the project leaves the view's
-                                            // copy stale: the project document is re-served, and
-                                            // the client asks the view to take it again.
-                                            if session.revision != revision
-                                                && let Ok(text) = serde_json::to_string(&session.project)
-                                                && let Ok(mut shared) = project.lock()
-                                            {
-                                                *shared = text;
-                                            }
-                                            // State after every command, in the result and on its own
-                                            // line: the result gives the client the undo depth the
-                                            // command left, so it knows before its promise settles
-                                            // whether the fork's history grew (#67).
-                                            let state = bridge::state(&session);
-                                            emit(&json!({
-                                                "event": "bridge.event",
-                                                "protocolVersion": bridge::PROTOCOL_VERSION,
-                                                "payload": {"type": "result", "id": id, "name": name, "value": value, "state": state.clone()},
-                                            }));
-                                            emit(&json!({
-                                                "event": "bridge.state",
-                                                "protocolVersion": bridge::PROTOCOL_VERSION,
-                                                "state": state,
-                                            }));
-                                        }
-                                        Err(e) => emit(&e.line(&id, Some(name))),
-                                    }
-                                }
-                            }
-                        }
-                        other => emit(&bridge::BridgeError::bad_params(format!("unknown bridge kind '{other}'")).line(&id, None)),
-                    },
+                // One dispatch for both transports: the pipe answers with the same lines the
+                // gateway's `/bridge` route returns (`bridge_lines`).
+                for line in bridge_lines(&mut session, &project, &linked, &msg) {
+                    emit(&line);
                 }
             }
             Command::Quit => break,
@@ -394,6 +345,101 @@ struct RenderJob {
     reply: std::sync::mpsc::SyncSender<Result<Vec<u8>, String>>,
 }
 
+/// One bridge message posted over the gateway (`POST /bridge`) instead of written to the pipe: the
+/// whole line, and where the answer goes. The command loop owns the session, so it runs here and
+/// the route waits for the lines it emits.
+struct BridgeJob {
+    msg: Value,
+    reply: std::sync::mpsc::SyncSender<Vec<Value>>,
+}
+
+/// The bridge's dispatch, in one place so both transports answer identically: the host's stdin
+/// lines and the gateway's `/bridge` route (a host that does not own the pipe — the agent's map
+/// tools, the headless verification run, a dev browser). Answers the lines to emit, in order.
+///
+/// The handshake is one fact per process ([`Cfg`]-lifetime `linked`): a peer that says hello on
+/// either transport links both, and a version refusal on either closes both, which is what "a peer
+/// on another version is served nothing" means once there is more than one way in.
+fn bridge_lines(
+    session: &mut Session,
+    project: &std::sync::Mutex<String>,
+    linked: &std::sync::atomic::AtomicBool,
+    msg: &Value,
+) -> Vec<Value> {
+    use std::sync::atomic::Ordering;
+    let id = msg.get("id").cloned().unwrap_or(Value::Null);
+    // The version check comes first and is loud: a peer that speaks another protocol is refused,
+    // and nothing it sends afterwards is served.
+    if let Err(e) = bridge::check_version(msg) {
+        linked.store(false, Ordering::Relaxed);
+        return vec![e.line(&id, None)];
+    }
+    match msg.get("bridge").and_then(Value::as_str).unwrap_or("") {
+        "hello" => {
+            linked.store(true, Ordering::Relaxed);
+            vec![json!({
+                "event": "bridge.ready",
+                "protocolVersion": bridge::PROTOCOL_VERSION,
+                "t": now_ms(),
+                "state": bridge::state(session),
+            })]
+        }
+        "command" if !linked.load(Ordering::Relaxed) => {
+            vec![bridge::BridgeError::no_handshake().line(&id, None)]
+        }
+        "command" => {
+            let Some(command) = msg.get("command") else {
+                return vec![bridge::BridgeError::bad_params("a bridge command line needs 'command'").line(&id, None)];
+            };
+            let name = command.get("name").and_then(Value::as_str).map(str::to_string);
+            match bridge::EngineCommand::parse(command) {
+                Err(e) => vec![e.line(&id, name.as_deref())],
+                Ok(command) => {
+                    let name = command.name();
+                    let progress = json!({
+                        "event": "bridge.event",
+                        "protocolVersion": bridge::PROTOCOL_VERSION,
+                        "payload": {"type": "progress", "id": id, "name": name, "phase": "start"},
+                    });
+                    let revision = session.revision;
+                    match bridge::run(session, &command) {
+                        Ok(value) => {
+                            // A command that changed the project leaves the view's copy stale: the
+                            // project document is re-served, and the client asks the view to take it
+                            // again.
+                            if session.revision != revision
+                                && let Ok(text) = serde_json::to_string(&session.project)
+                                && let Ok(mut shared) = project.lock()
+                            {
+                                *shared = text;
+                            }
+                            // State after every command, in the result and on its own line: the
+                            // result gives the client the undo depth the command left, so it knows
+                            // before its promise settles whether the fork's history grew (#67).
+                            let state = bridge::state(session);
+                            vec![
+                                progress,
+                                json!({
+                                    "event": "bridge.event",
+                                    "protocolVersion": bridge::PROTOCOL_VERSION,
+                                    "payload": {"type": "result", "id": id, "name": name, "value": value, "state": state.clone()},
+                                }),
+                                json!({
+                                    "event": "bridge.state",
+                                    "protocolVersion": bridge::PROTOCOL_VERSION,
+                                    "state": state,
+                                }),
+                            ]
+                        }
+                        Err(e) => vec![progress, e.line(&id, Some(name))],
+                    }
+                }
+            }
+        }
+        other => vec![bridge::BridgeError::bad_params(format!("unknown bridge kind '{other}'")).line(&id, None)],
+    }
+}
+
 /// Draws one `render-to-png` with the fork's own offscreen renderer. It runs where the session is
 /// owned (the command loop), so a render never races an open or an edit.
 fn answer_render(session: &mut Session, job: RenderJob) {
@@ -434,6 +480,8 @@ struct Request {
     range: Option<ByteRange>,
     /// The `X-Observatory-Token` header, when the caller sent one (the app's own fetches do).
     token: Option<String>,
+    /// The request's body, when it carried one (`POST /bridge`). Empty for every GET.
+    body: Vec<u8>,
 }
 
 /// Whether a request may read the gateway. `None` cfg token: the gateway is open (the #43 bench).
@@ -548,8 +596,11 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::
             _ => {}
         }
     }
+    // A body is read, not discarded: `POST /bridge` carries its command in it. The cap is the same
+    // 8 MB the rest of the gateway assumes; a bridge line is a few hundred bytes.
+    let mut body = Vec::new();
     if length > 0 {
-        let mut body = vec![0u8; length.min(8 << 20)];
+        body = vec![0u8; length.min(8 << 20)];
         let _ = reader.read_exact(&mut body);
     }
     counters.requests.fetch_add(1, Ordering::Relaxed);
@@ -558,7 +609,7 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::
     }
     // A token-guarded gateway answers nothing else: without the launch token the request is
     // refused before any file is touched (the token may sit in the path, the query or the header).
-    let mut req = Request { method, target, range, token };
+    let mut req = Request { method, target, range, token, body };
     if !authorized(&req, cfg.token.as_ref()) {
         counters.requests.fetch_add(1, Ordering::Relaxed);
         log(&format!("{} {} 403", req.method, req.target));
@@ -596,6 +647,47 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::
 
 /// Builds the whole response: (status, (head, content length), body).
 fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, (String, u64), Vec<u8>) {
+    // The bridge, for a host that does not own this process's pipe: one JSON line in the body, the
+    // lines the engine would have written to stdout in the answer. It is the same dispatch the
+    // stdin protocol uses (`bridge_lines`), so a peer posting here and a peer writing to the pipe
+    // see one project, one history and one handshake. Token-guarded like everything else.
+    if req.target.split('?').next().unwrap_or("/") == "/bridge" {
+        if req.method != "POST" {
+            let body = b"POST a bridge line to /bridge".to_vec();
+            let n = body.len() as u64;
+            return (405, (head(405, "text/plain", n, None, false), n), body);
+        }
+        let Some(bridge) = cfg.bridge.as_ref() else {
+            let body = b"no bridge on this launch".to_vec();
+            let n = body.len() as u64;
+            return (503, (head(503, "text/plain", n, None, false), n), body);
+        };
+        let Ok(msg) = serde_json::from_slice::<Value>(&req.body) else {
+            let body = json!([bridge::BridgeError::bad_params("the body is not one JSON bridge line").line(&Value::Null, None)])
+                .to_string()
+                .into_bytes();
+            let n = body.len() as u64;
+            return (400, (head(400, "application/json", n, None, false), n), body);
+        };
+        let (reply, answer) = std::sync::mpsc::sync_channel(1);
+        if bridge.send(BridgeJob { msg, reply }).is_err() {
+            let body = b"the engine is stopping".to_vec();
+            let n = body.len() as u64;
+            return (503, (head(503, "text/plain", n, None, false), n), body);
+        }
+        return match answer.recv_timeout(std::time::Duration::from_secs(30)) {
+            Ok(lines) => {
+                let body = Value::Array(lines).to_string().into_bytes();
+                let n = body.len() as u64;
+                (200, (head(200, "application/json", n, None, false), n), body)
+            }
+            Err(_) => {
+                let body = b"the bridge did not answer".to_vec();
+                let n = body.len() as u64;
+                (504, (head(504, "text/plain", n, None, false), n), body)
+            }
+        };
+    }
     let (path, forced_type) = match req.target.split('?').next().unwrap_or("/") {
         "/" | "/host/" | "/host/index.html" => ("host/index.html".to_string(), Some("text/html; charset=utf-8")),
         // The engine's own canvas-only host page (ADR 0010): what SyngleCode frames. It is part of
@@ -855,6 +947,7 @@ mod tests {
             token: None,
             base: "http://127.0.0.1:7391".into(),
             render: None,
+            bridge: None,
         }
     }
 
@@ -882,7 +975,13 @@ mod tests {
     fn a_last_n_range_returns_the_tail_of_the_file() {
         let root = tmp_dir("tail");
         std::fs::write(root.join("data/blob.bin"), b"0123456789").ok();
-        let req = Request { method: "GET".into(), target: "/data/blob.bin".into(), range: parse_range("bytes=-4"), token: None };
+        let req = Request {
+            method: "GET".into(),
+            target: "/data/blob.bin".into(),
+            range: parse_range("bytes=-4"),
+            token: None,
+            body: Vec::new(),
+        };
         let (status, (head, len), body) = route(&req, &cfg(&root), &the_project());
         assert_eq!(status, 206);
         assert!(head.contains("Content-Range: bytes 6-9/10"));
@@ -894,7 +993,7 @@ mod tests {
     fn a_whole_file_answer_is_200_and_carries_the_reader_headers() {
         let root = tmp_dir("whole");
         std::fs::write(root.join("data/notes.json"), b"hi").ok();
-        let req = Request { method: "GET".into(), target: "/data/notes.json".into(), range: None, token: None };
+        let req = Request { method: "GET".into(), target: "/data/notes.json".into(), range: None, token: None, body: Vec::new() };
         let (status, (head, len), body) = route(&req, &cfg(&root), &the_project());
         assert_eq!(status, 200);
         assert_eq!(len, 2);
@@ -910,7 +1009,7 @@ mod tests {
     fn traversal_out_of_a_served_root_is_refused() {
         let root = tmp_dir("traversal");
         std::fs::write(root.join("secret.txt"), b"secret").ok();
-        let req = Request { method: "GET".into(), target: "/data/%2e%2e/secret.txt".into(), range: None, token: None };
+        let req = Request { method: "GET".into(), target: "/data/%2e%2e/secret.txt".into(), range: None, token: None, body: Vec::new() };
         let (status, _, body) = route(&req, &cfg(&root), &the_project());
         assert_eq!(status, 404);
         assert!(body.is_empty());
@@ -920,9 +1019,17 @@ mod tests {
     fn health_and_project_documents_answer_without_touching_the_disk() {
         let root = tmp_dir("meta");
         let project = the_project();
-        let health = route(&Request { method: "GET".into(), target: "/health".into(), range: None, token: None }, &cfg(&root), &project);
+        let health = route(
+            &Request { method: "GET".into(), target: "/health".into(), range: None, token: None, body: Vec::new() },
+            &cfg(&root),
+            &project,
+        );
         assert_eq!((health.0, health.2), (200, b"ok".to_vec()));
-        let doc = route(&Request { method: "GET".into(), target: "/project.json".into(), range: None, token: None }, &cfg(&root), &project);
+        let doc = route(
+            &Request { method: "GET".into(), target: "/project.json".into(), range: None, token: None, body: Vec::new() },
+            &cfg(&root),
+            &project,
+        );
         assert_eq!(doc.0, 200);
         assert_eq!(doc.2, b"{\"name\":\"test\"}");
         assert!((doc.1).0.contains("Content-Type: application/json"));
@@ -982,7 +1089,7 @@ mod tests {
     /// A request as the app's renderer sends it: no token in the path (the app puts it there
     /// itself when it opens a dataset), just what the gateway sees.
     fn req(target: &str) -> Request {
-        Request { method: "GET".into(), target: target.into(), range: None, token: None }
+        Request { method: "GET".into(), target: target.into(), range: None, token: None, body: Vec::new() }
     }
 
     #[test]
