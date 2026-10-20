@@ -3,7 +3,6 @@
 #
 #   packaging/package.sh <version> [rust-target]
 #
-# Linux: a .tar.gz, a .deb, an .rpm (when rpmbuild is installed) and an AppImage.
 # macOS: a .dmg holding Syngle Observatory.app, plus a .tar.gz of the CLI
 # (signed and notarized when the MACOS_SIGN_IDENTITY / APPLE_API_* variables are set).
 # Windows (Git Bash): a portable .zip, an NSIS setup.exe (per user), a WiX .msi (all users) and
@@ -23,7 +22,6 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 case "$(uname -s)" in
-  Linux*) os=linux ;;
   Darwin*) os=macos ;;
   MINGW* | MSYS* | CYGWIN*) os=windows ;;
   *) echo "unsupported OS: $(uname -s)" >&2; exit 1 ;;
@@ -43,147 +41,6 @@ logo() { "$bin/rustgis-cli$exe" logo "$1" --size "$2"; }
 name="syngle-observatory-$version-$os-$arch"
 
 case "$os" in
-  linux)
-    # Portable tarball.
-    d="$work/$name"
-    mkdir -p "$d"
-    cp "$bin/rustgis" "$bin/rustgis-cli" "$root/LICENSE" "$root/README.md" \
-      "$root/packaging/linux/rustgis.desktop" "$root/packaging/linux/rustgis-mime.xml" "$d/"
-    logo "$d/rustgis.png" 512
-    tar -C "$work" -czf "$dist/$name.tar.gz" "$name"
-
-    # Debian package.
-    case "$arch" in x86_64) debarch=amd64 ;; aarch64) debarch=arm64 ;; *) debarch="$arch" ;; esac
-    p="$work/deb"
-    install -Dm755 "$bin/rustgis" "$p/usr/bin/rustgis"
-    install -Dm755 "$bin/rustgis-cli" "$p/usr/bin/rustgis-cli"
-    install -Dm644 "$root/packaging/linux/rustgis.desktop" "$p/usr/share/applications/rustgis.desktop"
-    install -Dm644 "$root/packaging/linux/rustgis-mime.xml" "$p/usr/share/mime/packages/rustgis.xml"
-    for s in 32 64 128 256 512; do
-      mkdir -p "$p/usr/share/icons/hicolor/${s}x${s}/apps"
-      logo "$p/usr/share/icons/hicolor/${s}x${s}/apps/rustgis.png" "$s"
-    done
-    install -Dm644 "$root/LICENSE" "$p/usr/share/doc/rustgis/copyright"
-    mkdir -p "$p/DEBIAN"
-    # Libraries the binaries link against, worked out by dpkg-shlibdeps (it wants a
-    # debian/control in the working directory). The windowing and GPU libraries are loaded at
-    # run time, so they are listed by hand below.
-    mkdir -p "$work/shlibs/debian"
-    printf 'Source: rustgis\n\nPackage: rustgis\nArchitecture: any\n' > "$work/shlibs/debian/control"
-    shlibs="$(cd "$work/shlibs" && dpkg-shlibdeps -O "$p/usr/bin/rustgis" "$p/usr/bin/rustgis-cli" | sed -n 's/^shlibs:Depends=//p')" || shlibs=""
-    if [ -z "$shlibs" ]; then
-      # Off Debian/Ubuntu there is no dpkg database to consult. In CI that is an error: the
-      # published package must carry the real list.
-      if [ -n "${CI:-}" ]; then
-        echo "dpkg-shlibdeps found no dependencies" >&2
-        exit 1
-      fi
-      echo "dpkg-shlibdeps failed; using a minimal Depends list" >&2
-    fi
-    # Debian and RPM sort a pre-release before its release only with ~ (0.2.0~rc.1). Worked out
-    # here: older bash keeps the backslash of ${version/-/\~} inside a here-document.
-    pkgver="$(printf '%s' "$version" | tr - '~')"
-    cat > "$p/DEBIAN/control" <<CONTROL
-Package: rustgis
-Version: $pkgver
-Section: science
-Priority: optional
-Architecture: $debarch
-Maintainer: Qiusheng Wu <giswqs@gmail.com>
-Homepage: https://github.com/BrinceMasr/syngle-observatory
-Installed-Size: $(du -sk "$p/usr" | cut -f1)
-Depends: ${shlibs:-libc6, libgcc-s1}, libxkbcommon0, libwayland-client0 | libx11-6
-Recommends: libxkbcommon-x11-0, libxcursor1, libxi6, libxrandr2, libvulkan1 | libegl1
-Description: Fast, open-source GIS for mapping, analyzing and sharing geospatial data
- Maps and layers, symbology, labeling, selection, editing, geoprocessing and
- export. Includes rustgis-cli for scripting every command.
-CONTROL
-    dpkg-deb --root-owner-group --build "$p" "$dist/rustgis_${version}_${debarch}.deb"
-
-    # RPM package (Fedora, RHEL, openSUSE) from the same tree. Library dependencies are found
-    # by rpmbuild; the run-time loaded windowing and GPU libraries are listed by soname, which
-    # every RPM distribution provides under the same name.
-    if command -v rpmbuild > /dev/null; then
-      r="$work/rpm"
-      mkdir -p "$r/SPECS"
-      cat > "$r/SPECS/rustgis.spec" <<SPEC
-%global debug_package %{nil}
-%global __os_install_post %{nil}
-Name: rustgis
-Version: $pkgver
-Release: 1
-Summary: Fast, open-source GIS for mapping, analyzing and sharing geospatial data
-License: Apache-2.0
-URL: https://github.com/BrinceMasr/syngle-observatory
-Requires: libxkbcommon.so.0()(64bit)
-Requires: (libwayland-client.so.0()(64bit) or libX11.so.6()(64bit))
-Recommends: libxkbcommon-x11.so.0()(64bit)
-Recommends: libXcursor.so.1()(64bit)
-Recommends: libXi.so.6()(64bit)
-Recommends: libXrandr.so.2()(64bit)
-Recommends: (libvulkan.so.1()(64bit) or libEGL.so.1()(64bit))
-
-%description
-Maps and layers, symbology, labeling, selection, editing, geoprocessing and
-export. Includes rustgis-cli for scripting every command.
-
-%install
-mkdir -p %{buildroot}
-cp -a "$p/usr" %{buildroot}/
-
-%files
-/usr/bin/rustgis
-/usr/bin/rustgis-cli
-/usr/share/applications/rustgis.desktop
-/usr/share/mime/packages/rustgis.xml
-/usr/share/icons/hicolor/*/apps/rustgis.png
-%license /usr/share/doc/rustgis/copyright
-SPEC
-      rpmbuild --quiet -bb --target "$arch" --define "_topdir $r" "$r/SPECS/rustgis.spec"
-      # The file is named after $version (0.2.0-rc.1), like the other assets: GitHub rewrites
-      # the ~ of the package version in release asset names.
-      cp "$r"/RPMS/*/rustgis-*.rpm "$dist/rustgis-$version-1.$arch.rpm"
-    elif [ -n "${CI:-}" ]; then
-      echo "rpmbuild not found" >&2
-      exit 1
-    else
-      echo "rpmbuild not found: skipping the .rpm" >&2
-    fi
-
-    # AppImage: a single file that runs on most distributions without installing. It uses the
-    # static type-2 runtime, so it needs no libfuse2. The tools are pinned by checksum.
-    case "$arch" in
-      x86_64)
-        tool_sha=ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
-        runtime_sha=2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d ;;
-      aarch64)
-        tool_sha=f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158
-        runtime_sha=00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444 ;;
-      *) tool_sha="" ;;
-    esac
-    if [ -n "$tool_sha" ]; then
-      fetch() { # url sha out
-        curl -fsSL --retry 3 -o "$3" "$1"
-        echo "$2  $3" | sha256sum -c --quiet -
-      }
-      t="$work/appimage-tools"
-      mkdir -p "$t"
-      fetch "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-$arch.AppImage" \
-        "$tool_sha" "$t/appimagetool"
-      fetch "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-$arch" \
-        "$runtime_sha" "$t/runtime"
-      chmod +x "$t/appimagetool"
-      a="$work/Syngle Observatory.AppDir"
-      mkdir -p "$a"
-      cp -a "$p/usr" "$a/"
-      cp "$root/packaging/linux/rustgis.desktop" "$a/"
-      logo "$a/rustgis.png" 256
-      ln -s usr/bin/rustgis "$a/AppRun"
-      ARCH="$arch" APPIMAGE_EXTRACT_AND_RUN=1 "$t/appimagetool" --no-appstream --runtime-file "$t/runtime" \
-        "$a" "$dist/$name.AppImage"
-    fi
-    ;;
-
   macos)
     app="$work/Syngle Observatory.app"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"

@@ -50,8 +50,8 @@ Many features are first versions: there are no full 3D scenes or enterprise port
   as programs (with Python environments Syngle Observatory makes), in the background with progress and Cancel.
 - The `rustgis` Python package on PyPI: the engine in-process, and `rustgis.Map` in Jupyter.
 - Desktop packages: Windows installers (setup.exe, .msi), a portable zip and a Store MSIX; a
-  signed and notarized macOS DMG; Linux .deb, .rpm, AppImage and tarballs; Homebrew, the AUR,
-  Fedora COPR and winget; a download mirror at the fork releases.
+  signed and notarized macOS DMG; Homebrew and winget; a download mirror at the fork releases.
+  Linux packaging is dropped (Syngle ADR 0004): no .deb, .rpm, AppImage or tarball.
 
 ## Next
 - Editing: vertex editing (move, add and delete vertices of existing features).
