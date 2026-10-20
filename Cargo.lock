@@ -5004,6 +5004,7 @@ name = "syngle-observatory-engine"
 version = "0.3.0"
 dependencies = [
  "log",
+ "rustgis-assistant",
  "rustgis-engine",
  "serde_json",
 ]

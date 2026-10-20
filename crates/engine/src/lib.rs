@@ -757,6 +757,13 @@ impl Session {
     pub fn can_redo(&self) -> bool {
         !self.redo.is_empty()
     }
+    /// How many steps redo would bring back, beside [`Session::undo_depth`]. The Observatory bridge
+    /// (#67) reports both after every command, so a client can tell an edit (the undo depth grew)
+    /// from a command that only read, or replaced the project and cleared the history: only a grown
+    /// depth is a step of the shared history, and redo has to put the depth back up.
+    pub fn redo_depth(&self) -> usize {
+        self.redo.len()
+    }
     /// Who made the step undo would take back: `Some(None)` for the user, `Some(Some(name))`
     /// for an agent ([`Session::actor`]), `None` when there is nothing to undo.
     pub fn undo_actor(&self) -> Option<Option<&str>> {

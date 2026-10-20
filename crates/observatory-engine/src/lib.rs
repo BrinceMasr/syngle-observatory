@@ -11,6 +11,11 @@
 //! * **Control channel.** It speaks JSON lines over stdin/stdout with the host process (SyngleCode's
 //!   desktop process; the spike host before it). What crosses it: commands in, and the *project*
 //!   (never the pixels or the feature buffers) out.
+//! * **The Observatory bridge.** [`bridge`] is the typed, versioned protocol between SyngleCode's
+//!   React surface, the canvas page and this process (Syngle-Ecosystem #67, `docs/bridge.md`). Its
+//!   five engine commands — `dataset.open`, `dataset.query`, `catchment`, `command` and `mcp` —
+//!   dispatch into the fork's own session, command registry and MCP server; nothing new is computed
+//!   here. A peer whose version does not match is refused, and served nothing afterwards.
 //! * **One launch, one port, one token.** The host passes `--token <secret>`; every request must
 //!   carry it, as a `/t/<token>/…` path, `?token=<token>` or the `X-Observatory-Token` header, and
 //!   the gateway binds the port the host chose or the one the OS picked. Without `--token` the
@@ -30,6 +35,8 @@
 //! stderr: human/log lines — HTTP requests and their byte counts, notices, timings.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
+
+pub mod bridge;
 
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::net::{TcpListener, TcpStream};
@@ -63,8 +70,10 @@ struct Cfg {
     /// `http(s)` address, so a path like `/t/<token>/project.json` is refused and the layer never
     /// opens (measured natively in #66).
     base: String,
+    /// The bridge's `render-to-png`, drawn by the command loop that owns the session: the gateway's
+    /// `/render` route asks here and waits for the PNG. `None` in a test that never renders.
+    render: Option<std::sync::mpsc::Sender<RenderJob>>,
 }
-
 /// What the gateway served, for the report: how many requests, how many bytes, how many of them
 /// were ranges (a "read in place" source is a long tail of small ranges — that is a cost of the
 /// engine/view boundary, so it is measured rather than guessed).
@@ -94,6 +103,9 @@ pub fn run(args: &[String]) -> i32 {
     };
     let port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
     let base = format!("http://127.0.0.1:{port}");
+    // The bridge's `render-to-png` is drawn by the command loop below, which is the only owner of
+    // the session, so the gateway asks through here and waits for the PNG.
+    let (render_tx, render_rx) = std::sync::mpsc::channel::<RenderJob>();
     let cfg = Arc::new(Cfg {
         web: opt("--web").map(PathBuf::from).unwrap_or_else(|| root.join("dist/web")),
         host: opt("--host").map(PathBuf::from).unwrap_or_else(|| root.join("syngle-spike/host/view")),
@@ -101,6 +113,7 @@ pub fn run(args: &[String]) -> i32 {
         cache: args.iter().any(|a| a == "--cache"),
         token: opt("--token").filter(|t| !t.is_empty()),
         base,
+        render: Some(render_tx),
     });
     let serve_cfg = Arc::clone(&cfg);
     let counters = Arc::new(Counters::default());
@@ -133,15 +146,36 @@ pub fn run(args: &[String]) -> i32 {
     emit(&json!({"event":"ready","port":port,"pid":pid,"base":base,"auth":cfg.token.is_some(),"t":now_ms()}));
 
     let mut session = Session::new(Project::default());
+    // The bridge's handshake: false until a peer says hello with this protocol's version. A command
+    // that arrives before one is refused rather than guessed at.
+    let mut linked = false;
     if let Some(preload) = opt("--preload") {
         let kind = if preload.starts_with("http") { "url" } else { "path" };
         let out = open(&mut session, &preload, kind, None, true);
         emit(&json!({"event":"preloaded","t":now_ms(),"result":out}));
     }
 
-    let stdin = std::io::stdin();
-    for line in stdin.lock().lines() {
-        let Ok(line) = line else { break };
+    // stdin is read on its own thread, so this one loop can answer both the host's lines and the
+    // gateway's `/render`. A closed pipe is how the host says go.
+    let (line_tx, line_rx) = std::sync::mpsc::channel::<String>();
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        for line in stdin.lock().lines() {
+            let Ok(line) = line else { break };
+            if line_tx.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    loop {
+        while let Ok(job) = render_rx.try_recv() {
+            answer_render(&mut session, job);
+        }
+        let line = match line_rx.recv_timeout(std::time::Duration::from_millis(25)) {
+            Ok(line) => line,
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        };
         let line = line.trim();
         if line.is_empty() {
             continue;
@@ -189,6 +223,79 @@ pub fn run(args: &[String]) -> i32 {
                     "bytes":counters.bytes.load(Ordering::Relaxed),
                 }))
             }
+            Command::Bridge => {
+                // The bridge's own version check comes first and is loud: a peer that speaks another
+                // protocol is refused, and nothing it sends afterwards is served.
+                match bridge::check_version(&msg) {
+                    Err(e) => {
+                        linked = false;
+                        emit(&e.line(&id, None));
+                    }
+                    Ok(()) => match msg.get("bridge").and_then(Value::as_str).unwrap_or("") {
+                        "hello" => {
+                            linked = true;
+                            emit(&json!({
+                                "event": "bridge.ready",
+                                "protocolVersion": bridge::PROTOCOL_VERSION,
+                                "t": now_ms(),
+                                "state": bridge::state(&session),
+                            }));
+                        }
+                        "command" if !linked => {
+                            emit(&bridge::BridgeError::no_handshake().line(&id, None));
+                        }
+                        "command" => {
+                            let Some(command) = msg.get("command") else {
+                                emit(&bridge::BridgeError::bad_params("a bridge command line needs 'command'").line(&id, None));
+                                continue;
+                            };
+                            let name = command.get("name").and_then(Value::as_str).map(str::to_string);
+                            match bridge::EngineCommand::parse(command) {
+                                Err(e) => emit(&e.line(&id, name.as_deref())),
+                                Ok(command) => {
+                                    let name = command.name();
+                                    emit(&json!({
+                                        "event": "bridge.event",
+                                        "protocolVersion": bridge::PROTOCOL_VERSION,
+                                        "payload": {"type": "progress", "id": id, "name": name, "phase": "start"},
+                                    }));
+                                    let revision = session.revision;
+                                    match bridge::run(&mut session, &command) {
+                                        Ok(value) => {
+                                            // A command that changed the project leaves the view's
+                                            // copy stale: the project document is re-served, and
+                                            // the client asks the view to take it again.
+                                            if session.revision != revision
+                                                && let Ok(text) = serde_json::to_string(&session.project)
+                                                && let Ok(mut shared) = project.lock()
+                                            {
+                                                *shared = text;
+                                            }
+                                            // State after every command, in the result and on its own
+                                            // line: the result gives the client the undo depth the
+                                            // command left, so it knows before its promise settles
+                                            // whether the fork's history grew (#67).
+                                            let state = bridge::state(&session);
+                                            emit(&json!({
+                                                "event": "bridge.event",
+                                                "protocolVersion": bridge::PROTOCOL_VERSION,
+                                                "payload": {"type": "result", "id": id, "name": name, "value": value, "state": state.clone()},
+                                            }));
+                                            emit(&json!({
+                                                "event": "bridge.state",
+                                                "protocolVersion": bridge::PROTOCOL_VERSION,
+                                                "state": state,
+                                            }));
+                                        }
+                                        Err(e) => emit(&e.line(&id, Some(name))),
+                                    }
+                                }
+                            }
+                        }
+                        other => emit(&bridge::BridgeError::bad_params(format!("unknown bridge kind '{other}'")).line(&id, None)),
+                    },
+                }
+            }
             Command::Quit => break,
             Command::Unknown(other) => emit(&json!({"event":"error","id":id,"error":format!("unknown command {other}")})),
         }
@@ -211,6 +318,8 @@ enum Command {
     Project,
     /// The load counters and what is open.
     Stats,
+    /// The Observatory bridge (ADR 0010): a version check, then commands, then state and events.
+    Bridge,
     Quit,
     Unknown(String),
 }
@@ -235,6 +344,7 @@ impl Command {
             }
             "project" => Command::Project,
             "stats" => Command::Stats,
+            "bridge" => Command::Bridge,
             "quit" => Command::Quit,
             other => Command::Unknown(other.to_string()),
         }
@@ -276,6 +386,21 @@ fn open(session: &mut Session, target: &str, kind: &str, name: Option<&str>, zoo
 // The working set is the host's to read (`Get-Process -Id <pid>`): the workspace forbids `unsafe`,
 // and `K32GetProcessMemoryInfo` needs it, so the engine keeps no memory code at all. The `stats`
 // reply carries what it does own: the layer count and the dataset's feature count.
+
+/// One `render-to-png` asked for over the gateway: the size to draw at, and where the PNG goes.
+struct RenderJob {
+    width: Option<f64>,
+    height: Option<f64>,
+    reply: std::sync::mpsc::SyncSender<Result<Vec<u8>, String>>,
+}
+
+/// Draws one `render-to-png` with the fork's own offscreen renderer. It runs where the session is
+/// owned (the command loop), so a render never races an open or an edit.
+fn answer_render(session: &mut Session, job: RenderJob) {
+    let size = |v: Option<f64>| v.filter(|x| x.is_finite()).map(|x| x.clamp(64.0, 2048.0));
+    let png = rustgis_engine::cmd::share::map_png(session, size(job.width), size(job.height), None);
+    let _ = job.reply.send(png);
+}
 
 fn emit(v: &Value) {
     let mut out = std::io::stdout().lock();
@@ -486,6 +611,30 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
             let bytes = CANVAS_JS.as_bytes().to_vec();
             return (200, (head(200, "text/javascript", bytes.len() as u64, None, false), bytes.len() as u64), bytes);
         }
+        // The bridge's `render-to-png`: the page asks for the map as an image and the command loop
+        // draws it with the fork's own renderer (same session, so it cannot race an open or an edit).
+        "/render" | "/render/" => {
+            let Some(render) = cfg.render.as_ref() else {
+                return (503, (head(503, "text/plain", 0, None, false), 0), b"no renderer on this launch".to_vec());
+            };
+            let (reply, answer) = std::sync::mpsc::sync_channel(1);
+            let job = RenderJob { width: query_number(&req.target, "width"), height: query_number(&req.target, "height"), reply };
+            if render.send(job).is_err() {
+                return (503, (head(503, "text/plain", 0, None, false), 0), b"the engine is stopping".to_vec());
+            }
+            return match answer.recv_timeout(std::time::Duration::from_secs(20)) {
+                Ok(Ok(png)) => {
+                    let n = png.len() as u64;
+                    (200, (head(200, "image/png", n, None, false), n), png)
+                }
+                Ok(Err(e)) => {
+                    let body = e.into_bytes();
+                    let n = body.len() as u64;
+                    (422, (head(422, "text/plain", n, None, false), n), body)
+                }
+                Err(_) => (504, (head(504, "text/plain", 0, None, false), 0), b"the render did not finish".to_vec()),
+            };
+        }
         "/health" => return (200, (head(200, "text/plain", 2, None, false), 2), b"ok".to_vec()),
         // The project the view opens, as a document: `?project=<this>` needs no postMessage round trip.
         "/project.json" => {
@@ -605,6 +754,9 @@ fn head(status: u16, ty: &str, length: u64, content_range: Option<&str>, cache: 
         200 => "OK",
         206 => "Partial Content",
         404 => "Not Found",
+        422 => "Unprocessable Content",
+        503 => "Service Unavailable",
+        504 => "Gateway Timeout",
         _ => "OK",
     };
     // No CORS headers: the view and the canvas page are served from this same origin, so nothing
@@ -652,6 +804,15 @@ fn content_type(name: &str) -> Option<&'static str> {
     })
 }
 
+/// One number out of a request's query string (`?width=1200`).
+fn query_number(target: &str, key: &str) -> Option<f64> {
+    let (_, query) = target.split_once('?')?;
+    query.split('&').find_map(|kv| {
+        let (k, v) = kv.split_once('=')?;
+        (k == key).then(|| v.parse::<f64>().ok()).flatten()
+    })
+}
+
 fn percent_decode(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
@@ -693,6 +854,7 @@ mod tests {
             cache: false,
             token: None,
             base: "http://127.0.0.1:7391".into(),
+            render: None,
         }
     }
 
