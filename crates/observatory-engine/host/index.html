@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Syngle Observatory canvas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+    /* The canvas is all there is (ADR 0010): SyngleCode's React UI is the chrome around it. */
+    #view { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  </style>
+</head>
+<body>
+  <iframe id="view" src="/web/?embed" allow="fullscreen"></iframe>
+  <script src="canvas.js"></script>
+</body>
+</html>
