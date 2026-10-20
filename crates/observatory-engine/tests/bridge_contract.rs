@@ -126,6 +126,11 @@ impl Engine {
             (None, Some(error)) => error,
             (None, None) => Value::Null,
         };
+        // The result also carries the state after the command (#67): the client reads the fork's undo
+        // depth from there before its promise settles, so the two forms of the same state must agree.
+        if let Some(result) = payload("result") {
+            assert_eq!(result.get("state"), Some(&state), "the result's state is the state line's: {result}");
+        }
         (value, state, seen)
     }
 
@@ -297,6 +302,32 @@ fn the_five_engine_commands_answer_with_values_state_and_events() {
     assert_eq!(value.get("code").and_then(Value::as_str), Some("bad-params"), "{value}");
     let (_, state, _) = engine.command(14, &json!({"name": "dataset.query", "dataset": "Countries", "limit": 1}));
     assert_eq!(state["layers"].as_u64(), Some(5), "the bridge is still serving: {state}");
+
+    // The fork's own history, in the state after every command (#67). The client records a step of
+    // its own only when the undo depth grew, so the two histories cannot drift apart: an edit grows
+    // it, a read does not, and replacing the project clears it.
+    let (_, state, _) = engine.command(20, &json!({"name": "command", "id": "project.sample"}));
+    assert_eq!(state["undoDepth"].as_u64(), Some(0), "replacing the project clears its history: {state}");
+    assert_eq!(state["undoLabel"], Value::Null, "and there is no top step to name: {state}");
+    let (_, state, _) = engine.command(21, &json!({"name": "dataset.query", "dataset": "Countries", "limit": 1}));
+    assert_eq!(state["undoDepth"].as_u64(), Some(0), "a read adds no step: {state}");
+    let (value, state, _) = engine
+        .command(22, &json!({"name": "command", "id": "layer.rename", "params": {"layer": "Countries", "name": "Countries (renamed)"}}));
+    assert!(value.get("code").is_none(), "the fork's own rename ran: {value}");
+    assert_eq!(state["undoDepth"].as_u64(), Some(1), "an edit grows the fork's undo depth: {state}");
+    assert_eq!(state["undoLabel"].as_str(), Some("Rename"), "the top step is named: {state}");
+    let (_, state, _) = engine.command(23, &json!({"name": "command", "id": "edit.undo"}));
+    assert_eq!(state["undoDepth"].as_u64(), Some(0), "undo takes the step back: {state}");
+    assert_eq!(state["redoDepth"].as_u64(), Some(1), "and leaves it for redo: {state}");
+    let names: Vec<String> =
+        state["datasets"].as_array().cloned().unwrap_or_default().iter().filter_map(|v| v.as_str().map(str::to_string)).collect();
+    assert!(names.iter().any(|n| n == "Countries"), "the old name is back: {state}");
+    let (_, state, _) = engine.command(24, &json!({"name": "command", "id": "edit.redo"}));
+    assert_eq!(state["undoDepth"].as_u64(), Some(1), "redo puts it back: {state}");
+    assert_eq!(state["redoDepth"].as_u64(), Some(0), "{state}");
+    let names: Vec<String> =
+        state["datasets"].as_array().cloned().unwrap_or_default().iter().filter_map(|v| v.as_str().map(str::to_string)).collect();
+    assert!(names.iter().any(|n| n == "Countries (renamed)"), "the rename is applied again: {state}");
 }
 
 /// `render-to-png`: the page asks the gateway, the command loop draws with the fork's own renderer,

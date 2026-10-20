@@ -335,6 +335,12 @@ pub fn state(session: &Session) -> Value {
         "features": features,
         "datasets": layers,
         "revision": session.revision,
+        // The fork's own history, so a client can tell an edit from a read (#67). `undoDepth` is how
+        // many steps undo would take back, and `undoLabel` is the top of them: the client records a
+        // step of its own only when the depth grew, and rolls its cursor back when it did not move.
+        "undoDepth": session.undo_depth(),
+        "undoLabel": session.undo_label(),
+        "redoDepth": session.redo_depth(),
     })
 }
 
@@ -435,7 +441,12 @@ pub fn run(session: &mut Session, command: &EngineCommand) -> Result<Value, Brid
         }
         EngineCommand::Command { id, params } => session.run(id, params).map_err(BridgeError::engine),
         EngineCommand::Mcp { message } => {
-            let server = rustgis_assistant::mcp::Server::new(false);
+            // This session *is* the project the person has open, as the desktop's relay is, so the
+            // pass-through is a relay's: commands that replace the project stay theirs, and a tool
+            // call that edits the project is an edit like any other (it grows the undo history the
+            // client reads). Only the app's own renderer can reach this line, so the exposure is no
+            // wider than `command`.
+            let server = rustgis_assistant::mcp::Server { users_project: true, ..rustgis_assistant::mcp::Server::new(false) };
             match server.handle(session, message) {
                 Some(reply) => serde_json::from_str(&reply).map_err(|e| BridgeError::engine(format!("the MCP reply was not JSON: {e}"))),
                 // A notification has no reply; the bridge says so rather than inventing one.

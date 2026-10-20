@@ -521,7 +521,10 @@
         "layers",
         "features",
         "datasets",
-        "revision"
+        "revision",
+        "undoDepth",
+        "undoLabel",
+        "redoDepth"
       ],
       "properties": {
         "protocolVersion": {
@@ -540,6 +543,18 @@
           }
         },
         "revision": {
+          "type": "number"
+        },
+        "undoDepth": {
+          "type": "number"
+        },
+        "undoLabel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "redoDepth": {
           "type": "number"
         }
       }
@@ -567,7 +582,7 @@
         }
       },
       "result": {
-        "summary": "A command finished: its value, and the state after it.",
+        "summary": "A command finished: its value, and the state after it (so the client sees the undo depth the command left, which is how it knows whether a step was added).",
         "required": [
           "id",
           "name"
@@ -587,6 +602,9 @@
               "object",
               "null"
             ]
+          },
+          "state": {
+            "type": "object"
           }
         }
       },

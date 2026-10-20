@@ -271,15 +271,20 @@ pub fn run(args: &[String]) -> i32 {
                                             {
                                                 *shared = text;
                                             }
+                                            // State after every command, in the result and on its own
+                                            // line: the result gives the client the undo depth the
+                                            // command left, so it knows before its promise settles
+                                            // whether the fork's history grew (#67).
+                                            let state = bridge::state(&session);
                                             emit(&json!({
                                                 "event": "bridge.event",
                                                 "protocolVersion": bridge::PROTOCOL_VERSION,
-                                                "payload": {"type": "result", "id": id, "name": name, "value": value},
+                                                "payload": {"type": "result", "id": id, "name": name, "value": value, "state": state.clone()},
                                             }));
                                             emit(&json!({
                                                 "event": "bridge.state",
                                                 "protocolVersion": bridge::PROTOCOL_VERSION,
-                                                "state": bridge::state(&session),
+                                                "state": state,
                                             }));
                                         }
                                         Err(e) => emit(&e.line(&id, Some(name))),

@@ -61,10 +61,18 @@ function project() {
  */
 function mount(options = {}) {
   const toHost = [];
+  // The target origin of each post to the host, in step with `toHost`: a reply must be addressed to
+  // the host that spoke, never to `*` (Syngle-Ecosystem #67 review, non-blocking 2).
+  const targets = [];
   const toView = [];
   const fetched = [];
   const listeners = [];
-  const parent = { postMessage: (message) => toHost.push(JSON.parse(JSON.stringify(message))) };
+  const parent = {
+    postMessage: (message, target) => {
+      targets.push(target);
+      toHost.push(JSON.parse(JSON.stringify(message)));
+    },
+  };
   const frameWindow = {
     postMessage: (message) => toView.push(JSON.parse(JSON.stringify(message))),
     document: { getElementById: () => null },
@@ -98,8 +106,9 @@ function mount(options = {}) {
   };
   const drain = () => {
     const host = toHost.splice(0, toHost.length);
+    const addresses = targets.splice(0, targets.length);
     const pushed = toView.splice(0, toView.length);
-    return { host, pushed };
+    return { host, targets: addresses, pushed };
   };
   return { toHost, toView, fetched, host, view, frameWindow, drain };
 }
@@ -314,4 +323,28 @@ test("a pan the hand made comes back up as camera-changed, and a click as select
   assert.deepEqual(events.find((e) => e.type === "selection-changed").rows, [1, 2, 5]);
   const state = answer.host.filter((m) => m.bridge === "state").pop();
   assert.deepEqual(state.state.camera, { center: [1000, 2000], res: 800 }, "the host learns the state the view has");
+});
+
+// The page's replies are addressed, not broadcast (Syngle-Ecosystem #67). Until a host has spoken the
+// page has no origin to aim at, so the two messages that open the conversation go to `*`; from the
+// host's first message on, everything the page posts is addressed to that origin, so a page framed
+// elsewhere cannot read the map's state.
+test("replies are addressed to the host's own origin once it has spoken", () => {
+  const mounted = mount();
+  const opening = mounted.drain();
+  assert.deepEqual(opening.targets, ["*", "*"], `the opening messages: ${JSON.stringify(opening.targets)}`);
+  assert.equal(opening.host[0].observatory, "ready");
+  assert.equal(opening.host[1].bridge, "hello");
+
+  mounted.host({ observatory: "hello" });
+  const answer = mounted.drain();
+  assert.equal(answer.host.length, 1, JSON.stringify(answer.host));
+  assert.equal(answer.host[0].observatory, "ready");
+  assert.deepEqual(answer.targets, [ORIGIN], "the reply goes to the host that spoke, not to '*'");
+
+  // And a peer on another origin is still not answered at all, so nothing is addressed to it either.
+  mounted.host({ observatory: "hello" }, "http://example.invalid");
+  const ignored = mounted.drain();
+  assert.deepEqual(ignored.host, [], "a message from a second origin is ignored");
+  assert.deepEqual(ignored.targets, [], "and nothing is posted back to it");
 });

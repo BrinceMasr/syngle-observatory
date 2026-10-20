@@ -20,10 +20,15 @@
   var view = document.getElementById("view");
   var parent = window.parent;
 
+  // The host's origin, learned from its first message (see the listener below). A reply goes to
+  // that origin and nowhere else; only the two messages that open the conversation (this page's
+  // `ready` and the bridge's `hello`) are posted to `*`, since no host has spoken yet.
+  var hostOrigin = null;
+
   // Relay to the host: `observatory` names the kind, mirroring the fork's own `rustgis` contract.
   function tell(message) {
     try {
-      if (parent && parent !== window) parent.postMessage(message, "*");
+      if (parent && parent !== window) parent.postMessage(message, hostOrigin === null ? "*" : hostOrigin);
     } catch (e) {
       // A host that went away needs no answer.
     }
@@ -454,8 +459,8 @@
   // Only this page's parent may drive it. The launch token guards the address; it does not decide
   // who is allowed to speak, and a `project` message repaints the map. The host's origin is learned
   // from its first message and every later one has to match it, so a page that is framed elsewhere
-  // and then navigated to the gateway's port cannot take the channel over.
-  var hostOrigin = null;
+  // and then navigated to the gateway's port cannot take the channel over. `hostOrigin` (declared
+  // by `tell`, above) is also the address every reply after that first message goes to.
 
   window.addEventListener("message", function (event) {
     var data = event.data;
