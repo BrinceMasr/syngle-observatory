@@ -1,0 +1,630 @@
+{
+  "id": "syngle.observatory.bridge",
+  "protocolVersion": 1,
+  "summary": "The Observatory bridge (Syngle-Ecosystem ADR 0010, spec #64). One schema, one version, two transports. The React surface (SyngleCode) is the client on both; the canvas view (this repo's canvas-only WASM host page) answers the view half, and the engine sidecar answers the engine half. A peer whose protocolVersion is not this version is refused loudly, with an error state, never served with best effort.",
+  "transports": {
+    "view": "window.postMessage between the SyngleCode renderer and the engine's canvas page (/canvas/). The page relays the view half to the fork's own embed contract ({\"rustgis\": \u2026}) inside the framed WASM view.",
+    "engine": "JSON lines over the sidecar's stdin (commands in) and stdout (state and events out), from the desktop process that supervises it."
+  },
+  "envelope": {
+    "hostToView": {
+      "required": [
+        "observatory",
+        "bridge",
+        "protocolVersion",
+        "id",
+        "command"
+      ],
+      "properties": {
+        "observatory": {
+          "const": "bridge"
+        },
+        "bridge": {
+          "const": "command"
+        },
+        "protocolVersion": {
+          "type": "number"
+        },
+        "id": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "command": {
+          "type": "object"
+        }
+      }
+    },
+    "viewToHost": {
+      "required": [
+        "observatory",
+        "bridge",
+        "protocolVersion"
+      ],
+      "properties": {
+        "observatory": {
+          "const": "bridge"
+        },
+        "bridge": {
+          "enum": [
+            "hello",
+            "state",
+            "event",
+            "error"
+          ]
+        },
+        "protocolVersion": {
+          "type": "number"
+        },
+        "id": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "state": {
+          "type": "object"
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    },
+    "hostToEngine": {
+      "required": [
+        "cmd",
+        "bridge",
+        "protocolVersion"
+      ],
+      "properties": {
+        "cmd": {
+          "const": "bridge"
+        },
+        "bridge": {
+          "enum": [
+            "hello",
+            "command"
+          ]
+        },
+        "protocolVersion": {
+          "type": "number"
+        },
+        "id": {
+          "type": [
+            "string",
+            "number"
+          ]
+        },
+        "command": {
+          "type": "object"
+        }
+      }
+    },
+    "engineToHost": {
+      "required": [
+        "event",
+        "protocolVersion"
+      ],
+      "properties": {
+        "event": {
+          "enum": [
+            "bridge.ready",
+            "bridge.state",
+            "bridge.event",
+            "bridge.error"
+          ]
+        },
+        "protocolVersion": {
+          "type": "number"
+        },
+        "state": {
+          "type": "object"
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "view": {
+    "commands": {
+      "layers": {
+        "summary": "Set the layers and their order, or (reload) take the engine's project document again: after a command that changed the project, the engine's copy is the authority.",
+        "required": [
+          "layers"
+        ],
+        "properties": {
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "object"
+              ]
+            }
+          },
+          "active": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reload": {
+            "type": "boolean"
+          }
+        }
+      },
+      "style": {
+        "summary": "Set one layer's style.",
+        "required": [
+          "layer",
+          "style"
+        ],
+        "properties": {
+          "layer": {
+            "type": "string"
+          },
+          "style": {
+            "type": "object"
+          }
+        }
+      },
+      "camera": {
+        "summary": "Set the camera: centre in Web Mercator metres and resolution in metres a pixel.",
+        "required": [
+          "camera"
+        ],
+        "properties": {
+          "camera": {
+            "type": "object",
+            "required": [
+              "center",
+              "res"
+            ],
+            "properties": {
+              "center": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "res": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "tool": {
+        "summary": "Set the active tool.",
+        "required": [
+          "tool"
+        ],
+        "properties": {
+          "tool": {
+            "enum": [
+              "explore",
+              "select",
+              "measure",
+              "catchment",
+              "annotate",
+              "compare",
+              "basemap",
+              "export"
+            ]
+          }
+        }
+      },
+      "selection": {
+        "summary": "Set the selection: layer name and the selected rows.",
+        "required": [
+          "layer",
+          "rows"
+        ],
+        "properties": {
+          "layer": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "theme": {
+        "summary": "Set the theme the view draws in, from Syngle's own tokens.",
+        "required": [
+          "theme"
+        ],
+        "properties": {
+          "theme": {
+            "enum": [
+              "light",
+              "dark"
+            ]
+          }
+        }
+      },
+      "render-to-png": {
+        "summary": "Draw the current map offscreen to a PNG and return its bytes base64-encoded.",
+        "required": [],
+        "properties": {
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "state": {
+      "required": [
+        "protocolVersion",
+        "layers",
+        "active",
+        "camera",
+        "tool",
+        "selection",
+        "theme"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "number"
+        },
+        "layers": {
+          "type": "array"
+        },
+        "active": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "camera": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "tool": {
+          "type": "string"
+        },
+        "selection": {
+          "type": "array"
+        },
+        "theme": {
+          "type": "string"
+        }
+      }
+    },
+    "events": {
+      "camera-changed": {
+        "summary": "The view moved the camera itself (a pan, a zoom, a gesture).",
+        "required": [
+          "camera"
+        ],
+        "properties": {
+          "camera": {
+            "type": "object"
+          }
+        }
+      },
+      "selection-changed": {
+        "summary": "The view changed the selection (a click, a box, a lasso).",
+        "required": [
+          "layer",
+          "rows"
+        ],
+        "properties": {
+          "layer": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "feature-clicked": {
+        "summary": "A feature was clicked: what the click view card needs.",
+        "required": [
+          "layer",
+          "row"
+        ],
+        "properties": {
+          "layer": {
+            "type": "string"
+          },
+          "row": {
+            "type": "number"
+          },
+          "at": {
+            "type": "array"
+          }
+        }
+      },
+      "tool-result": {
+        "summary": "The active tool produced something: a measurement, a drawn shape, a catchment.",
+        "required": [
+          "tool",
+          "result"
+        ],
+        "properties": {
+          "tool": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object"
+          }
+        }
+      },
+      "frame-stats": {
+        "summary": "What the view's own frames are doing, as the view counts them. A development page adds the raw samples (`frames`, `rows`) that the measurement strip summarises; a shipped page sends the four counts only.",
+        "required": [
+          "features"
+        ],
+        "properties": {
+          "features": {
+            "type": "number"
+          },
+          "redraws": {
+            "type": "number"
+          },
+          "renderMs": {
+            "type": "number"
+          },
+          "backend": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": "number"
+          },
+          "frames": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "instrument": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  },
+  "engine": {
+    "commands": {
+      "dataset.open": {
+        "summary": "Open a dataset into the project: by address (read in place) or by path on this machine. `layerName` names the layer it becomes ('name' is the command's own discriminator).",
+        "required": [
+          "target"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "url",
+              "path"
+            ]
+          },
+          "zoom": {
+            "type": "boolean"
+          },
+          "layerName": {
+            "type": "string"
+          }
+        }
+      },
+      "dataset.query": {
+        "summary": "Read rows of an open dataset, with an optional where clause.",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "type": "string"
+          },
+          "where": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          }
+        }
+      },
+      "catchment": {
+        "summary": "Compute a catchment. 'radius' is what this fork has today; 'drive-time' needs the road-network work the spec defers and is refused, not faked.",
+        "required": [
+          "dataset",
+          "lon",
+          "lat"
+        ],
+        "properties": {
+          "dataset": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "radius",
+              "drive-time"
+            ]
+          },
+          "lon": {
+            "type": "number"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "radiusM": {
+            "type": "number"
+          },
+          "minutes": {
+            "type": "number"
+          }
+        }
+      },
+      "command": {
+        "summary": "Run one of the fork's own registered commands by id (the command registry is the app's whole surface).",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object"
+          }
+        }
+      },
+      "mcp": {
+        "summary": "Pass one JSON-RPC message to the fork's own MCP server and return its reply: the agent's tool surface, unchanged.",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "state": {
+      "required": [
+        "protocolVersion",
+        "layers",
+        "features",
+        "datasets",
+        "revision"
+      ],
+      "properties": {
+        "protocolVersion": {
+          "type": "number"
+        },
+        "layers": {
+          "type": "number"
+        },
+        "features": {
+          "type": "number"
+        },
+        "datasets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "revision": {
+          "type": "number"
+        }
+      }
+    },
+    "events": {
+      "progress": {
+        "summary": "A long command is running: which one, and how far.",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          }
+        }
+      },
+      "result": {
+        "summary": "A command finished: its value, and the state after it.",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      },
+      "error": {
+        "summary": "A command failed, or the bridge refused it.",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "id": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "enum": [
+              "version-mismatch",
+              "no-handshake",
+              "unknown-command",
+              "bad-params",
+              "unsupported",
+              "engine-error"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

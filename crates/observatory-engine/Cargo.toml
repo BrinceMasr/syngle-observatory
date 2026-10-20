@@ -22,5 +22,7 @@ workspace = true
 
 [dependencies]
 rustgis-engine = { workspace = true }
+# The bridge's `mcp` command is a pass-through to the fork's own MCP server, not a second one.
+rustgis-assistant = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }
