@@ -112,8 +112,8 @@ use tiny_skia::{
     FillRule, GradientStop, LineCap, LineJoin, Paint, PathBuilder, PixmapPaint, Point, RadialGradient, SpreadMode, Stroke, Transform,
 };
 
-/// Selection highlight (cyan, as desktop GIS users expect).
-pub const SELECTION: Rgba = Rgba::rgb(0x00, 0xE5, 0xFF);
+/// Selection highlight: Syngle's accent (#71), legible on paper and on the graphite canvas.
+pub const SELECTION: Rgba = Rgba::rgb(0x34, 0x64, 0xB7);
 
 /// Largest raster rendered (pixels per side).
 pub const MAX_SIDE: u32 = 8192;

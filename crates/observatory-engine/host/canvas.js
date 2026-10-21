@@ -103,8 +103,10 @@
   function bridgeSnap() {
     var map = activeMap();
     var layers = map && map.layers ? map.layers : [];
+    // `style` is the layer's renderer, as the view holds it: the surface restyles the layer it
+    // knows (#71) without guessing whether it draws one symbol or a range of classes.
     bridge.state.layers = layers.map(function (l) {
-      return { name: l.name, visible: l.visible !== false };
+      return { name: l.name, visible: l.visible !== false, style: l.renderer || null };
     });
     bridge.state.camera = map ? bridgeCamera(map.camera) : bridge.state.camera;
     var selected = null;

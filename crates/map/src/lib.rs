@@ -70,11 +70,14 @@ impl Basemap {
     /// (water, land, land outline, graticule) colours.
     pub fn palette(self) -> (Rgba, Rgba, Rgba, Rgba) {
         match self {
+            // Syngle's paper (#71): warm sunken water, canvas land, rule outlines, an ink
+            // graticule at a whisper. The pair matches the app's light chrome.
             Basemap::Paper => {
-                (Rgba::rgb(0xDD, 0xE4, 0xEA), Rgba::rgb(0xF6, 0xF5, 0xF1), Rgba::rgb(0xC9, 0xC9, 0xC4), Rgba::new(0x9A, 0xA8, 0xB4, 60))
+                (Rgba::rgb(0xEE, 0xEA, 0xE2), Rgba::rgb(0xF6, 0xF4, 0xEF), Rgba::rgb(0xE5, 0xE1, 0xD7), Rgba::new(0x1B, 0x1A, 0x17, 26))
             }
+            // Syngle's graphite: chrome water, canvas land, rule outlines, ink graticule.
             Basemap::Midnight => {
-                (Rgba::rgb(0x1A, 0x1F, 0x26), Rgba::rgb(0x2E, 0x33, 0x3A), Rgba::rgb(0x47, 0x4D, 0x55), Rgba::new(0x80, 0x90, 0xA0, 40))
+                (Rgba::rgb(0x24, 0x24, 0x24), Rgba::rgb(0x2D, 0x2D, 0x2D), Rgba::rgb(0x4C, 0x4C, 0x4C), Rgba::new(0xF1, 0xEC, 0xE3, 22))
             }
             Basemap::Ocean => {
                 (Rgba::rgb(0x9C, 0xC6, 0xE0), Rgba::rgb(0xE9, 0xE4, 0xD4), Rgba::rgb(0xB8, 0xB0, 0x98), Rgba::new(0xFF, 0xFF, 0xFF, 90))

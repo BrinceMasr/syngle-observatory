@@ -221,9 +221,10 @@ test("the view commands change the project the view is given, through the fork's
   const ordered = JSON.parse(layers.pushed.find((m) => m.rustgis === "project").text).maps[0].layers;
   assert.deepEqual(ordered.map((l) => l.name), ["Cities", "Countries"], "the view draws what the host ordered");
   assert.equal(ordered[0].visible, false);
+  // Each layer carries its renderer (#71): the surface restyles what the view actually draws.
   assert.deepEqual(layers.host.find((m) => m.bridge === "state").state.layers, [
-    { name: "Cities", visible: false },
-    { name: "Countries", visible: true },
+    { name: "Cities", visible: false, style: {} },
+    { name: "Countries", visible: true, style: {} },
   ]);
   assert.equal(layers.host.find((m) => m.bridge === "state").state.active, "Cities");
 

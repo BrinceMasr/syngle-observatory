@@ -4,11 +4,12 @@ use std::sync::Arc;
 
 use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Stroke, Visuals};
 
-/// Syngle Observatory brand colour (the Project tab and the logo) and its lighter tint.
-pub const BRAND: Color32 = Color32::from_rgb(0xB8, 0x4A, 0x2C);
-pub const BRAND_DARK: Color32 = Color32::from_rgb(0x96, 0x3A, 0x22);
-/// Contextual tab group colour (Feature Layer, Labeling, Data).
-pub const CONTEXT: Color32 = Color32::from_rgb(0x0E, 0x93, 0x84);
+/// Syngle's accent, as the app's chrome draws it (SyngleCode's `--app-accent` in light): the
+/// Project tab and the logo.
+pub const BRAND: Color32 = Color32::from_rgb(0x34, 0x64, 0xB7);
+pub const BRAND_DARK: Color32 = Color32::from_rgb(0x2C, 0x4B, 0x86);
+/// Contextual tab group colour (Feature Layer, Labeling, Data): the diverging ramp's teal.
+pub const CONTEXT: Color32 = Color32::from_rgb(0x00, 0x7A, 0x97);
 
 /// Every colour the interface uses; widgets never hard-code colours.
 #[derive(Clone, Copy, Debug)]
@@ -46,76 +47,80 @@ pub struct Tokens {
     pub context_tint: Color32,
 }
 
+/// The token values are Syngle's (`@syngle/ui`'s colour roles, and the Graphite dark restatements
+/// `apps/web/src/index.css` makes for SyngleCode), so the canvas-only view's own chrome — the
+/// scale bar, north arrow, zoom buttons and attribution — is drawn in the same palette as the
+/// React surface around it (#71). `--app-accent` is the app's accent, not PE's darker navy.
 impl Tokens {
     pub fn light() -> Self {
         Tokens {
             dark: false,
-            header: Color32::from_rgb(0xEE, 0xF1, 0xF5),
+            header: Color32::from_rgb(0xF1, 0xEE, 0xE7),
             ribbon: Color32::from_rgb(0xFF, 0xFF, 0xFF),
-            tab_strip: Color32::from_rgb(0xEE, 0xF1, 0xF5),
-            canvas: Color32::from_rgb(0xE4, 0xE8, 0xEE),
-            pane: Color32::from_rgb(0xFB, 0xFC, 0xFD),
-            pane_header: Color32::from_rgb(0xF3, 0xF5, 0xF8),
-            border: Color32::from_rgb(0xDD, 0xE2, 0xE9),
-            border_strong: Color32::from_rgb(0xC3, 0xCA, 0xD4),
-            text: Color32::from_rgb(0x1F, 0x26, 0x30),
-            text_dim: Color32::from_rgb(0x5E, 0x69, 0x77),
-            text_disabled: Color32::from_rgb(0xA9, 0xB1, 0xBC),
-            icon: Color32::from_rgb(0x3A, 0x45, 0x54),
-            hover: Color32::from_rgb(0xE9, 0xF0, 0xFB),
-            pressed: Color32::from_rgb(0xD4, 0xE2, 0xF8),
-            checked: Color32::from_rgb(0xDC, 0xE8, 0xFA),
-            accent: Color32::from_rgb(0x25, 0x63, 0xEB),
-            accent_text: Color32::from_rgb(0x1D, 0x4E, 0xC4),
+            tab_strip: Color32::from_rgb(0xF1, 0xEE, 0xE7),
+            canvas: Color32::from_rgb(0xF6, 0xF4, 0xEF),
+            pane: Color32::from_rgb(0xFF, 0xFF, 0xFF),
+            pane_header: Color32::from_rgb(0xF1, 0xEE, 0xE7),
+            border: Color32::from_rgb(0xE5, 0xE1, 0xD7),
+            border_strong: Color32::from_rgb(0xD6, 0xD1, 0xC4),
+            text: Color32::from_rgb(0x1B, 0x1A, 0x17),
+            text_dim: Color32::from_rgb(0x4A, 0x47, 0x3F),
+            text_disabled: Color32::from_rgb(0x84, 0x7E, 0x70),
+            icon: Color32::from_rgb(0x4A, 0x47, 0x3F),
+            hover: Color32::from_rgb(0xF2, 0xEF, 0xE8),
+            pressed: Color32::from_rgb(0xEA, 0xE6, 0xDD),
+            checked: Color32::from_rgb(0xE8, 0xF1, 0xFF),
+            accent: Color32::from_rgb(0x34, 0x64, 0xB7),
+            accent_text: Color32::from_rgb(0x2C, 0x4B, 0x86),
             on_accent: Color32::WHITE,
             input: Color32::WHITE,
-            input_border: Color32::from_rgb(0xC6, 0xCD, 0xD7),
-            group_label: Color32::from_rgb(0x70, 0x7A, 0x88),
-            status_bar: Color32::from_rgb(0xF3, 0xF5, 0xF8),
-            selection: Color32::from_rgb(0xCF, 0xE0, 0xFC),
+            input_border: Color32::from_rgb(0xD6, 0xD1, 0xC4),
+            group_label: Color32::from_rgb(0x84, 0x7E, 0x70),
+            status_bar: Color32::from_rgb(0xF1, 0xEE, 0xE7),
+            selection: Color32::from_rgb(0xE8, 0xF1, 0xFF),
             menu: Color32::WHITE,
             shadow: Color32::from_black_alpha(28),
-            green: Color32::from_rgb(0x16, 0x9A, 0x5A),
-            red: Color32::from_rgb(0xD1, 0x3C, 0x3C),
-            amber: Color32::from_rgb(0xE5, 0x9E, 0x1A),
+            green: Color32::from_rgb(0x48, 0x8C, 0x58),
+            red: Color32::from_rgb(0xAD, 0x4A, 0x4E),
+            amber: Color32::from_rgb(0x8A, 0x61, 0x00),
             context: CONTEXT,
-            context_tint: Color32::from_rgb(0xE3, 0xF5, 0xF2),
+            context_tint: Color32::from_rgb(0xE6, 0xF2, 0xF4),
         }
     }
 
     pub fn dark() -> Self {
         Tokens {
             dark: true,
-            header: Color32::from_rgb(0x17, 0x1B, 0x21),
-            ribbon: Color32::from_rgb(0x24, 0x29, 0x31),
-            tab_strip: Color32::from_rgb(0x17, 0x1B, 0x21),
-            canvas: Color32::from_rgb(0x12, 0x15, 0x1A),
-            pane: Color32::from_rgb(0x1E, 0x23, 0x2A),
-            pane_header: Color32::from_rgb(0x24, 0x29, 0x31),
-            border: Color32::from_rgb(0x34, 0x3B, 0x45),
-            border_strong: Color32::from_rgb(0x48, 0x51, 0x5D),
-            text: Color32::from_rgb(0xE6, 0xEA, 0xEF),
-            text_dim: Color32::from_rgb(0x9A, 0xA4, 0xB1),
-            text_disabled: Color32::from_rgb(0x5C, 0x65, 0x71),
-            icon: Color32::from_rgb(0xC9, 0xD1, 0xDB),
-            hover: Color32::from_rgb(0x2F, 0x37, 0x44),
-            pressed: Color32::from_rgb(0x2A, 0x3D, 0x5E),
-            checked: Color32::from_rgb(0x28, 0x3B, 0x5C),
-            accent: Color32::from_rgb(0x5B, 0x8D, 0xF6),
-            accent_text: Color32::from_rgb(0x8A, 0xAF, 0xFA),
-            on_accent: Color32::WHITE,
-            input: Color32::from_rgb(0x15, 0x19, 0x1F),
-            input_border: Color32::from_rgb(0x44, 0x4D, 0x59),
-            group_label: Color32::from_rgb(0x8C, 0x96, 0xA3),
-            status_bar: Color32::from_rgb(0x1A, 0x1E, 0x24),
-            selection: Color32::from_rgb(0x26, 0x40, 0x6E),
-            menu: Color32::from_rgb(0x26, 0x2C, 0x34),
+            header: Color32::from_rgb(0x24, 0x24, 0x24),
+            ribbon: Color32::from_rgb(0x35, 0x35, 0x35),
+            tab_strip: Color32::from_rgb(0x24, 0x24, 0x24),
+            canvas: Color32::from_rgb(0x2D, 0x2D, 0x2D),
+            pane: Color32::from_rgb(0x35, 0x35, 0x35),
+            pane_header: Color32::from_rgb(0x24, 0x24, 0x24),
+            border: Color32::from_rgb(0x4C, 0x4C, 0x4C),
+            border_strong: Color32::from_rgb(0x5D, 0x5D, 0x5D),
+            text: Color32::from_rgb(0xF1, 0xEC, 0xE3),
+            text_dim: Color32::from_rgb(0xD8, 0xD4, 0xCC),
+            text_disabled: Color32::from_rgb(0xB0, 0xAD, 0xA6),
+            icon: Color32::from_rgb(0xD8, 0xD4, 0xCC),
+            hover: Color32::from_rgb(0x3A, 0x3A, 0x3A),
+            pressed: Color32::from_rgb(0x45, 0x45, 0x45),
+            checked: Color32::from_rgb(0x29, 0x31, 0x3F),
+            accent: Color32::from_rgb(0x8A, 0xAB, 0xE7),
+            accent_text: Color32::from_rgb(0x8A, 0xAB, 0xE7),
+            on_accent: Color32::from_rgb(0x1B, 0x1A, 0x17),
+            input: Color32::from_rgb(0x2D, 0x2D, 0x2D),
+            input_border: Color32::from_rgb(0x5D, 0x5D, 0x5D),
+            group_label: Color32::from_rgb(0xB0, 0xAD, 0xA6),
+            status_bar: Color32::from_rgb(0x24, 0x24, 0x24),
+            selection: Color32::from_rgb(0x29, 0x31, 0x3F),
+            menu: Color32::from_rgb(0x35, 0x35, 0x35),
             shadow: Color32::from_black_alpha(110),
-            green: Color32::from_rgb(0x3F, 0xC2, 0x82),
-            red: Color32::from_rgb(0xF0, 0x6A, 0x6A),
-            amber: Color32::from_rgb(0xF2, 0xB8, 0x48),
-            context: Color32::from_rgb(0x2C, 0xC2, 0xAE),
-            context_tint: Color32::from_rgb(0x1B, 0x33, 0x31),
+            green: Color32::from_rgb(0x86, 0xD3, 0x96),
+            red: Color32::from_rgb(0xFF, 0x9F, 0x9F),
+            amber: Color32::from_rgb(0xC7, 0x9B, 0x4C),
+            context: Color32::from_rgb(0x00, 0x97, 0xB3),
+            context_tint: Color32::from_rgb(0x1E, 0x3A, 0x3E),
         }
     }
 

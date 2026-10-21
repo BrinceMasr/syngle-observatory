@@ -42,21 +42,23 @@ pub struct Symbol {
     pub marker: Marker,
 }
 
-/// Default palette for new layers (cycled by layer id).
+/// Default palette for new layers (cycled by layer id): Syngle's own (#71) — navy first for
+/// areas, ink for marks, then the chart roles, so a canvas opened on its own already reads as
+/// Syngle rather than as RustGIS. A theme sends the ink the other way round through the bridge.
 const LAYER_COLORS: [[u8; 3]; 8] = [
-    [0x4A, 0x90, 0xD9],
-    [0xE0, 0x7B, 0x39],
-    [0x5B, 0xB0, 0x6E],
-    [0xC2, 0x55, 0x9B],
-    [0xE6, 0xB8, 0x3A],
-    [0x7D, 0x6B, 0xD1],
-    [0x3C, 0xB1, 0xB8],
-    [0xB9, 0x5F, 0x4A],
+    [0x2C, 0x4B, 0x86],
+    [0x1B, 0x1A, 0x17],
+    [0x46, 0x7E, 0xB6],
+    [0x00, 0x7A, 0x97],
+    [0x9B, 0x72, 0x24],
+    [0xAD, 0x4A, 0x4E],
+    [0x48, 0x8C, 0x58],
+    [0x9D, 0x62, 0x98],
 ];
 
 impl Symbol {
     pub fn default_for(g: GeometryType, seed: u32) -> Symbol {
-        let c = LAYER_COLORS.get(seed as usize % LAYER_COLORS.len()).copied().unwrap_or([0x4A, 0x90, 0xD9]);
+        let c = LAYER_COLORS.get(seed as usize % LAYER_COLORS.len()).copied().unwrap_or([0x2C, 0x4B, 0x86]);
         let base = Rgba::rgb(c[0], c[1], c[2]);
         match g {
             GeometryType::Point => {

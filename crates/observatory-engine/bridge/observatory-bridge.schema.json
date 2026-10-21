@@ -276,7 +276,25 @@
           "type": "number"
         },
         "layers": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "visible"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "visible": {
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object"
+              }
+            }
+          }
         },
         "active": {
           "type": [
