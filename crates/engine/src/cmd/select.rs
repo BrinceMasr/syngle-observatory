@@ -72,6 +72,10 @@ pub fn commands() -> Vec<C> {
             Ok(json!({"layer": nid}))
         }).params(r#"{"layer"?: name|id (default: the active layer, which need not be the layer last selected in)}"#)
         .when(need_selection),
+        C::new("select.center", "Selection Centre", "Home › Selection", selection_center)
+            .view()
+            .params(r#"{"layer"?: name|id (the layer holding the selection; when omitted, the layer that has one)}"#)
+            .when(need_selection),
         C::new("identify", "Identify", "Home › Inspect", identify).view().params(
             r#"{"lon", "lat", "tolerancePx"?, "mode"?: "topmost"|"visible"|"selectable"|"selectedInContents"|"none" (the map's pop-up mode when omitted; the mode picks the layers, and every feature under the point in them, up to 100, is in "results")}"#,
         ),
@@ -185,6 +189,45 @@ fn at_point(s: &mut Session, p: &Value) -> CmdResult {
             Ok(Value::Null)
         }
     }
+}
+
+/// Where the selected features are, as one longitude and latitude: the centre of their label points.
+///
+/// The Catchment card seeds its pin from the selection the user made (Syngle-Ecosystem #74); the
+/// rows alone do not carry a place, so the engine reads it from the shapes it already holds.
+fn selection_center(s: &mut Session, p: &Value) -> CmdResult {
+    let id = match p.get("layer").filter(|v| !v.is_null()) {
+        Some(_) => s.layer_id(p)?,
+        None => s
+            .map()
+            .layers
+            .iter()
+            .find(|l| !l.is_raster() && !l.selection.is_empty())
+            .map(|l| l.id)
+            .ok_or("nothing is selected")?,
+    };
+    let l = s.map().layer(id).ok_or("no such layer")?;
+    if l.selection.is_empty() {
+        return Err(format!("nothing is selected in '{}'", l.name));
+    }
+    let (mut lon, mut lat, mut located) = (0.0, 0.0, 0usize);
+    for r in &l.selection {
+        if let Some(c) = l.dataset.features.get(*r).and_then(|f| f.geometry.as_ref()).and_then(|g| g.label_point()) {
+            lon += c.x;
+            lat += c.y;
+            located += 1;
+        }
+    }
+    if located == 0 {
+        return Err("the selection has nothing with a location".into());
+    }
+    Ok(json!({
+        "layer": l.name,
+        "count": l.selection.len(),
+        "located": located,
+        "lon": lon / located as f64,
+        "lat": lat / located as f64,
+    }))
 }
 
 /// The most features one identify reports, so a click on a dense spot stays quick.

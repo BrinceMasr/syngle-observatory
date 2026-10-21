@@ -128,6 +128,38 @@ pub struct Step {
     pub voice: Vec<(f64, String)>,
 }
 
+/// The most contours one isochrone asks for (each one is a polygon).
+pub const MAX_CONTOURS: usize = 6;
+/// The longest drive time one contour covers, in minutes.
+const MAX_MINUTES: f64 = 360.0;
+/// The longest distance one contour covers, in metres.
+const MAX_METRES: f64 = 500_000.0;
+/// The most points read from one contour's ring.
+const MAX_RING: usize = 200_000;
+
+/// What to ask the isochrone service for: one place, and a drive time or a distance (never both).
+#[derive(Clone, Debug, PartialEq)]
+pub struct IsochroneRequest {
+    pub point: Coord,
+    pub mode: Mode,
+    /// Minutes of travel: a drive-time catchment.
+    pub minutes: Option<f64>,
+    /// Metres of travel: a distance contour (Valhalla counts these in kilometres).
+    pub metres: Option<f64>,
+}
+
+/// One contour of a catchment: its outline, and the number it was drawn at.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Catchment {
+    /// The contour's own value: minutes when [`Catchment::metric`] is `time`, metres when it is
+    /// `distance`.
+    pub contour: f64,
+    /// What the contour counts: `time` or `distance`.
+    pub metric: String,
+    /// Its polygons, each a list of rings with the exterior first.
+    pub polygons: Vec<Vec<Vec<Coord>>>,
+}
+
 impl Router {
     /// The server at `url`, or the public one.
     pub fn new(url: Option<&str>) -> Result<Router, String> {
@@ -135,7 +167,7 @@ impl Router {
             Some(u) => {
                 crate::address::check(u, None)?;
                 let u = u.trim_end_matches('/');
-                u.strip_suffix("/route").unwrap_or(u).to_string()
+                u.strip_suffix("/route").or_else(|| u.strip_suffix("/isochrone")).unwrap_or(u).to_string()
             }
             None => VALHALLA.to_string(),
         };
@@ -196,12 +228,74 @@ impl Router {
         }
         Ok(out)
     }
+    /// The isochrone request (a GET too, so a catchment fetches like any other download).
+    ///
+    /// `minutes` asks for a drive-time contour; `metres` for a distance one. Valhalla takes the
+    /// latter in kilometres, so the metres are converted here, once, not by the caller.
+    pub fn isochrone_url(&self, r: &IsochroneRequest) -> Result<String, String> {
+        if !valid(r.point.x, r.point.y) {
+            return Err(format!("{}, {} isn't a longitude and latitude", r.point.x, r.point.y));
+        }
+        let (key, value) = match (r.minutes, r.metres) {
+            (Some(minutes), None) => {
+                if minutes <= 0.0 || minutes > MAX_MINUTES {
+                    return Err(format!("minutes is more than 0 and at most {MAX_MINUTES:.0}"));
+                }
+                ("time", round6(minutes))
+            }
+            (None, Some(metres)) => {
+                if metres <= 0.0 || metres > MAX_METRES {
+                    return Err(format!("metres is more than 0 and at most {MAX_METRES:.0}"));
+                }
+                ("distance", round6(metres / 1000.0))
+            }
+            (Some(_), Some(_)) => return Err("give minutes (drive time) or metres (a radius), not both".into()),
+            (None, None) => return Err("give minutes (drive time) or metres (a radius)".into()),
+        };
+        let mut contour = serde_json::Map::new();
+        contour.insert(key.into(), json!(value));
+        let body = json!({
+            "locations": [{"lon": round6(r.point.x), "lat": round6(r.point.y)}],
+            "costing": r.mode.costing(),
+            "contours": [Value::Object(contour)],
+            "polygons": true,
+        });
+        Ok(format!("{}/isochrone?json={}", self.base, encode(&body.to_string())))
+    }
+
+    /// The contours in an answer, the smallest first.
+    pub fn parse_isochrones(&self, bytes: &[u8]) -> Result<Vec<Catchment>, String> {
+        let v: Value = serde_json::from_slice(bytes).map_err(|_| "the routing server's answer isn't JSON".to_string())?;
+        // A refusal, in either shape the server uses (`{"code","message"}` or `{"error_code","error"}`).
+        if let Some(message) =
+            v.get("message").and_then(Value::as_str).or_else(|| v.get("error").and_then(Value::as_str))
+        {
+            return Err(message.to_string());
+        }
+        let features = v.get("features").and_then(Value::as_array).ok_or("the routing server's answer has no catchment outline")?;
+        let mut out: Vec<Catchment> = features.iter().take(MAX_CONTOURS).filter_map(catchment).collect();
+        if out.is_empty() {
+            return Err("no catchment was drawn around this point".into());
+        }
+        out.sort_by(|a, b| a.contour.partial_cmp(&b.contour).unwrap_or(std::cmp::Ordering::Equal));
+        Ok(out)
+    }
 }
 
 /// What a failed request means to the user.
 pub fn explain(error: &str) -> String {
     match crate::cache::http_status(error) {
         Some(400) => "no route was found between these places (one may be too far from a road)".into(),
+        Some(429) => "the routing server is busy: try again in a moment".into(),
+        Some(s) if s >= 500 => "the routing server didn't answer: try again in a moment".into(),
+        _ => error.to_string(),
+    }
+}
+
+/// What a failed isochrone request means to the user.
+pub fn explain_isochrone(error: &str) -> String {
+    match crate::cache::http_status(error) {
+        Some(400) => "no catchment could be drawn here (the point may be too far from a road)".into(),
         Some(429) => "the routing server is busy: try again in a moment".into(),
         Some(s) if s >= 500 => "the routing server didn't answer: try again in a moment".into(),
         _ => error.to_string(),
@@ -306,6 +400,46 @@ fn route(r: &Value) -> Option<Route> {
     })
 }
 
+/// One feature of an isochrone answer as a contour, when it has an outline.
+fn catchment(f: &Value) -> Option<Catchment> {
+    let props = f.get("properties");
+    let contour = props.and_then(|p| p.get("contour")).and_then(Value::as_f64).filter(|c| c.is_finite())?;
+    let metric = props.and_then(|p| p.get("metric")).and_then(Value::as_str).unwrap_or("time").chars().take(20).collect();
+    let geometry = f.get("geometry")?;
+    let polygons: Vec<Vec<Vec<Coord>>> = match geometry.get("type").and_then(Value::as_str) {
+        Some("Polygon") => polygon(geometry.get("coordinates")).into_iter().collect(),
+        Some("MultiPolygon") => {
+            geometry.get("coordinates").and_then(Value::as_array).into_iter().flatten().filter_map(polygon).collect()
+        }
+        _ => Vec::new(),
+    };
+    (!polygons.is_empty()).then_some(Catchment { contour, metric, polygons })
+}
+
+/// A polygon's rings, when at least one has a shape.
+fn polygon(v: Option<&Value>) -> Option<Vec<Vec<Coord>>> {
+    let rings: Vec<Vec<Coord>> = v?.as_array()?.iter().filter_map(ring).collect();
+    (!rings.is_empty()).then_some(rings)
+}
+
+/// One ring without the point that repeats its start: the fork closes polygons itself.
+fn ring(v: &Value) -> Option<Vec<Coord>> {
+    let mut pts: Vec<Coord> = v
+        .as_array()?
+        .iter()
+        .take(MAX_RING)
+        .filter_map(|p| {
+            let a = p.as_array()?;
+            let c = Coord::new(a.first()?.as_f64()?, a.get(1)?.as_f64()?);
+            valid(c.x, c.y).then_some(c)
+        })
+        .collect();
+    if pts.len() > 1 && pts.first() == pts.last() {
+        pts.pop();
+    }
+    (pts.len() >= 3).then_some(pts)
+}
+
 impl Route {
     /// The point `d` metres along the route, and the direction of travel there (degrees clockwise
     /// from north).
@@ -406,6 +540,15 @@ pub fn route_blocking(router: &Router, r: &Request) -> Result<Vec<Route>, String
     let url = router.url(r)?;
     let bytes = crate::cache::download_blocking(&url).map_err(|e| explain(&e))?;
     router.parse(&bytes)
+}
+
+/// Finds a catchment, waiting for the answer (the command line and the app's engine: the view is
+/// drawn from the layer the command builds, not fetched in the frame).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn isochrone_blocking(router: &Router, r: &IsochroneRequest) -> Result<Vec<Catchment>, String> {
+    let url = router.isochrone_url(r)?;
+    let bytes = crate::cache::download_blocking(&url).map_err(|e| explain_isochrone(&e))?;
+    router.parse_isochrones(&bytes)
 }
 
 fn num(v: Option<&Value>) -> f64 {
@@ -553,5 +696,73 @@ mod tests {
         assert_eq!(format_duration(302.0), "5 min");
         assert_eq!(format_duration(3600.0), "1 h");
         assert_eq!(format_duration(5_000.0), "1 h 23 min");
+    }
+
+    fn minutes(point: Coord) -> IsochroneRequest {
+        IsochroneRequest { point, mode: Mode::Drive, minutes: Some(15.0), metres: None }
+    }
+
+    fn decoded(url: String) -> String {
+        url.replace("%22", "\"").replace("%3A", ":").replace("%2C", ",")
+    }
+
+    #[test]
+    fn isochrone_requests() {
+        let r = Router::new(None).unwrap();
+        let q = minutes(Coord::new(151.2093, -33.8688));
+        let url = r.isochrone_url(&q).unwrap();
+        assert!(url.starts_with("https://valhalla1.openstreetmap.de/isochrone?json=%7B"), "{url}");
+        let d = decoded(url);
+        for part in
+            ["\"costing\":\"auto\"", "\"polygons\":true", "\"contours\":[{\"time\":15}]", "\"lon\":151.2093", "\"lat\":-33.8688"]
+        {
+            assert!(d.contains(part), "{part} in {d}");
+        }
+        assert!(!d.contains("distance"), "{d}");
+        // A radius is asked for in metres and travels in kilometres.
+        let radius = IsochroneRequest { minutes: None, metres: Some(5_000.0), ..q.clone() };
+        let d = decoded(r.isochrone_url(&radius).unwrap());
+        assert!(d.contains("\"contours\":[{\"distance\":5}]") && !d.contains("\"time\""), "{d}");
+        // One or the other, a real place, and a server of one's own.
+        assert!(r.isochrone_url(&IsochroneRequest { metres: Some(2_000.0), ..q.clone() }).is_err());
+        assert!(r.isochrone_url(&IsochroneRequest { minutes: None, ..q.clone() }).is_err());
+        assert!(r.isochrone_url(&IsochroneRequest { point: Coord::new(200.0, 1.0), ..q.clone() }).is_err());
+        assert!(r.isochrone_url(&IsochroneRequest { minutes: Some(0.0), ..q.clone() }).is_err());
+        assert!(r.isochrone_url(&IsochroneRequest { minutes: Some(1e6), ..q.clone() }).is_err());
+        assert!(r.isochrone_url(&IsochroneRequest { metres: Some(1e9), ..q.clone() }).is_err());
+        let own = Router::new(Some("http://localhost:8002/isochrone/")).unwrap();
+        assert_eq!(own.base, "http://localhost:8002");
+        assert!(own.isochrone_url(&q).unwrap().starts_with("http://localhost:8002/isochrone?json="));
+    }
+
+    /// A trimmed answer from the public server: two contours around a point in Sydney.
+    const CATCHMENT: &str = r#"{"type":"FeatureCollection","features":[
+        {"type":"Feature","properties":{"contour":15.0,"metric":"time","fill":"#bf4040"},"geometry":{"type":"Polygon","coordinates":[[[151.1,-33.9],[151.2,-33.9],[151.2,-33.8],[151.1,-33.9]]]}},
+        {"type":"Feature","properties":{"contour":10.0,"metric":"time"},"geometry":{"type":"MultiPolygon","coordinates":[
+            [[[151.11,-33.89],[151.15,-33.89],[151.15,-33.85],[151.11,-33.89]]],
+            [[[151.16,-33.88],[151.17,-33.88],[151.17,-33.87],[151.16,-33.88]]]]}}]}"#;
+
+    #[test]
+    fn catchments() {
+        let r = Router::new(None).unwrap();
+        let c = r.parse_isochrones(CATCHMENT.as_bytes()).unwrap();
+        // Smallest first; the closing point the server repeats is the engine's to add.
+        assert_eq!(c.len(), 2);
+        assert_eq!((c[0].contour, c[0].metric.as_str()), (10.0, "time"));
+        assert_eq!(c[1].contour, 15.0);
+        assert_eq!(c[0].polygons.len(), 2, "a MultiPolygon keeps its islands");
+        assert_eq!(c[1].polygons[0][0].len(), 3);
+        assert_eq!(c[1].polygons[0][0][0], Coord::new(151.1, -33.9));
+        // Refusals, in both shapes the server uses; and an answer without an outline.
+        assert_eq!(
+            r.parse_isochrones(br#"{"code":400,"message":"Failed to parse location"}"#).unwrap_err(),
+            "Failed to parse location"
+        );
+        assert!(r.parse_isochrones(br#"{"error_code":130,"error":"Locations are required","status_code":400}"#).is_err());
+        assert!(r.parse_isochrones(b"<html>").is_err());
+        assert!(r.parse_isochrones(br#"{"features":[]}"#).is_err());
+        assert!(r.parse_isochrones(br#"{"features":[{"geometry":{"type":"Polygon","coordinates":[]}}]}"#).is_err());
+        assert!(explain_isochrone("http status: 400").contains("no catchment"));
+    }
     }
 }

@@ -9247,3 +9247,65 @@ fn legends_leave_layers_out() {
     s.run("layer.rename", &json!({"layer": "Lakes", "name": "Countries"})).unwrap();
     assert!(left_out(&s, lakes).is_empty(), "the other Countries isn't taken out");
 }
+
+/// A catchment is a polygon layer, built from an answer the test holds fixed: the network step is
+/// tested in `rustgis-tiles` (the request's body) and here (the answer to the layer).
+#[test]
+fn a_catchment_is_a_polygon_layer() {
+    // Two contours around Sydney, as the public server answers them: a Polygon and a MultiPolygon,
+    // each ring repeating its first point.
+    let answer = r#"{"type":"FeatureCollection","features":[
+        {"type":"Feature","properties":{"contour":15.0,"metric":"time"},"geometry":{"type":"Polygon","coordinates":[[[151.1,-33.9],[151.2,-33.9],[151.2,-33.8],[151.1,-33.9]]]}},
+        {"type":"Feature","properties":{"contour":10.0,"metric":"time"},"geometry":{"type":"MultiPolygon","coordinates":[
+            [[[151.15,-33.88],[151.19,-33.88],[151.19,-33.84],[151.15,-33.88]]],
+            [[[151.2,-33.87],[151.21,-33.87],[151.21,-33.86],[151.2,-33.87]]]]}}]}"#;
+    let mut s = world();
+    let r = s
+        .run("analysis.isochrone", &json!({"lon": 151.2093, "lat": -33.8688, "minutes": 15, "answer": answer, "name": "Sydney 15"}))
+        .unwrap();
+    assert_eq!((r["contours"].as_u64(), r["points"].as_u64()), (Some(2), Some(7)));
+    let l = s.map().layer(r["layer"].as_u64().unwrap() as u32).unwrap();
+    assert_eq!(l.name, "Sydney 15");
+    assert_eq!(l.geometry_type(), rustgis_data::GeometryType::Polygon);
+    assert_eq!(l.dataset.features.len(), 2);
+    // The smallest contour first, from the fields the layer carries.
+    let contour = l.dataset.field_index("contour").unwrap();
+    let metric = l.dataset.field_index("metric").unwrap();
+    assert_eq!(l.dataset.value(0, contour).as_f64(), Some(10.0));
+    assert_eq!(l.dataset.value(1, contour).as_f64(), Some(15.0));
+    assert!(matches!(l.dataset.value(0, metric), rustgis_data::Value::Text(ref t) if t == "time"));
+    // A MultiPolygon keeps both islands; the ring is the engine's to close, not the server's.
+    match l.dataset.features[0].geometry.as_ref().unwrap() {
+        rustgis_data::Geometry::Polygon(polys) => {
+            assert_eq!(polys.len(), 2);
+            assert_eq!(polys[0][0].len(), 3);
+            assert_ne!(polys[0][0].first(), polys[0][0].last());
+        }
+        other => panic!("{other:?}"),
+    }
+    // The map moves to the catchment it drew.
+    assert!(s.map().camera.res < 5000.0, "zoomed to the shape");
+    // Refusals: no place, both a time and a distance, and an answer with no outline.
+    assert!(s.run("analysis.isochrone", &json!({"lat": -33.8, "answer": answer})).is_err());
+    assert!(s.run("analysis.isochrone", &json!({"lon": 1.0, "lat": 1.0, "minutes": 15, "metres": 5000})).is_err());
+    assert!(s.run("analysis.isochrone", &json!({"lon": 1.0, "lat": 1.0, "answer": "{\"features\":[]}"})).is_err());
+    // The answer's own metric names it when nothing else does: the largest contour, and where.
+    let r = s.run("analysis.isochrone", &json!({"lon": 1.0, "lat": 1.0, "metres": 5000, "answer": answer})).unwrap();
+    let name = s.map().layer(r["layer"].as_u64().unwrap() as u32).unwrap().name.clone();
+    assert_eq!(name, "15 min catchment at 1.000, 1.000", "the answer's metric, not the request's");
+}
+
+/// The seed the Catchment card pins: where the selected features are, read from their shapes.
+#[test]
+fn a_selection_has_a_centre() {
+    let mut s = world();
+    s.run("select.byAttributes", &json!({"layer": "Countries", "where": "name = 'France'"})).unwrap();
+    let c = s.run("select.center", &Value::Null).unwrap();
+    assert_eq!(c["count"], 1);
+    let (lon, lat) = (c["lon"].as_f64().unwrap(), c["lat"].as_f64().unwrap());
+    assert!((-5.0..9.0).contains(&lon) && (42.0..51.5).contains(&lat), "{c}");
+    // A named layer, whether or not it holds the selection; and nothing selected is said.
+    assert!(s.run("select.center", &json!({"layer": "Cities"})).is_err());
+    s.run("select.clear", &Value::Null).unwrap();
+    assert!(s.run("select.center", &Value::Null).is_err());
+}

@@ -8,6 +8,7 @@ use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as A
 use rustgis_geom::{Coord, Extent};
 use serde_json::{Value, json};
 
+use crate::render::rustgis_tiles::routing;
 use super::{b, f, ps};
 use crate::project::{Model, ModelStep};
 use crate::{CmdResult, CommandSpec as C, Session};
@@ -63,6 +64,9 @@ pub fn commands() -> Vec<C> {
         ),
         C::new("analysis.route", "Network Analysis", "Analyze › Workflows", route).params(
             r#"{"layer": line network, "from": [lon, lat], "to": [lon, lat], "costField"?: field, "snapDistance"?: metres, "name"?: output}"#,
+        ),
+        C::new("analysis.isochrone", "Isochrone", "Analyze › Workflows", isochrone).params(
+            r#"{"lon", "lat", "minutes"?: drive time in minutes (default 15), "metres"?: a distance contour instead, "name"?: output, "url"?: "a Valhalla server of your own", "answer"?: "an isochrone answer already fetched (nothing is fetched)", "zoom"?: bool (default true)}"#,
         ),
         C::new("analysis.neighborhood", "Neighborhood Explorer", "Analyze › Workflows", neighborhood)
             .view()
@@ -708,6 +712,82 @@ fn neighborhood(s: &mut Session, p: &Value) -> CmdResult {
         }
     }
     Ok(json!({"radiusKm": radius / 1000.0, "layers": out}))
+}
+
+/// A drive-time catchment, or a distance contour, drawn by the Valhalla server as a polygon layer.
+///
+/// The server is the public FOSSGIS one unless `url` names another, and it is asked for the contour
+/// in one request: the layer is the answer, so the map has something to draw and the rail something
+/// to show, rather than a number to read.
+fn isochrone(s: &mut Session, p: &Value) -> CmdResult {
+    let at = Coord::new(f(p, "lon").ok_or("lon is required")?, f(p, "lat").ok_or("lat is required")?);
+    let router = routing::Router::new(ps(p, "url"))?;
+    let minutes = f(p, "minutes").filter(|m| *m > 0.0);
+    let metres = f(p, "metres").filter(|m| *m > 0.0);
+    let contours = match ps(p, "answer") {
+        // The app's own fetched answer: nothing leaves this computer twice.
+        Some(answer) => router.parse_isochrones(answer.as_bytes())?,
+        None => {
+            // A drive time unless it was given a radius; both is refused, not guessed.
+            let req = routing::IsochroneRequest {
+                point: at,
+                mode: routing::Mode::Drive,
+                minutes: minutes.or(metres.is_none().then_some(15.0)),
+                metres,
+            };
+            fetch_catchment(&router, &req)?
+        }
+    };
+    let name = out_name(p, catchment_name(at, &contours));
+    let mut ds = Dataset::new(
+        name,
+        GeometryType::Polygon,
+        vec![Field::new("contour", FieldType::Double), Field::new("metric", FieldType::Text)],
+    );
+    let mut points = 0usize;
+    let mut extent = Extent::EMPTY;
+    for c in &contours {
+        for ring in c.polygons.iter().flatten() {
+            points += ring.len();
+            ring.iter().for_each(|p| extent.expand(*p));
+        }
+        ds.push(Some(Geometry::Polygon(c.polygons.clone())), vec![Attr::Float(c.contour), Attr::Text(c.metric.clone())]);
+    }
+    let nid = super::layer::add_dataset(s, ds);
+    if b(p, "zoom").unwrap_or(true) && !extent.is_empty() {
+        // A margin around the outermost contour, so the shape is not drawn against the edge.
+        let (mx, my) = ((extent.width() * 0.1).max(0.002), (extent.height() * 0.1).max(0.002));
+        s.zoom_to(&Extent::new(extent.min_x - mx, extent.min_y - my, extent.max_x + mx, extent.max_y + my));
+    }
+    Ok(json!({
+        "layer": nid,
+        "contours": contours.len(),
+        "metric": contours.first().map(|c| c.metric.clone()),
+        "contour": contours.first().map(|c| c.contour),
+        "points": points,
+        "centre": {"lon": at.x, "lat": at.y},
+    }))
+}
+
+/// What a catchment is called before the user names it: its largest contour and the place it is at.
+fn catchment_name(at: Coord, contours: &[routing::Catchment]) -> String {
+    let Some(c) = contours.last() else { return "Catchment".into() };
+    let value = if c.metric == "distance" {
+        routing::format_distance(c.contour, false)
+    } else {
+        routing::format_duration(c.contour * 60.0)
+    };
+    format!("{value} catchment at {:.3}, {:.3}", at.y, at.x)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn fetch_catchment(router: &routing::Router, req: &routing::IsochroneRequest) -> Result<Vec<routing::Catchment>, String> {
+    routing::isochrone_blocking(router, req)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn fetch_catchment(_: &routing::Router, _: &routing::IsochroneRequest) -> Result<Vec<routing::Catchment>, String> {
+    Err("in the web app, a catchment is drawn by the engine the desktop app runs".into())
 }
 
 fn simulate(s: &mut Session, p: &Value) -> CmdResult {
