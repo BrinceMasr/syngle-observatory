@@ -61,6 +61,8 @@ function project() {
  */
 function mount(options = {}) {
   const toHost = [];
+  // The poll callbacks the page scheduled, in order; `runTimers()` drains them once (#95).
+  const timers = [];
   // The target origin of each post to the host, in step with `toHost`: a reply must be addressed to
   // the host that spoke, never to `*` (Syngle-Ecosystem #67 review, non-blocking 2).
   const targets = [];
@@ -97,8 +99,10 @@ function mount(options = {}) {
   const frameWindow = {
     postMessage: (message) => toView.push(JSON.parse(JSON.stringify(message))),
     document: newViewDocument(),
-    __spikeApp: null,
-    __spike: null,
+    // A dev page's per-frame samples (`?spike=1`) and the gateway's instrument, which every build
+    // gets. A test may seed either, the way a real frame would have them (#95).
+    __spikeApp: options.app ?? null,
+    __spike: options.spike ?? null,
   };
   const frameLoads = [];
   const frameElement = { contentWindow: frameWindow, src: "/web/?embed", addEventListener: (type, fn) => type === "load" && frameLoads.push(fn) };
@@ -108,7 +112,10 @@ function mount(options = {}) {
     addEventListener: (type, fn) => {
       if (type === "message") listeners.push(fn);
     },
-    setTimeout: () => 0,
+    // The page's poll re-arms itself every 100 ms. Recording the callbacks instead of dropping
+    // them lets a test run one tick without an event loop, and keeps every other test as quiet as
+    // it was before (#95).
+    setTimeout: (fn) => timers.push(fn) && 0,
     btoa: (text) => Buffer.from(text, "binary").toString("base64"),
   };
   const fetch = async (address) => {
@@ -117,8 +124,10 @@ function mount(options = {}) {
     const body = options.project ? JSON.stringify(options.project) : JSON.stringify(project());
     return { ok: true, status: 200, text: async () => body, arrayBuffer: async () => png(640, 400).buffer };
   };
-  const sandbox = { window, document: { getElementById: () => frameElement }, URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console };
-  sandbox.window.setTimeout = () => 0;
+  // The page's once-a-second gate reads Date.now(), so the tests own the clock: a fake Date that
+  // only moves when a test advances it, which is what lets one tick past the gate without waiting.
+  const clock = { now: 1_000_000 };
+  const sandbox = { window, document: { getElementById: () => frameElement }, URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console, Date: { now: () => clock.now } };
   vm.runInNewContext(PAGE, sandbox, { filename: "canvas.js" });
 
   const host = (message, origin = ORIGIN) => {
@@ -126,6 +135,14 @@ function mount(options = {}) {
   };
   const view = (message) => {
     for (const fn of listeners) fn({ data: message, source: frameWindow, origin: ORIGIN });
+  };
+  const runTimers = () => {
+    for (const fn of timers.splice(0, timers.length)) fn();
+  };
+  // One poll tick one second later: past the page's own stats gate.
+  const tick = () => {
+    clock.now += 1_000;
+    runTimers();
   };
   const drain = () => {
     const host = toHost.splice(0, toHost.length);
@@ -162,7 +179,7 @@ function mount(options = {}) {
     frameWindow.document = newViewDocument();
     for (const fn of frameLoads) fn();
   };
-  return { toHost, toView, fetched, host, view, frameWindow, drain, press, reloadView, canvas };
+  return { toHost, toView, fetched, host, view, frameWindow, drain, runTimers, tick, press, reloadView, canvas };
 }
 
 /**
@@ -221,6 +238,42 @@ test("the page says hello with the schema's version and a state the schema requi
   assert.equal(hello.observatory, "bridge");
   assert.equal(hello.protocolVersion, SCHEMA.protocolVersion, "the page and the schema are one version");
   for (const key of SCHEMA.view.state.required) assert.ok(key in hello.state, `the hello carries ${key}`);
+});
+
+test("a shipped page reports frame-stats once the view has drawn (#95)", async () => {
+  // A production page asks for `?project=1` and nothing else, so `window.__spikeApp` is null and the
+  // only proof of a drawn frame is the gateway's instrument. SyngleCode's cover clears on
+  // `frame-stats` alone, so without this the map stays hidden behind "Map engine ready".
+  const frames = [
+    [1, 1, 0, 4.25, 177, 0, 1],
+    [2, 2, 0, 3.5, 177, 0, 1],
+  ];
+  const mounted = mount({ spike: { backend: "webgpu", frames, draws: 0 } });
+  // The view reporting the project it holds is how the page learns there is one to draw.
+  mounted.view({ rustgis: "project", text: JSON.stringify(project()) });
+  mounted.tick();
+  const stats = mounted.toHost.find(
+    (message) => message.bridge === "event" && message.payload && message.payload.type === "frame-stats",
+  );
+  assert.ok(stats, "the shipped page sends frame-stats without ?spike=1");
+  assert.equal(stats.payload.features, 177, "the counts are the view's own row");
+  assert.equal(stats.payload.redraws, 2);
+  assert.equal(stats.payload.renderMs, 3.5);
+  assert.equal(stats.payload.backend, "webgpu");
+  assert.equal(stats.payload.frames, undefined, "the raw samples stay dev-only");
+});
+
+test("no frame-stats before a frame is drawn, and none before a project is applied (#95)", async () => {
+  // The cover's whole job is "the first frame with data": an engine that has started but drawn
+  // nothing must not be uncovered by a premature event.
+  const noFrames = mount({ spike: { backend: "webgpu", frames: [], draws: 0 } });
+  noFrames.view({ rustgis: "project", text: JSON.stringify(project()) });
+  noFrames.tick();
+  assert.equal(
+    noFrames.toHost.some((m) => m.bridge === "event" && m.payload && m.payload.type === "frame-stats"),
+    false,
+    "no drawn frame, no event",
+  );
 });
 
 test("a host on another version is refused, and served nothing after it", async () => {

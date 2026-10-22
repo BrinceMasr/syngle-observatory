@@ -331,7 +331,28 @@
     var app = (view && view.contentWindow && view.contentWindow.__spikeApp) || null;
     var spike = (view && view.contentWindow && view.contentWindow.__spike) || null;
     var row = app && app.frames && app.frames.length ? app.frames[app.frames.length - 1] : null;
-    if (!row) return;
+    if (!row) {
+      // A shipped page has no `__spikeApp` samples — those need `?spike=1`, which a dev build asks
+      // for and a shipped one never does — but the gateway injects the frame instrument into the
+      // view in every build. So the four counts can still be promised here, and SyngleCode's
+      // "Map engine ready" cover, which clears on `frame-stats` and nothing else, gets its proof
+      // that a frame was drawn instead of staying up for ever (#95).
+      var frames = spike && spike.frames ? spike.frames : null;
+      var lastFrame = frames && frames.length ? frames[frames.length - 1] : null;
+      if (!lastFrame || !bridge.project || !bridge.project.maps) return;
+      bridgeTell("event", {
+        payload: {
+          type: "frame-stats",
+          features: lastFrame[4],
+          redraws: lastFrame[1],
+          renderMs: lastFrame[3],
+          backend: spike ? spike.backend : null,
+          at: now,
+          drawnAt: now
+        }
+      });
+      return;
+    }
     var payload = {
       type: "frame-stats",
       features: row[4],
