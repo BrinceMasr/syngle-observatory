@@ -9273,7 +9273,7 @@ fn a_catchment_is_a_polygon_layer() {
     let metric = l.dataset.field_index("metric").unwrap();
     assert_eq!(l.dataset.value(0, contour).as_f64(), Some(10.0));
     assert_eq!(l.dataset.value(1, contour).as_f64(), Some(15.0));
-    assert!(matches!(l.dataset.value(0, metric), rustgis_data::Value::Text(ref t) if t == "time"));
+    assert!(matches!(l.dataset.value(0, metric), rustgis_data::Value::Text(t) if t == "time"));
     // A MultiPolygon keeps both islands; the ring is the engine's to close, not the server's.
     match l.dataset.features[0].geometry.as_ref().unwrap() {
         rustgis_data::Geometry::Polygon(polys) => {
