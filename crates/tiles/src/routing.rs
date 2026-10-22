@@ -267,9 +267,7 @@ impl Router {
     pub fn parse_isochrones(&self, bytes: &[u8]) -> Result<Vec<Catchment>, String> {
         let v: Value = serde_json::from_slice(bytes).map_err(|_| "the routing server's answer isn't JSON".to_string())?;
         // A refusal, in either shape the server uses (`{"code","message"}` or `{"error_code","error"}`).
-        if let Some(message) =
-            v.get("message").and_then(Value::as_str).or_else(|| v.get("error").and_then(Value::as_str))
-        {
+        if let Some(message) = v.get("message").and_then(Value::as_str).or_else(|| v.get("error").and_then(Value::as_str)) {
             return Err(message.to_string());
         }
         let features = v.get("features").and_then(Value::as_array).ok_or("the routing server's answer has no catchment outline")?;
@@ -408,9 +406,7 @@ fn catchment(f: &Value) -> Option<Catchment> {
     let geometry = f.get("geometry")?;
     let polygons: Vec<Vec<Vec<Coord>>> = match geometry.get("type").and_then(Value::as_str) {
         Some("Polygon") => polygon(geometry.get("coordinates")).into_iter().collect(),
-        Some("MultiPolygon") => {
-            geometry.get("coordinates").and_then(Value::as_array).into_iter().flatten().filter_map(polygon).collect()
-        }
+        Some("MultiPolygon") => geometry.get("coordinates").and_then(Value::as_array).into_iter().flatten().filter_map(polygon).collect(),
         _ => Vec::new(),
     };
     (!polygons.is_empty()).then_some(Catchment { contour, metric, polygons })
@@ -713,9 +709,7 @@ mod tests {
         let url = r.isochrone_url(&q).unwrap();
         assert!(url.starts_with("https://valhalla1.openstreetmap.de/isochrone?json=%7B"), "{url}");
         let d = decoded(url);
-        for part in
-            ["\"costing\":\"auto\"", "\"polygons\":true", "\"contours\":[{\"time\":15}]", "\"lon\":151.2093", "\"lat\":-33.8688"]
-        {
+        for part in ["\"costing\":\"auto\"", "\"polygons\":true", "\"contours\":[{\"time\":15}]", "\"lon\":151.2093", "\"lat\":-33.8688"] {
             assert!(d.contains(part), "{part} in {d}");
         }
         assert!(!d.contains("distance"), "{d}");
@@ -736,11 +730,11 @@ mod tests {
     }
 
     /// A trimmed answer from the public server: two contours around a point in Sydney.
-    const CATCHMENT: &str = r#"{"type":"FeatureCollection","features":[
+    const CATCHMENT: &str = r##"{"type":"FeatureCollection","features":[
         {"type":"Feature","properties":{"contour":15.0,"metric":"time","fill":"#bf4040"},"geometry":{"type":"Polygon","coordinates":[[[151.1,-33.9],[151.2,-33.9],[151.2,-33.8],[151.1,-33.9]]]}},
         {"type":"Feature","properties":{"contour":10.0,"metric":"time"},"geometry":{"type":"MultiPolygon","coordinates":[
             [[[151.11,-33.89],[151.15,-33.89],[151.15,-33.85],[151.11,-33.89]]],
-            [[[151.16,-33.88],[151.17,-33.88],[151.17,-33.87],[151.16,-33.88]]]]}}]}"#;
+            [[[151.16,-33.88],[151.17,-33.88],[151.17,-33.87],[151.16,-33.88]]]]}}]}"##;
 
     #[test]
     fn catchments() {
@@ -754,15 +748,11 @@ mod tests {
         assert_eq!(c[1].polygons[0][0].len(), 3);
         assert_eq!(c[1].polygons[0][0][0], Coord::new(151.1, -33.9));
         // Refusals, in both shapes the server uses; and an answer without an outline.
-        assert_eq!(
-            r.parse_isochrones(br#"{"code":400,"message":"Failed to parse location"}"#).unwrap_err(),
-            "Failed to parse location"
-        );
+        assert_eq!(r.parse_isochrones(br#"{"code":400,"message":"Failed to parse location"}"#).unwrap_err(), "Failed to parse location");
         assert!(r.parse_isochrones(br#"{"error_code":130,"error":"Locations are required","status_code":400}"#).is_err());
         assert!(r.parse_isochrones(b"<html>").is_err());
         assert!(r.parse_isochrones(br#"{"features":[]}"#).is_err());
         assert!(r.parse_isochrones(br#"{"features":[{"geometry":{"type":"Polygon","coordinates":[]}}]}"#).is_err());
         assert!(explain_isochrone("http status: 400").contains("no catchment"));
-    }
     }
 }

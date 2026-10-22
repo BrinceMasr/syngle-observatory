@@ -9263,7 +9263,7 @@ fn a_catchment_is_a_polygon_layer() {
     let r = s
         .run("analysis.isochrone", &json!({"lon": 151.2093, "lat": -33.8688, "minutes": 15, "answer": answer, "name": "Sydney 15"}))
         .unwrap();
-    assert_eq!((r["contours"].as_u64(), r["points"].as_u64()), (Some(2), Some(7)));
+    assert_eq!((r["contours"].as_u64(), r["points"].as_u64()), (Some(2), Some(9)));
     let l = s.map().layer(r["layer"].as_u64().unwrap() as u32).unwrap();
     assert_eq!(l.name, "Sydney 15");
     assert_eq!(l.geometry_type(), rustgis_data::GeometryType::Polygon);

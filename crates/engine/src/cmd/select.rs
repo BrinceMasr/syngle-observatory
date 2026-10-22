@@ -198,13 +198,7 @@ fn at_point(s: &mut Session, p: &Value) -> CmdResult {
 fn selection_center(s: &mut Session, p: &Value) -> CmdResult {
     let id = match p.get("layer").filter(|v| !v.is_null()) {
         Some(_) => s.layer_id(p)?,
-        None => s
-            .map()
-            .layers
-            .iter()
-            .find(|l| !l.is_raster() && !l.selection.is_empty())
-            .map(|l| l.id)
-            .ok_or("nothing is selected")?,
+        None => s.map().layers.iter().find(|l| !l.is_raster() && !l.selection.is_empty()).map(|l| l.id).ok_or("nothing is selected")?,
     };
     let l = s.map().layer(id).ok_or("no such layer")?;
     if l.selection.is_empty() {

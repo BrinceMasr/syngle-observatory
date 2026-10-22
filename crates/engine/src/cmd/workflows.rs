@@ -8,9 +8,9 @@ use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as A
 use rustgis_geom::{Coord, Extent};
 use serde_json::{Value, json};
 
-use crate::render::rustgis_tiles::routing;
 use super::{b, f, ps};
 use crate::project::{Model, ModelStep};
+use crate::render::rustgis_tiles::routing;
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -739,11 +739,8 @@ fn isochrone(s: &mut Session, p: &Value) -> CmdResult {
         }
     };
     let name = out_name(p, catchment_name(at, &contours));
-    let mut ds = Dataset::new(
-        name,
-        GeometryType::Polygon,
-        vec![Field::new("contour", FieldType::Double), Field::new("metric", FieldType::Text)],
-    );
+    let mut ds =
+        Dataset::new(name, GeometryType::Polygon, vec![Field::new("contour", FieldType::Double), Field::new("metric", FieldType::Text)]);
     let mut points = 0usize;
     let mut extent = Extent::EMPTY;
     for c in &contours {
@@ -772,11 +769,8 @@ fn isochrone(s: &mut Session, p: &Value) -> CmdResult {
 /// What a catchment is called before the user names it: its largest contour and the place it is at.
 fn catchment_name(at: Coord, contours: &[routing::Catchment]) -> String {
     let Some(c) = contours.last() else { return "Catchment".into() };
-    let value = if c.metric == "distance" {
-        routing::format_distance(c.contour, false)
-    } else {
-        routing::format_duration(c.contour * 60.0)
-    };
+    let value =
+        if c.metric == "distance" { routing::format_distance(c.contour, false) } else { routing::format_duration(c.contour * 60.0) };
     format!("{value} catchment at {:.3}, {:.3}", at.y, at.x)
 }
 
