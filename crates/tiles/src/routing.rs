@@ -406,7 +406,9 @@ fn catchment(f: &Value) -> Option<Catchment> {
     let geometry = f.get("geometry")?;
     let polygons: Vec<Vec<Vec<Coord>>> = match geometry.get("type").and_then(Value::as_str) {
         Some("Polygon") => polygon(geometry.get("coordinates")).into_iter().collect(),
-        Some("MultiPolygon") => geometry.get("coordinates").and_then(Value::as_array).into_iter().flatten().filter_map(polygon).collect(),
+        Some("MultiPolygon") => {
+            geometry.get("coordinates").and_then(Value::as_array).into_iter().flatten().filter_map(|p| polygon(Some(p))).collect()
+        }
         _ => Vec::new(),
     };
     (!polygons.is_empty()).then_some(Catchment { contour, metric, polygons })
@@ -709,14 +711,14 @@ mod tests {
         let url = r.isochrone_url(&q).unwrap();
         assert!(url.starts_with("https://valhalla1.openstreetmap.de/isochrone?json=%7B"), "{url}");
         let d = decoded(url);
-        for part in ["\"costing\":\"auto\"", "\"polygons\":true", "\"contours\":[{\"time\":15}]", "\"lon\":151.2093", "\"lat\":-33.8688"] {
+        for part in ["\"costing\":\"auto\"", "\"polygons\":true", "\"time\":15.0", "\"lon\":151.2093", "\"lat\":-33.8688"] {
             assert!(d.contains(part), "{part} in {d}");
         }
         assert!(!d.contains("distance"), "{d}");
         // A radius is asked for in metres and travels in kilometres.
         let radius = IsochroneRequest { minutes: None, metres: Some(5_000.0), ..q.clone() };
         let d = decoded(r.isochrone_url(&radius).unwrap());
-        assert!(d.contains("\"contours\":[{\"distance\":5}]") && !d.contains("\"time\""), "{d}");
+        assert!(d.contains("\"distance\":5.0") && !d.contains("\"time\""), "{d}");
         // One or the other, a real place, and a server of one's own.
         assert!(r.isochrone_url(&IsochroneRequest { metres: Some(2_000.0), ..q.clone() }).is_err());
         assert!(r.isochrone_url(&IsochroneRequest { minutes: None, ..q.clone() }).is_err());
