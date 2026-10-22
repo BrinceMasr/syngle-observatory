@@ -510,6 +510,52 @@
     }
   });
 
+  // --- keys inside the view (Syngle-Ecosystem #111: C-01, C-05) -----------------------------------
+  //
+  // The view's canvas takes the keyboard, and a framed page's keys never reach its host: Tab and
+  // Escape would leave the person stuck in the map, and a one-key shortcut typed there would do
+  // nothing. This page shares the view's origin, so it listens on the view's own document — capture
+  // phase, and never stopping the key (the view still sees it: an Escape still cancels a measure) —
+  // and tells the host over the bridge what the keyboard meant: `focus-exit` for Tab, Shift+Tab and
+  // Escape, `key` for one bare letter. Where focus goes, and what a letter does, is the host's call.
+  // A host that does not know either event ignores it; both are optional in the schema.
+  function viewKey(event) {
+    if (event.isComposing) return;
+    var key = event.key;
+    var chord = event.ctrlKey || event.altKey || event.metaKey;
+    if (key === "Tab" && !chord) {
+      // The canvas would swallow Tab and keep focus; the host moves it, so the page's own focus
+      // must not also step somewhere inside the view.
+      if (typeof event.preventDefault === "function") event.preventDefault();
+      return bridgeTell("event", { payload: { type: "focus-exit", direction: event.shiftKey ? "previous" : "next" } });
+    }
+    if (key === "Escape" && !chord) {
+      return bridgeTell("event", { payload: { type: "focus-exit", direction: "escape" } });
+    }
+    if (chord || event.repeat) return;
+    if (typeof key === "string" && /^[A-Za-z]$/.test(key)) {
+      bridgeTell("event", { payload: { type: "key", key: key } });
+    }
+  }
+
+  // The view's document, once per document: the frame navigates (a reload, a restart), so this runs
+  // again on every load and marks the documents it has already taken.
+  function watchViewKeys() {
+    var win = view && view.contentWindow;
+    var doc = win && win.document;
+    if (!doc || doc.__observatoryKeys || typeof doc.addEventListener !== "function") return;
+    doc.__observatoryKeys = true;
+    doc.addEventListener("keydown", viewKey, true);
+    // The canvas has no name or role of its own: say what it is for a screen reader.
+    var canvas = typeof doc.getElementById === "function" ? doc.getElementById("rustgis_canvas") : null;
+    if (canvas && typeof canvas.setAttribute === "function" && !canvas.getAttribute("aria-label")) {
+      canvas.setAttribute("role", "application");
+      canvas.setAttribute("aria-label", "Map");
+    }
+  }
+  if (view && typeof view.addEventListener === "function") view.addEventListener("load", watchViewKeys);
+  watchViewKeys();
+
   // The view's iframe address carries `?project=1` (see the engine's `view_embed`), so the view
   // fetches the project document itself; `refresh-project` is what re-pushes it after an open.
   tell({ observatory: "ready", href: window.location.href });

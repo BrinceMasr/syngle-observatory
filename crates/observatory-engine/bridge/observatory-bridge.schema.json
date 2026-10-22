@@ -382,6 +382,32 @@
           }
         }
       },
+      "focus-exit": {
+        "summary": "The person pressed a key that leaves the map: Tab (next), Shift+Tab (previous) or Escape. The canvas takes the keyboard and a framed page's keys never reach its host, so without this the person could not leave the map by keyboard. The page does not stop the key: the view still sees it (an Escape still cancels a measure). Optional: a host must work without it, and an engine that does not send it leaves the map as it was.",
+        "required": [
+          "direction"
+        ],
+        "properties": {
+          "direction": {
+            "enum": [
+              "next",
+              "previous",
+              "escape"
+            ]
+          }
+        }
+      },
+      "key": {
+        "summary": "One bare letter typed in the map (no Ctrl, Alt or Meta, not a repeat), so the host's own one-key shortcuts work wherever the person's focus is. The host decides what a letter means; the view keeps the key too. Optional, like focus-exit.",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          }
+        }
+      },
       "frame-stats": {
         "summary": "What the view's own frames are doing, as the view counts them. A development page adds the raw samples (`frames`, `rows`) that the measurement strip summarises; a shipped page sends the four counts only.",
         "required": [

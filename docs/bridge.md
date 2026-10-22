@@ -13,10 +13,18 @@ written down. It carries:
 | `envelope` | the four wire shapes (host→view, view→host, host→engine, engine→host) |
 | `view.commands` | `layers`, `style`, `camera`, `tool`, `selection`, `theme`, `render-to-png` |
 | `view.state` | what the view reports: version, layers, active, camera, tool, selection, theme |
-| `view.events` | `camera-changed`, `selection-changed`, `feature-clicked`, `tool-result`, `frame-stats` |
+| `view.events` | `camera-changed`, `selection-changed`, `feature-clicked`, `tool-result`, `frame-stats`, `focus-exit`, `key` |
 | `engine.commands` | `dataset.open`, `dataset.query`, `catchment`, `command`, `mcp` |
 | `engine.state` | version, layer count, feature count, dataset names, revision, the fork's undo depth and the label of the step undo would take back |
 | `engine.events` | `progress`, `result`, `error` |
+
+`focus-exit` and `key` are the keyboard's way out of the map (Syngle-Ecosystem #111). The view's canvas
+takes the keyboard, and a framed page's keys never reach its host, so the canvas page (same origin as the
+view) watches the view's document and posts `focus-exit` (`next` for Tab, `previous` for Shift+Tab,
+`escape` for Escape) and `key` (one bare letter, for the host's own one-key shortcuts). It never stops
+the key: the view still sees it, so an Escape still cancels a measure. Both are optional emitters, which
+is why they did not change `protocolVersion`: a host that does not know them ignores them, and an engine
+that does not send them leaves the map as it was. A change a peer cannot ignore is what bumps the version.
 
 `protocolVersion` is the one number every peer has to agree on. It is carried on **every** message,
 not just the handshake, so a stale page or a stale sidecar is refused the moment it speaks.
@@ -85,7 +93,7 @@ Nothing is coercible, guessed or half-applied. A command name or member the sche
 |---|---|
 | `crates/observatory-engine/src/bridge.rs` (`cargo test -p syngle-observatory-engine`) | the code and the schema agree: every command parses from its schema entry, every error code is in the schema, a wrong version is refused |
 | `crates/observatory-engine/tests/bridge_contract.rs` | a **real** engine process, driven on its stdin: the five commands answer with values, state and events; a version mismatch is refused; `dataset.open` reads a real file; `/render` draws a real PNG; an edit grows the reported undo depth, a read does not, and undo/redo move it both ways |
-| `crates/observatory-engine/host/bridge.contract.test.mjs` (`node --test host/bridge.contract.test.mjs`) | the page SyngleCode frames: every view command is implemented, what it pushes down is the fork's contract, a pan comes back as `camera-changed`, members the schema does not name are refused, and replies are addressed to the host's own origin once it has spoken |
+| `crates/observatory-engine/host/bridge.contract.test.mjs` (`node --test host/bridge.contract.test.mjs`) | the page SyngleCode frames: every view command is implemented, what it pushes down is the fork's contract, a pan comes back as `camera-changed`, Tab, Shift+Tab and Escape in the map come back as `focus-exit` and a bare letter as `key`, members the schema does not name are refused, and replies are addressed to the host's own origin once it has spoken |
 
 The JavaScript test uses Node's built-in test runner, so the fork takes on no test dependency for
 the page half; `cargo xtask ci` stays Rust-only.

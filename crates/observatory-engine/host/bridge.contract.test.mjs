@@ -73,12 +73,35 @@ function mount(options = {}) {
       toHost.push(JSON.parse(JSON.stringify(message)));
     },
   };
+  // The view's own document, as far as the page's key watcher can see it: the keydown listeners it
+  // registers, and the canvas it names. A new document is what a reload of the frame gives.
+  const canvas = {
+    attributes: {},
+    getAttribute(name) {
+      return this.attributes[name] ?? null;
+    },
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+    },
+  };
+  const newViewDocument = () => {
+    const keydown = [];
+    return {
+      keydown,
+      getElementById: (id) => (id === "rustgis_canvas" ? canvas : null),
+      addEventListener: (type, fn, capture) => {
+        if (type === "keydown") keydown.push({ fn, capture });
+      },
+    };
+  };
   const frameWindow = {
     postMessage: (message) => toView.push(JSON.parse(JSON.stringify(message))),
-    document: { getElementById: () => null },
+    document: newViewDocument(),
     __spikeApp: null,
     __spike: null,
   };
+  const frameLoads = [];
+  const frameElement = { contentWindow: frameWindow, src: "/web/?embed", addEventListener: (type, fn) => type === "load" && frameLoads.push(fn) };
   const window = {
     parent,
     location: { href: `${ORIGIN}${TOKEN_PATH}/canvas/?project=1` },
@@ -94,7 +117,7 @@ function mount(options = {}) {
     const body = options.project ? JSON.stringify(options.project) : JSON.stringify(project());
     return { ok: true, status: 200, text: async () => body, arrayBuffer: async () => png(640, 400).buffer };
   };
-  const sandbox = { window, document: { getElementById: () => ({ contentWindow: frameWindow, src: "/web/?embed" }) }, URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console };
+  const sandbox = { window, document: { getElementById: () => frameElement }, URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console };
   sandbox.window.setTimeout = () => 0;
   vm.runInNewContext(PAGE, sandbox, { filename: "canvas.js" });
 
@@ -110,7 +133,36 @@ function mount(options = {}) {
     const pushed = toView.splice(0, toView.length);
     return { host, targets: addresses, pushed };
   };
-  return { toHost, toView, fetched, host, view, frameWindow, drain };
+  // One key pressed in the view: every keydown listener the page registered on the view's document
+  // runs, like the browser would, and the event records whether anything stopped or prevented it.
+  const press = (key, init = {}) => {
+    const event = {
+      key,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      repeat: false,
+      isComposing: false,
+      prevented: false,
+      stopped: false,
+      preventDefault() {
+        this.prevented = true;
+      },
+      stopPropagation() {
+        this.stopped = true;
+      },
+      ...init,
+    };
+    for (const { fn } of frameWindow.document.keydown) fn(event);
+    return event;
+  };
+  // The frame loads a new document: the page has to watch that one too.
+  const reloadView = () => {
+    frameWindow.document = newViewDocument();
+    for (const fn of frameLoads) fn();
+  };
+  return { toHost, toView, fetched, host, view, frameWindow, drain, press, reloadView, canvas };
 }
 
 /**
@@ -348,4 +400,82 @@ test("replies are addressed to the host's own origin once it has spoken", () => 
   const ignored = mounted.drain();
   assert.deepEqual(ignored.host, [], "a message from a second origin is ignored");
   assert.deepEqual(ignored.targets, [], "and nothing is posted back to it");
+});
+
+// Keys typed inside the map (Syngle-Ecosystem #111: C-01, C-05). The canvas takes the keyboard and a
+// framed page's keys never reach its host, so the page — which shares the view's origin — tells the
+// host what the keyboard meant, as events the schema names.
+const eventsOf = (mounted) => mounted.drain().host.filter((m) => m.bridge === "event").map((m) => m.payload);
+
+test("the schema names the two key events, and what they carry", () => {
+  const exit = SCHEMA.view.events["focus-exit"];
+  assert.deepEqual(exit.required, ["direction"]);
+  assert.deepEqual(exit.properties.direction.enum, ["next", "previous", "escape"]);
+  assert.deepEqual(SCHEMA.view.events.key.required, ["key"]);
+  assert.equal(SCHEMA.protocolVersion, 1, "both events are optional emitters: a host works without them, so the version stays");
+});
+
+test("Tab, Shift+Tab and Escape in the map leave it, and the view still sees Escape", () => {
+  const mounted = mount();
+  seed(mounted);
+  const tab = mounted.press("Tab");
+  assert.deepEqual(eventsOf(mounted), [{ type: "focus-exit", direction: "next" }]);
+  assert.equal(tab.prevented, true, "Tab must not also step focus inside the view");
+  mounted.press("Tab", { shiftKey: true });
+  assert.deepEqual(eventsOf(mounted), [{ type: "focus-exit", direction: "previous" }]);
+  const escape = mounted.press("Escape");
+  assert.deepEqual(eventsOf(mounted), [{ type: "focus-exit", direction: "escape" }]);
+  assert.equal(escape.prevented, false, "Escape is the view's too: it still cancels a measure");
+  assert.equal(escape.stopped, false, "and the page never stops it");
+});
+
+test("a bare letter in the map reaches the host; chords, repeats, composition and other keys do not", () => {
+  const mounted = mount();
+  seed(mounted);
+  mounted.press("m");
+  mounted.press("K", { shiftKey: true });
+  assert.deepEqual(eventsOf(mounted), [
+    { type: "key", key: "m" },
+    { type: "key", key: "K" },
+  ]);
+  mounted.press("k", { ctrlKey: true });
+  mounted.press("c", { metaKey: true });
+  mounted.press("a", { altKey: true });
+  mounted.press("m", { repeat: true });
+  mounted.press("m", { isComposing: true });
+  mounted.press("5");
+  mounted.press("ArrowLeft");
+  mounted.press("Enter");
+  mounted.press("Tab", { ctrlKey: true });
+  assert.deepEqual(eventsOf(mounted), []);
+  const letter = mounted.press("x");
+  assert.equal(letter.prevented, false, "the letter is not taken from the view");
+  assert.equal(letter.stopped, false);
+});
+
+test("the key events are addressed to the host's origin like every other message", () => {
+  const mounted = mount();
+  mounted.host({ observatory: "hello" });
+  mounted.drain();
+  mounted.press("Escape");
+  const sent = mounted.drain();
+  assert.equal(sent.host[0].payload.type, "focus-exit");
+  assert.deepEqual(sent.targets, [ORIGIN]);
+});
+
+test("the page watches each document of the frame once, and names the canvas", () => {
+  const mounted = mount();
+  const first = mounted.frameWindow.document;
+  assert.equal(first.keydown.length, 1, "one listener on the first document");
+  assert.equal(first.keydown[0].capture, true, "in the capture phase, ahead of the canvas");
+  assert.equal(mounted.canvas.getAttribute("role"), "application");
+  assert.equal(mounted.canvas.getAttribute("aria-label"), "Map");
+  // The same document loading again is not watched twice; a new one is.
+  mounted.reloadView();
+  const second = mounted.frameWindow.document;
+  assert.notEqual(second, first);
+  assert.equal(second.keydown.length, 1, "the reloaded document is watched");
+  assert.equal(first.keydown.length, 1);
+  mounted.press("Tab");
+  assert.deepEqual(eventsOf(mounted), [{ type: "focus-exit", direction: "next" }], "one event per press");
 });
