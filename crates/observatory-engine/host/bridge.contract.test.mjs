@@ -242,37 +242,71 @@ test("the page says hello with the schema's version and a state the schema requi
 
 test("a shipped page reports frame-stats once the view has drawn (#95)", async () => {
   // A production page asks for `?project=1` and nothing else, so `window.__spikeApp` is null and the
-  // only proof of a drawn frame is the gateway's instrument. SyngleCode's cover clears on
-  // `frame-stats` alone, so without this the map stays hidden behind "Map engine ready".
-  const frames = [
-    [1, 1, 0, 4.25, 177, 0, 1],
-    [2, 2, 0, 3.5, 177, 0, 1],
-  ];
-  const mounted = mount({ spike: { backend: "webgpu", frames, draws: 0 } });
-  // The view reporting the project it holds is how the page learns there is one to draw.
-  mounted.view({ rustgis: "project", text: JSON.stringify(project()) });
+  // only proof of a drawn frame is the gateway's instrument: `frames` are rAF timestamps (numbers),
+  // and `draws` counts the GPU work packets. SyngleCode's cover clears on `frame-stats` alone, so
+  // without this event the map stayed hidden behind "Map engine ready" for ever.
+  const drawn = {
+    name: "Shipped",
+    active_map: 0,
+    maps: [
+      {
+        name: "Map",
+        basemap: "ocean",
+        projection: "flat",
+        camera: { center: { x: 0, y: 0 }, res: 40000, bearing: 0, pitch: 0 },
+        layers: [
+          { id: 1, name: "Countries", visible: true, selection: [], dataset: { features: [{}, {}, {}], fields: [] }, renderer: {} },
+          { id: 2, name: "Cities", visible: false, selection: [], dataset: { features: [{}, {}], fields: [] }, renderer: {} },
+        ],
+      },
+    ],
+  };
+  const mounted = mount({ spike: { backend: "webgpu", frames: [1000.0, 1016.6], draws: 3 } });
+  mounted.view({ rustgis: "project", text: JSON.stringify(drawn) });
   mounted.tick();
   const stats = mounted.toHost.find(
     (message) => message.bridge === "event" && message.payload && message.payload.type === "frame-stats",
   );
   assert.ok(stats, "the shipped page sends frame-stats without ?spike=1");
-  assert.equal(stats.payload.features, 177, "the counts are the view's own row");
-  assert.equal(stats.payload.redraws, 2);
-  assert.equal(stats.payload.renderMs, 3.5);
+  // The four counts, against the real instrument shape: features from the applied project's visible
+  // layers (the hidden one does not count), draws from the instrument, renderMs null because a
+  // shipped page samples nothing, backend from the instrument.
+  assert.equal(stats.payload.features, 3, "visible layers' features, not the hidden layer's");
+  assert.equal(stats.payload.redraws, 3, "draws, not rAF ticks");
+  assert.equal(stats.payload.renderMs, null, "a shipped page does not sample renderMs");
   assert.equal(stats.payload.backend, "webgpu");
   assert.equal(stats.payload.frames, undefined, "the raw samples stay dev-only");
+  assert.equal(stats.payload.drawnAt, undefined, "drawnAt is not in the schema's frame-stats");
+
+  // The payload must satisfy the bridge's own schema, so payload, schema and test cannot drift.
+  const shape = SCHEMA.view.events["frame-stats"];
+  for (const key of shape.required) assert.ok(key in stats.payload, `the event carries ${key}`);
+  for (const [key, spec] of Object.entries(shape.properties)) {
+    if (!(key in stats.payload)) continue;
+    const types = Array.isArray(spec.type) ? spec.type : [spec.type];
+    const actual = stats.payload[key] === null ? "null" : Array.isArray(stats.payload[key]) ? "array" : typeof stats.payload[key];
+    assert.ok(types.includes(actual), `${key} is ${actual}, the schema allows ${types.join("|")}`);
+  }
 });
 
-test("no frame-stats before a frame is drawn, and none before a project is applied (#95)", async () => {
-  // The cover's whole job is "the first frame with data": an engine that has started but drawn
-  // nothing must not be uncovered by a premature event.
-  const noFrames = mount({ spike: { backend: "webgpu", frames: [], draws: 0 } });
-  noFrames.view({ rustgis: "project", text: JSON.stringify(project()) });
-  noFrames.tick();
+test("no frame-stats before a draw, and none before a project is applied (#95)", async () => {
+  // The cover's whole job is "the first frame with data": a started engine that has not drawn must
+  // not be uncovered by a premature event, and a rAF tick is not a draw.
+  const noDraws = mount({ spike: { backend: "webgpu", frames: [1000.0, 1016.6], draws: 0 } });
+  noDraws.view({ rustgis: "project", text: JSON.stringify(project()) });
+  noDraws.tick();
   assert.equal(
-    noFrames.toHost.some((m) => m.bridge === "event" && m.payload && m.payload.type === "frame-stats"),
+    noDraws.toHost.some((m) => m.bridge === "event" && m.payload && m.payload.type === "frame-stats"),
     false,
-    "no drawn frame, no event",
+    "rAF ticks with no draw send nothing",
+  );
+
+  const noProject = mount({ spike: { backend: "webgpu", frames: [1000.0, 1016.6], draws: 4 } });
+  noProject.tick();
+  assert.equal(
+    noProject.toHost.some((m) => m.bridge === "event" && m.payload && m.payload.type === "frame-stats"),
+    false,
+    "a drawn instrument with no applied project sends nothing",
   );
 });
 

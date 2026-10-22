@@ -421,7 +421,10 @@
             "type": "number"
           },
           "renderMs": {
-            "type": "number"
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "backend": {
             "type": [

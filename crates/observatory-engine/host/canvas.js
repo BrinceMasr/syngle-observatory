@@ -334,21 +334,30 @@
     if (!row) {
       // A shipped page has no `__spikeApp` samples — those need `?spike=1`, which a dev build asks
       // for and a shipped one never does — but the gateway injects the frame instrument into the
-      // view in every build. So the four counts can still be promised here, and SyngleCode's
-      // "Map engine ready" cover, which clears on `frame-stats` and nothing else, gets its proof
-      // that a frame was drawn instead of staying up for ever (#95).
-      var frames = spike && spike.frames ? spike.frames : null;
-      var lastFrame = frames && frames.length ? frames[frames.length - 1] : null;
-      if (!lastFrame || !bridge.project || !bridge.project.maps) return;
+      // view in every build. A frame "drew" when the instrument's `draws` rose, so that counter is
+      // the proof SyngleCode's "Map engine ready" cover waits for; a rAF tick alone is not a draw,
+      // and an event sent before one would uncover a blank map (#95).
+      if (!spike || !(spike.draws > 0) || !bridge.project || !bridge.project.maps) return;
+      var visible = activeMap() && activeMap().layers ? activeMap().layers : [];
+      var features = 0;
+      for (var i = 0; i < visible.length; i++) {
+        var layer = visible[i];
+        if (layer.visible === false) continue;
+        var dataset = layer.dataset;
+        if (dataset && dataset.features && typeof dataset.features.length === "number") {
+          features += dataset.features.length;
+        }
+      }
       bridgeTell("event", {
         payload: {
           type: "frame-stats",
-          features: lastFrame[4],
-          redraws: lastFrame[1],
-          renderMs: lastFrame[3],
-          backend: spike ? spike.backend : null,
-          at: now,
-          drawnAt: now
+          features: features,
+          redraws: spike.draws,
+          // A shipped page does not sample per-frame render milliseconds (`?spike` does), so this
+          // is null rather than a guess; the schema allows null for exactly this case.
+          renderMs: null,
+          backend: spike.backend || null,
+          at: now
         }
       });
       return;
