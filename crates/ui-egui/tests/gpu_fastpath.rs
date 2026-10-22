@@ -31,6 +31,12 @@ fn serve_planet_tiles() {
 /// A wgpu harness sharing one render state with the app (the ui_shot pattern), so the GPU
 /// backend engages. `None` on hosts without an adapter.
 fn harness() -> Option<egui_kittest::Harness<'static, RustGisApp>> {
+    harness_at(1.0 / 4.0)
+}
+
+/// The same harness with a chosen frame time: kittest's 250 ms default would hide a defect that
+/// only shows inside the map's 0.18 s settle window.
+fn harness_at(step_dt: f32) -> Option<egui_kittest::Harness<'static, RustGisApp>> {
     let setup = egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew::without_display_handle());
     let instance = pollster::block_on(setup.new_instance());
     let rs = pollster::block_on(egui_wgpu::RenderState::create(
@@ -48,6 +54,7 @@ fn harness() -> Option<egui_kittest::Harness<'static, RustGisApp>> {
             .with_size(egui::vec2(900.0, 550.0))
             .with_pixels_per_point(1.0)
             .with_max_steps(10_000)
+            .with_step_dt(step_dt)
             .renderer(egui_kittest::wgpu::WgpuTestRenderer::from_render_state(rs))
             .build_ui_state(
                 |ui, app: &mut RustGisApp| {
@@ -235,4 +242,50 @@ fn tiled_camera_playback_does_not_start_settling_jobs() {
         }
         assert_ne!(h.state().session.map().camera.res, start.res, "playback moved the camera");
     }
+}
+
+/// A released pan must leave the exact frame on screen with no further input: after the pointer
+/// comes up, the view keeps the frames it still owes and then goes idle on the settled camera,
+/// rather than stopping on the shifted picture a gesture left behind (Syngle-Ecosystem #91: after
+/// a pan the view kept a picture with a band beside it, and no further frames came).
+#[test]
+fn a_released_pan_ends_on_the_exact_frame_with_no_further_input() {
+    let Some(mut h) = harness_at(1.0 / 60.0) else { return };
+    wait_for_frame(&mut h);
+    let before = h.state().session.map().camera;
+    let from = egui::pos2(450.0, 275.0);
+    h.input_mut().events.push(egui::Event::PointerMoved(from));
+    h.input_mut().events.push(egui::Event::PointerButton {
+        pos: from,
+        button: egui::PointerButton::Primary,
+        pressed: true,
+        modifiers: Default::default(),
+    });
+    h.step();
+    for i in 1..=8 {
+        h.input_mut().events.push(egui::Event::PointerMoved(from + egui::vec2(i as f32 * 4.0, 0.0)));
+        h.step();
+    }
+    h.input_mut().events.push(egui::Event::PointerButton {
+        pos: from + egui::vec2(32.0, 0.0),
+        button: egui::PointerButton::Primary,
+        pressed: false,
+        modifiers: Default::default(),
+    });
+    // The release is the last input the app gets. `try_run` draws only the frames the view itself
+    // asks for and stops when it asks for none: the production idle, not a harness that steps.
+    h.try_run().expect("the view asks for every frame it owes");
+    {
+        let app = h.state();
+        assert_ne!(app.session.map().camera.center, before.center, "the drag panned the map");
+        assert_eq!(
+            app.map.full_frame_camera().center,
+            app.session.map().camera.center,
+            "the frame the app went idle on is the settled one: a full re-render, not a moved fast-path frame"
+        );
+    }
+    // Five seconds of nothing, as the tracer left it: no input, and the picture must not drift back.
+    h.run_steps(300);
+    let app = h.state();
+    assert_eq!(app.map.full_frame_camera().center, app.session.map().camera.center, "the settled frame stays the settled frame");
 }
