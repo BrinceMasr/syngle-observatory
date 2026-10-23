@@ -592,5 +592,18 @@
   // The bridge's own hello: this page's version and its view state, before anyone asks. A host on
   // another version can tell straight away, and a host on this one has the state to render.
   bridgeTell("hello", { state: bridgeSnap() });
+
+  // The host's own copy of the document. The view fetches it itself (`?project=1`) and never echoes
+  // it back, and no bridge command has run on a fresh load, so without this the page knows nothing
+  // about the project it is showing — and the shipped-page `frame-stats` that clears SyngleCode's
+  // cover could never fire. A failure leaves the gate closed, which is the honest state (#95).
+  projectFromEngine(function (text) {
+    try {
+      bridge.project = JSON.parse(text);
+    } catch (e) {
+      bridgeTell("event", { payload: { type: "frame-stats-error", error: "project.json: " + e } });
+    }
+  });
+
   poll();
 })();

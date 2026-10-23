@@ -409,7 +409,7 @@
         }
       },
       "frame-stats": {
-        "summary": "What the view's own frames are doing, as the view counts them. A development page adds the raw samples (`frames`, `rows`) that the measurement strip summarises; a shipped page sends the four counts only.",
+        "summary": "What the view's own frames are doing, as the view counts them. A development page adds the raw samples (`frames`, `rows`) that the measurement strip summarises; a shipped page sends the four counts only, where `redraws` is the gateway instrument's GPU draw calls (not the app's re-render count, which only a development page samples) and `renderMs` is null because nothing is sampled.",
         "required": [
           "features"
         ],

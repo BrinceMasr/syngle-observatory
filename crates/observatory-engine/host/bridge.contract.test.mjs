@@ -289,6 +289,22 @@ test("a shipped page reports frame-stats once the view has drawn (#95)", async (
   }
 });
 
+test("a fresh load reports frame-stats without the view posting a project (#95)", async () => {
+  // The path the cover bug happens on: the view fetches `?project=1` itself and never echoes it, and
+  // no bridge command has run, so the page only knows the project because it fetched the engine's
+  // own document at startup. Without that fetch the gate stayed closed and the cover never cleared.
+  const mounted = mount({ spike: { backend: "webgpu", frames: [1000.0, 1016.6], draws: 2 } });
+  await new Promise((resolve) => setImmediate(resolve));
+  mounted.tick();
+  const stats = mounted.toHost.find(
+    (message) => message.bridge === "event" && message.payload && message.payload.type === "frame-stats",
+  );
+  assert.ok(stats, "the startup project fetch is enough for the shipped-page event");
+  assert.equal(stats.payload.features, 0, "the default project carries no inline features");
+  assert.equal(stats.payload.redraws, 2);
+  assert.equal(stats.payload.renderMs, null);
+});
+
 test("no frame-stats before a draw, and none before a project is applied (#95)", async () => {
   // The cover's whole job is "the first frame with data": a started engine that has not drawn must
   // not be uncovered by a premature event, and a rAF tick is not a draw.
