@@ -598,10 +598,16 @@
   // about the project it is showing — and the shipped-page `frame-stats` that clears SyngleCode's
   // cover could never fire. A failure leaves the gate closed, which is the honest state (#95).
   projectFromEngine(function (text) {
+    // A view that already posted its own changed project is newer than this fetch; the late answer
+    // must not overwrite it, or the host's copy loses the edit and the next command pushes the stale
+    // document back down.
+    if (bridge.project) return;
     try {
       bridge.project = JSON.parse(text);
     } catch (e) {
-      bridgeTell("event", { payload: { type: "frame-stats-error", error: "project.json: " + e } });
+      // The host channel `projectFromEngine`'s own catch uses; a shipped page has no other way to
+      // report a document it could not read.
+      tell({ observatory: "error", error: "project.json: " + e });
     }
   });
 
