@@ -286,37 +286,97 @@ fn flatgeobuf_round_trips_a_dataset() {
     assert!(matches!(&b.geometry, Some(Geometry::Polygon(p)) if p.len() == 2));
 }
 
-#[test]
-// Deadlocks rather than fails: the test binary sits in `futex_wait_queue_me` with 2 threads and 3 s
-// of CPU over 9+ minutes, so `cargo test --workspace` (and `cargo xtask ci`) never finishes.
-// Inherited, not introduced here (this file is untouched on the branch), but never confirmed against
-// unmodified upstream; BrinceMasr/Syngle-Ecosystem#83 checks that. Run it by hand with
-// `cargo test -p rustgis-data --lib hostile -- --ignored`.
-#[ignore = "deadlocks (futex wait, no CPU) with no finish, so the suite cannot complete; upstream check tracked in Syngle-Ecosystem#83"]
-fn hostile_files_are_errors_not_panics() {
-    let mut junk = vec![b"PAR1".to_vec(), b"fgb\x03fgb\x00".to_vec(), b"SQLite format 3\0".to_vec(), vec![0xff; 4096], Vec::new()];
-    // Every truncation of a real file.
-    let d = dir();
-    let p = d.join("t.parquet");
-    write_parquet(&p, true);
-    let pq = std::fs::read(&p).unwrap();
-    let f = d.join("t.fgb");
-    write_fgb(&f);
-    let fgb = std::fs::read(&f).unwrap();
-    for n in (0..pq.len()).step_by(97) {
-        junk.push(pq[..n].to_vec());
-    }
-    for n in (0..fgb.len()).step_by(89) {
-        junk.push(fgb[..n].to_vec());
-    }
-    for bytes in junk {
-        for name in ["x.parquet", "x.fgb", "x.gpkg"] {
-            if let Ok(s) = open_bytes(name, bytes.clone(), None) {
-                let _ = s.read(&Request::all());
-                let _ = s.read(&Request { extent: Some(Extent::new(-10.0, -10.0, 10.0, 10.0)), limit: 3 });
-            }
+// The guarantee this file exists for: a hostile or truncated file is an error or a short read, never a panic.
+//
+// This used to sample every 97th and 89th byte of a real parquet and fgb file and open each sample through
+// three formats: 278 s on a warm box, which is why it was `#[ignore]`d — and an ignored test checks nothing.
+// The sample points now cover what can actually break a reader (the first bytes, where magics and offsets
+// live, the middle, the last byte) plus a bounded stride, and each format reads its own truncations in its
+// own test. The canned hostile buffers are still read through all three formats, so a reader that assumes
+// its own magic is exercised too. Syngle-Ecosystem #83 has the measurement.
+
+/// Bytes no vector reader should trust: the magics of other formats, noise, and nothing at all.
+fn hostile_buffers() -> Vec<Vec<u8>> {
+    vec![b"PAR1".to_vec(), b"fgb\x03fgb\x00".to_vec(), b"SQLite format 3\0".to_vec(), vec![0xff; 4096], Vec::new(), b"OGRGeoJSON".to_vec()]
+}
+
+/// Where a file is cut: every prefix short enough to sit inside a header, a bounded stride through the body,
+/// and the last byte. Bounded so a big sample cannot turn this test back into a minute of work.
+fn truncation_points(bytes: usize, stride_samples: usize) -> Vec<usize> {
+    let stride = (bytes / stride_samples).max(1);
+    let mut points: Vec<usize> =
+        [0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 512, 1024, 4096].into_iter().filter(|n| *n <= bytes).collect();
+    points.extend((0..=bytes).step_by(stride));
+    points.push(bytes);
+    points.sort_unstable();
+    points.dedup();
+    points
+}
+
+/// A real file of this format, cut at every point: the canned buffers first, then the truncations.
+fn hostile_samples(path: &Path, stride_samples: usize) -> Vec<Vec<u8>> {
+    let bytes = std::fs::read(path).unwrap();
+    let mut samples = hostile_buffers();
+    samples.extend(truncation_points(bytes.len(), stride_samples).into_iter().map(|n| bytes[..n].to_vec()));
+    samples
+}
+
+/// Open every sample as `name` and read it twice: everything, then a small extent with a limit. A panic
+/// anywhere in a reader fails the test; an `Err` is the expected answer.
+fn read_every_sample_without_panicking(name: &str, samples: &[Vec<u8>]) {
+    for bytes in samples {
+        if let Ok(source) = open_bytes(name, bytes.clone(), None) {
+            let _ = source.read(&Request::all());
+            let _ = source.read(&Request { extent: Some(Extent::new(-10.0, -10.0, 10.0, 10.0)), limit: 3 });
         }
     }
+}
+
+#[test]
+fn hostile_parquet_is_an_error_not_a_panic() {
+    let d = dir();
+    let p = d.join("hostile.parquet");
+    write_parquet(&p, true);
+    read_every_sample_without_panicking("x.parquet", &hostile_samples(&p, 40));
+    // The other two formats read parquet-shaped junk as their own kind, and the canned buffers through all.
+    for name in ["x.fgb", "x.gpkg"] {
+        read_every_sample_without_panicking(name, &hostile_buffers());
+    }
+}
+
+#[test]
+fn hostile_flatgeobuf_is_an_error_not_a_panic() {
+    let d = dir();
+    let p = d.join("hostile.fgb");
+    write_fgb(&p);
+    read_every_sample_without_panicking("x.fgb", &hostile_samples(&p, 40));
+}
+
+#[test]
+fn hostile_geopackage_is_an_error_not_a_panic() {
+    let d = dir();
+    let p = d.join("hostile.gpkg");
+    write_gpkg(&p, true);
+    let samples = hostile_samples(&p, 40);
+
+    // Every truncation through the pure-Rust reader the browser uses: it is the one that parses the bytes
+    // itself, so a panic would be ours. (The desktop's GpkgSource hands the bytes to SQLite, whose recovery
+    // on an invalid file costs seconds per open and is not our parser — see the one real open below.)
+    for bytes in &samples {
+        if let Ok(source) = gpkg_mem::GpkgMemSource::open_shared(Shared(Arc::new(bytes.clone())), None) {
+            let _ = source.read(&Request::all());
+            let _ = source.read(&Request { extent: Some(Extent::new(-10.0, -10.0, 10.0, 10.0)), limit: 3 });
+        }
+    }
+
+    // And the desktop's own byte path, once on a real file and once on a header-truncated one: it must answer
+    // with an error or a source, never a panic.
+    for cut in [samples.len() - 1, 3] {
+        if let Ok(source) = open_bytes("x.gpkg", samples[cut].clone(), None) {
+            let _ = source.read(&Request::all());
+        }
+    }
+    // A missing file is an error too, not a panic.
     assert!(open_path(Path::new("nope.shp"), None).is_err());
 }
 
