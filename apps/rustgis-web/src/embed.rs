@@ -73,11 +73,11 @@ pub fn result(id: Value, outcome: Result<Value, String>) -> Value {
 
 /// What the page has seen of the project: its revision, active map and view. A view change
 /// isn't an edit, so the session's revision alone would miss a pan.
-pub type Key = (u64, usize, [u64; 3]);
+pub type Key = (u64, usize, [u64; 5]);
 
 pub fn key(s: &rustgis_engine::Session) -> Key {
     let c = &s.project.map().camera;
-    (s.revision, s.project.active_map, [c.center.x.to_bits(), c.center.y.to_bits(), c.res.to_bits()])
+    (s.revision, s.project.active_map, [c.center.x.to_bits(), c.center.y.to_bits(), c.res.to_bits(), c.bearing.to_bits(), c.pitch.to_bits()])
 }
 
 /// Decides when a change is posted.

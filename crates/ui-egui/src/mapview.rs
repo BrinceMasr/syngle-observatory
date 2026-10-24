@@ -71,6 +71,9 @@ pub struct Toast {
 }
 
 pub struct MapView {
+    /// A flat, north-up map seen from straight above: turning and tilting are off, and a camera
+    /// that arrives turned or tilted is flattened (the SyngleCode canvas sets it, `?embed`).
+    pub flat_only: bool,
     texture: Option<egui::TextureHandle>,
     key: Option<Key>,
     /// A preview is attempted once for each frame key, including when drawing fails.
@@ -226,6 +229,7 @@ impl Default for MapView {
             drape: Default::default(),
             tilt_drape: Default::default(),
             tilt_settle: Default::default(),
+            flat_only: false,
             label_map: Vec::new(),
             comets: Default::default(),
             gpu_renderer: None,
@@ -1134,6 +1138,9 @@ fn pan(app: &mut RustGisApp, dx: f64, dy: f64, w: f64, h: f64) {
 
 /// Turns the map or the globe by `degrees` about the view's centre.
 fn turn_by(app: &mut RustGisApp, degrees: f64) {
+    if app.map.flat_only {
+        return;
+    }
     let cam = &mut app.session.map_mut().camera;
     let bearing = cam.bearing + degrees;
     cam.set_bearing(bearing);
@@ -1141,7 +1148,7 @@ fn turn_by(app: &mut RustGisApp, degrees: f64) {
 
 /// Tilts the map or the globe by `degrees`.
 fn tilt_by(app: &mut RustGisApp, degrees: f64) {
-    if degrees != 0.0 {
+    if degrees != 0.0 && !app.map.flat_only {
         let cam = &mut app.session.map_mut().camera;
         let pitch = cam.pitch + degrees;
         cam.set_pitch(pitch);
@@ -1162,6 +1169,14 @@ fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect
     let (w, h) = (rect.width() as f64, rect.height() as f64);
     let time = now(ui);
     let hover = resp.hover_pos();
+    // A flat map stays flat: whatever turned or tilted it (a project, a link) is undone here.
+    if app.map.flat_only {
+        let cam = &mut app.session.map_mut().camera;
+        if cam.bearing != 0.0 || cam.pitch != 0.0 {
+            cam.set_bearing(0.0);
+            cam.set_pitch(0.0);
+        }
+    }
     app.map.pointer_lonlat = hover.and_then(|p| screen_to_lonlat(app, rect, p));
     let tool = app.session.tool;
 
@@ -1279,7 +1294,7 @@ fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect
     let ctrl = ui.input(|i| i.modifiers.ctrl || i.modifiers.command);
     // Dragging with the right button turns the map or the globe (to the right turns it
     // clockwise) and tilts it (up tilts it further), as in MapLibre.
-    if resp.dragged_by(egui::PointerButton::Secondary) {
+    if resp.dragged_by(egui::PointerButton::Secondary) && !app.map.flat_only {
         let d = resp.drag_delta();
         if d != egui::Vec2::ZERO {
             turn_by(app, d.x as f64 * 0.8);
@@ -1303,7 +1318,7 @@ fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect
             match tool {
                 Tool::Explore if shift => DragKind::Box,
                 // Ctrl+drag turns and tilts the map, as the right button does.
-                Tool::Explore if ctrl => DragKind::Turn,
+                Tool::Explore if ctrl && !app.map.flat_only => DragKind::Turn,
                 Tool::Explore => DragKind::Pan,
                 Tool::Select | Tool::ZoomIn => DragKind::Box,
                 t if drag_shape(t).is_some() => DragKind::Sketch,

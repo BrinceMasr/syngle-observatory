@@ -198,6 +198,8 @@ pub fn start() {
                     {
                         log::warn!("?registry={url}: {e}");
                     }
+                    // The embedded canvas (SyngleCode's map) is flat and north-up: no turn, no tilt.
+                    app.map.flat_only = embedded;
                     let embed = if embedded {
                         match Embed::listen(cc.egui_ctx.clone()) {
                             Ok(e) => Some(e),
