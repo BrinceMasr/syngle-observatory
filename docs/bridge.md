@@ -13,7 +13,7 @@ written down. It carries:
 | `envelope` | the four wire shapes (host→view, view→host, host→engine, engine→host) |
 | `view.commands` | `layers`, `style`, `camera`, `tool`, `selection`, `theme`, `render-to-png` |
 | `view.state` | what the view reports: version, layers, active, camera, tool, selection, theme |
-| `view.events` | `camera-changed`, `selection-changed`, `feature-clicked`, `tool-result`, `frame-stats`, `focus-exit`, `key` |
+| `view.events` | `camera-changed`, `selection-changed`, `feature-clicked`, `tool-result`, `frame-stats`, `focus-exit`, `key`, `history` |
 | `engine.commands` | `dataset.open`, `dataset.query`, `catchment`, `command`, `mcp` |
 | `engine.state` | version, layer count, feature count, dataset names, revision, the fork's undo depth and the label of the step undo would take back |
 | `engine.events` | `progress`, `result`, `error` |
@@ -25,6 +25,11 @@ view) watches the view's document and posts `focus-exit` (`next` for Tab, `previ
 the key: the view still sees it, so an Escape still cancels a measure. Both are optional emitters, which
 is why they did not change `protocolVersion`: a host that does not know them ignores them, and an engine
 that does not send them leaves the map as it was. A change a peer cannot ignore is what bumps the version.
+
+`history` is the same kind of event for undo and redo (Syngle-Ecosystem #468): Ctrl+Z or Cmd+Z is `undo`, Ctrl+Shift+Z,
+Cmd+Shift+Z and (not on a Mac) Ctrl+Y are `redo`. The page decides which modifier is the platform's, sends one event per
+press (a held chord is not repeated, and a text field of the view keeps its own undo), and does not stop the key; what the
+step does to the history is the host's call.
 
 `protocolVersion` is the one number every peer has to agree on. It is carried on **every** message,
 not just the handshake, so a stale page or a stale sidecar is refused the moment it speaks.

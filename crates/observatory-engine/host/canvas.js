@@ -562,10 +562,33 @@
     if (key === "Escape" && !chord) {
       return bridgeTell("event", { payload: { type: "focus-exit", direction: "escape" } });
     }
+    var step = historyStepOf(event);
+    if (step !== null) {
+      // One step per press: a held chord is not a burst of engine round trips. The key is not taken from the view.
+      if (!event.repeat) bridgeTell("event", { payload: { type: "history", step: step } });
+      return;
+    }
     if (chord || event.repeat) return;
     if (typeof key === "string" && /^[A-Za-z]$/.test(key)) {
       bridgeTell("event", { payload: { type: "key", key: key } });
     }
+  }
+
+  // The platform's undo and redo chords (Syngle-Ecosystem #468): Cmd+Z, Cmd+Shift+Z on a Mac; Ctrl+Z, Ctrl+Shift+Z and
+  // Ctrl+Y elsewhere. `null` for any other key, for Alt, for the other platform's modifier, and while a text field of the
+  // view has the keyboard (it keeps its own undo).
+  function historyStepOf(event) {
+    var key = typeof event.key === "string" ? event.key.toLowerCase() : "";
+    if (key !== "z" && key !== "y") return null;
+    if (event.altKey) return null;
+    var platform = typeof navigator !== "undefined" && navigator && typeof navigator.platform === "string" ? navigator.platform : "";
+    var mac = /mac|iphone|ipad|ipod/i.test(platform);
+    var modifier = mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+    if (!modifier) return null;
+    if (key === "y" && (mac || event.shiftKey)) return null;
+    var target = event.target;
+    if (target && (target.isContentEditable === true || /^(input|textarea|select)$/i.test(String(target.tagName || "")))) return null;
+    return key === "y" || event.shiftKey ? "redo" : "undo";
   }
 
   // The view's document, once per document: the frame navigates (a reload, a restart), so this runs

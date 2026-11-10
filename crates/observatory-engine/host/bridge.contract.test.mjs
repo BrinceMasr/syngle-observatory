@@ -127,7 +127,7 @@ function mount(options = {}) {
   // The page's once-a-second gate reads Date.now(), so the tests own the clock: a fake Date that
   // only moves when a test advances it, which is what lets one tick past the gate without waiting.
   const clock = { now: 1_000_000 };
-  const sandbox = { window, document: { getElementById: () => frameElement }, URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console, Date: { now: () => clock.now } };
+  const sandbox = { window, document: { getElementById: () => frameElement }, ...(options.platform ? { navigator: { platform: options.platform } } : {}), URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console, Date: { now: () => clock.now } };
   vm.runInNewContext(PAGE, sandbox, { filename: "canvas.js" });
 
   const host = (message, origin = ORIGIN) => {
@@ -554,6 +554,60 @@ test("a bare letter in the map reaches the host; chords, repeats, composition an
   const letter = mounted.press("x");
   assert.equal(letter.prevented, false, "the letter is not taken from the view");
   assert.equal(letter.stopped, false);
+});
+
+test("the schema names the history event, and it is optional like the other two", () => {
+  const history = SCHEMA.view.events.history;
+  assert.deepEqual(history.required, ["step"]);
+  assert.deepEqual(history.properties.step.enum, ["undo", "redo"]);
+  assert.equal(SCHEMA.protocolVersion, 1);
+});
+
+test("Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y in the map are undo and redo, once per press, and the key is not taken", () => {
+  const mounted = mount();
+  seed(mounted);
+  const undo = mounted.press("z", { ctrlKey: true });
+  mounted.press("Z", { ctrlKey: true, shiftKey: true });
+  mounted.press("y", { ctrlKey: true });
+  assert.deepEqual(eventsOf(mounted), [
+    { type: "history", step: "undo" },
+    { type: "history", step: "redo" },
+    { type: "history", step: "redo" },
+  ]);
+  assert.equal(undo.prevented, false, "the key is the view's too");
+  assert.equal(undo.stopped, false);
+  mounted.press("z", { ctrlKey: true, repeat: true });
+  mounted.press("z", { ctrlKey: true, isComposing: true });
+  mounted.press("z", { ctrlKey: true, altKey: true });
+  mounted.press("z", { ctrlKey: true, metaKey: true });
+  mounted.press("z", { metaKey: true });
+  mounted.press("y", { ctrlKey: true, shiftKey: true });
+  assert.deepEqual(eventsOf(mounted), [], "a repeat, a composition, Alt, the other platform's key and Ctrl+Shift+Y are not history");
+  mounted.press("z");
+  assert.deepEqual(eventsOf(mounted), [{ type: "key", key: "z" }], "a bare Z is still only a letter");
+});
+
+test("on a Mac the chord is Cmd, with no Ctrl+Y", () => {
+  const mounted = mount({ platform: "MacIntel" });
+  seed(mounted);
+  mounted.press("z", { metaKey: true });
+  mounted.press("z", { metaKey: true, shiftKey: true });
+  mounted.press("z", { ctrlKey: true });
+  mounted.press("y", { metaKey: true });
+  assert.deepEqual(eventsOf(mounted), [
+    { type: "history", step: "undo" },
+    { type: "history", step: "redo" },
+  ]);
+});
+
+test("a text field of the view keeps its own undo", () => {
+  const mounted = mount();
+  seed(mounted);
+  mounted.press("z", { ctrlKey: true, target: { tagName: "TEXTAREA" } });
+  mounted.press("z", { ctrlKey: true, target: { tagName: "DIV", isContentEditable: true } });
+  assert.deepEqual(eventsOf(mounted), []);
+  mounted.press("z", { ctrlKey: true, target: { tagName: "CANVAS" } });
+  assert.deepEqual(eventsOf(mounted), [{ type: "history", step: "undo" }]);
 });
 
 test("the key events are addressed to the host's origin like every other message", () => {
