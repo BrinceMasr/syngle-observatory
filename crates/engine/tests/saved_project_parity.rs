@@ -54,14 +54,15 @@ fn a_render_from_the_saved_project_matches_the_editors() {
 }
 
 #[test]
-fn the_saved_project_reads_and_never_writes() {
+fn a_machine_process_that_starts_again_draws_the_same_map() {
     let mut editor = editor_with(100);
     let text = saved_text(&mut editor);
-    // Stopping the machine's process and starting another loses nothing: each starts from the text.
-    for _ in 0..2 {
-        let mut machine = Session::new(Project::from_json(&text).unwrap());
-        assert_eq!(saved_text(&mut machine), text);
-    }
+    // One process per verb: stopping one and starting another loses nothing, because each starts
+    // from the text and none writes it.
+    let draw = || map_png(&mut Session::new(Project::from_json(&text).unwrap()), Some(640.0), Some(480.0), None).unwrap();
+    let (first, second) = (draw(), draw());
+    assert!(first == second, "two processes from one saved project drew two pictures");
+    assert!(first == map_png(&mut editor, Some(640.0), Some(480.0), None).unwrap());
 }
 
 /// The figure #382 asks for. Run at the end of a sprint, on the machine being measured:
