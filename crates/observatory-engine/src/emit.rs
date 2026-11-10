@@ -59,6 +59,18 @@ fn range_readable_source(layer: &rustgis_engine::map::Layer) -> Option<String> {
     RANGE_READABLE.contains(&ext.as_str()).then(|| path.to_string())
 }
 
+/// A layer's every feature, and what reading them said. A streamed layer reads its source whole (up to the engine's
+/// read limit, which it reports); any other layer already holds its features.
+fn whole(layer: &rustgis_engine::map::Layer) -> Result<(rustgis_engine::data::Dataset, Vec<String>), String> {
+    let Some(source) = layer.source.as_ref() else { return Ok((layer.dataset.clone(), Vec::new())) };
+    let mut copy = source.clone();
+    if !copy.is_open() {
+        copy.open()?;
+    }
+    let (dataset, report) = copy.read_all()?;
+    Ok((dataset, report.messages))
+}
+
 /// Writes every vector layer the session gained since `before` into `dir` and says where each went:
 /// `{"name", "path", "features", "skipped"?}`. `key` is the command's text, which makes the file names.
 /// The folder is made when it is missing; each file is written through a temporary file and renamed in
@@ -73,7 +85,7 @@ pub fn emit_new(session: &Session, before: &HashSet<u32>, dir: &Path, key: &str)
             written.push(json!({"name": layer.name, "path": path, "features": Value::Null}));
             continue;
         }
-        let dataset = if layer.is_streamed() { layer.load_all()? } else { layer.dataset.clone() };
+        let (dataset, notes) = whole(layer)?;
         let crs = io::default_export_crs(&dataset, "fgb");
         let (bytes, skipped) = io::write_bytes_in(&dataset, "fgb", crs).map_err(|e| format!("{}: {e}", layer.name))?;
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -82,6 +94,10 @@ pub fn emit_new(session: &Session, before: &HashSet<u32>, dir: &Path, key: &str)
         let mut entry = json!({"name": layer.name, "path": file.display().to_string(), "features": dataset.features.len()});
         if skipped > 0 {
             entry["skipped"] = json!(skipped);
+        }
+        // A source too large to read whole says so (`read a sample of N of M features`): the app tells the person.
+        if !notes.is_empty() {
+            entry["notes"] = json!(notes);
         }
         written.push(entry);
     }
