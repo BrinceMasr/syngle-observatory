@@ -41,7 +41,7 @@ use serde_json::{Value, json};
 
 fn usage() -> ExitCode {
     eprintln!(
-        "usage:\n  rustgis-cli commands | tools\n  rustgis-cli plugins [install <file|folder> | uninstall <id> | enable <id> | disable <id> | browse | get <id> | prepare <id>] [--registry URL]\n  rustgis-cli skills [add <SKILL.md|folder|.zip> | remove <name> | enable <name> | disable <name>]\n  rustgis-cli info <data>\n  rustgis-cli logo <out.png|out.ico|out.bmp> [--size N] [--canvas WxH --at X,Y (.bmp only)]\n  rustgis-cli render <data|project> <out.png> [--basemap NAME] [--tiles URL] [--width N] [--height N] [--dpi N] [--worldview auto|default|china]\n  rustgis-cli run [--sample] [--project P] [--data F]… --cmd 'id={{json}}'… [--save P] [--worldview auto|default|china]\n  rustgis-cli ask [--sample] [--project P] [--data F]… \"request\" [--provider P] [--model M] [--base-url URL] [--yes] [--save P]\n  rustgis-cli ask --models [--provider P]\n  rustgis-cli ask --login [--another-account] [--account CLIENT_ID] | --logout\n  rustgis-cli ask --accounts | --account CLIENT_ID\n  rustgis-cli mcp [--sample] [--project P] [--data F]… [--yes] [--attach [PORT] [--token-file FILE] [--timeout SECONDS (5-600)]]\n  rustgis-cli mcp-register [--client claude] [--name NAME] [--port PORT]"
+        "usage:\n  rustgis-cli commands | tools\n  rustgis-cli plugins [install <file|folder> | uninstall <id> | enable <id> | disable <id> | browse | get <id> | prepare <id>] [--registry URL]\n  rustgis-cli skills [add <SKILL.md|folder|.zip> | remove <name> | enable <name> | disable <name>]\n  rustgis-cli info <data>\n  rustgis-cli logo <out.png|out.ico|out.bmp> [--size N] [--canvas WxH --at X,Y (.bmp only)]\n  rustgis-cli render <data|project> <out.png> [--basemap NAME] [--tiles URL] [--width N] [--height N] [--dpi N] [--worldview auto|default|china]\n  rustgis-cli run [--sample] [--project P] [--data F]… --cmd 'id={{json}}'… [--save P] [--worldview auto|default|china]\n  rustgis-cli bridge [--project P] [--data F]… --json '{{\"name\": \"dataset.query\", …}}'\n  rustgis-cli ask [--sample] [--project P] [--data F]… \"request\" [--provider P] [--model M] [--base-url URL] [--yes] [--save P]\n  rustgis-cli ask --models [--provider P]\n  rustgis-cli ask --login [--another-account] [--account CLIENT_ID] | --logout\n  rustgis-cli ask --accounts | --account CLIENT_ID\n  rustgis-cli mcp [--sample] [--project P] [--data F]… [--yes] [--attach [PORT] [--token-file FILE] [--timeout SECONDS (5-600)]]\n  rustgis-cli mcp-register [--client claude] [--name NAME] [--port PORT]"
     );
     ExitCode::from(2)
 }
@@ -701,6 +701,26 @@ fn main() -> ExitCode {
                 open_inputs(&mut s, &args)?;
             }
             mcp(&mut s, &args)
+        }
+        // One command of the app's bridge (`dataset.query`, `catchment`, `command`), answered on one line in the
+        // shape the app's own engine gives: what the app sends when the data is on this machine and the map is
+        // open on another (Syngle-Ecosystem #394). A refusal is `{"error": …}` on that line, with a failing exit.
+        "bridge" => {
+            use observatory_engine::bridge::{self, EngineCommand};
+            open_inputs(&mut s, &args)?;
+            let text = opt(&args, "--json").ok_or("bridge needs --json '{\"name\": …}'")?;
+            let command: Value = serde_json::from_str(text).map_err(|e| format!("bridge: bad JSON: {e}"))?;
+            let name = command.get("name").and_then(Value::as_str);
+            match EngineCommand::parse(&command).and_then(|c| bridge::run(&mut s, &c)) {
+                Ok(value) => {
+                    out!("{value}");
+                    Ok(())
+                }
+                Err(e) => {
+                    out!("{}", json!({"error": e.payload(&Value::Null, name)}));
+                    Err(e.message)
+                }
+            }
         }
         "run" => {
             open_inputs(&mut s, &args)?;

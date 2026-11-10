@@ -4262,6 +4262,7 @@ dependencies = [
  "rustgis-assistant",
  "rustgis-engine",
  "serde_json",
+ "syngle-observatory-engine",
 ]
 
 [[package]]
