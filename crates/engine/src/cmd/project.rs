@@ -30,6 +30,7 @@ pub fn commands() -> Vec<C> {
             .view()
             .params(r#"{"tool": "explore"|"select"|"zoomIn"|"measure"|"measureArea"|"createPoint"|"createLine"|"createPolygon"|"editVertices"|"graphicPoint"|"graphicText"|"graphicLine"|"graphicCurve"|"graphicFreehand"|"graphicPolygon"|"graphicLasso"|"graphicRectangle"|"graphicCircle"|"graphicEllipse"|"graphicPicture"}"#),
         C::new("info.project", "Project Info", "Project", info).view().params(r#"{"nameFilter"?: string, "includeFields"?: bool}"#),
+        C::new("info.projectText", "Project as Text", "Project", project_text).view(),
         C::new("info.commands", "List Commands", "Help", list).view(),
     ]
 }
@@ -279,6 +280,14 @@ fn info(s: &mut Session, p: &Value) -> CmdResult {
         }).collect::<Vec<_>>(),
         "layouts": layouts,
     }))
+}
+
+/// The project as `.rgis` JSON text, exactly what `project.saveAs` writes and `project.openText` opens. It reads
+/// only: nothing is written, the history and `dirty` are untouched. A host that keeps the project's saved copy on
+/// another machine takes it from here (Syngle-Ecosystem #395). Unlike `info.project`, addresses keep their
+/// secrets, so a host must not hand this to an assistant.
+fn project_text(s: &mut Session, _: &Value) -> CmdResult {
+    serde_json::to_string(&s.project).map(|text| json!({"text": text})).map_err(|e| e.to_string())
 }
 
 fn list(s: &mut Session, _: &Value) -> CmdResult {

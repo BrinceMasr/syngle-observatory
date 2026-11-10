@@ -527,7 +527,7 @@ fn search_commands(s: &Session, a: &Value) -> Result<Value, String> {
         .commands
         .iter()
         // Internal plumbing the model has no use for.
-        .filter(|c| !matches!(c.id, "gp.finish" | "info.commands"))
+        .filter(|c| !matches!(c.id, "gp.finish" | "info.commands" | "info.projectText"))
         .filter_map(|c| {
             let (id, label, loc, params) =
                 (c.id.to_lowercase(), c.label.to_lowercase(), c.location.to_lowercase(), c.params.to_lowercase());

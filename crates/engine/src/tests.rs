@@ -9309,3 +9309,16 @@ fn a_selection_has_a_centre() {
     s.run("select.clear", &Value::Null).unwrap();
     assert!(s.run("select.center", &Value::Null).is_err());
 }
+
+#[test]
+fn project_text_is_the_saved_file_and_changes_nothing() {
+    let mut s = world();
+    s.run("layer.addDataText", &json!({"fileName": "sites.csv", "text": "id,street\n1,Champ de Mars\n"})).unwrap();
+    let (depth, dirty) = (s.can_undo(), s.dirty);
+    let text = s.run("info.projectText", &Value::Null).unwrap()["text"].as_str().unwrap().to_string();
+    assert_eq!(text, serde_json::to_string(&s.project).unwrap());
+    assert_eq!((s.can_undo(), s.dirty), (depth, dirty), "a read is not an edit");
+    // What it answers opens as the same project.
+    let again = Project::from_json(&text).unwrap();
+    assert_eq!(again.tables.len(), s.project.tables.len());
+}
