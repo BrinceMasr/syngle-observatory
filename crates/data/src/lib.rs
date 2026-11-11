@@ -72,6 +72,17 @@ struct Rows {
     id: u64,
     revision: u64,
     data: Vec<Feature>,
+    /// Set while these are only a reference to rows held elsewhere (a project opened in parts, whose rows have not
+    /// arrived): how many rows the reference says there are. The data is empty until they are filled.
+    pending: Option<usize>,
+}
+
+/// Which rows a document means, without the rows: what a project in parts carries in a dataset's `features`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RowsRef {
+    pub id: u64,
+    pub revision: u64,
+    pub count: usize,
 }
 
 /// The id the next set of rows gets: never reused in a process.
@@ -84,7 +95,7 @@ fn next_rows_id() -> u64 {
 impl Clone for Rows {
     /// A copy made to be changed is another set of rows: it gets an id of its own.
     fn clone(&self) -> Rows {
-        Rows { id: next_rows_id(), revision: 0, data: self.data.clone() }
+        Rows { id: next_rows_id(), revision: 0, data: self.data.clone(), pending: self.pending }
     }
 }
 
@@ -110,6 +121,32 @@ impl Features {
         self.0.revision
     }
 
+    /// These rows named, as a project in parts names them.
+    pub fn reference(&self) -> RowsRef {
+        RowsRef { id: self.0.id, revision: self.0.revision, count: self.0.pending.unwrap_or(self.0.data.len()) }
+    }
+
+    /// The reference this stands for while its rows have not arrived; `None` once they are here.
+    pub fn pending(&self) -> Option<RowsRef> {
+        self.0.pending.map(|_| self.reference())
+    }
+
+    /// Rows that came from elsewhere (another process's allocation), keeping the identity they were served under, so a
+    /// document naming them names them as the process that served them did.
+    pub fn with_identity(id: u64, revision: u64, data: Vec<Feature>) -> Features {
+        Features(std::sync::Arc::new(Rows { id, revision, data, pending: None }))
+    }
+
+    /// A reference to rows that have not arrived: no rows, and [`Features::pending`] says which.
+    pub fn awaiting(reference: RowsRef) -> Features {
+        Features(std::sync::Arc::new(Rows {
+            id: reference.id,
+            revision: reference.revision,
+            data: Vec::new(),
+            pending: Some(reference.count),
+        }))
+    }
+
     /// The rows, taking them out of the share (copying them only when another copy holds them).
     pub fn into_vec(self) -> Vec<Feature> {
         std::sync::Arc::unwrap_or_clone(self.0).data
@@ -126,7 +163,10 @@ impl std::ops::Deref for Features {
 impl std::ops::DerefMut for Features {
     fn deref_mut(&mut self) -> &mut Vec<Feature> {
         let rows = std::sync::Arc::make_mut(&mut self.0);
-        rows.revision += 1;
+        // A reference has nothing to change, and what it names is what it was served as.
+        if rows.pending.is_none() {
+            rows.revision += 1;
+        }
         &mut rows.data
     }
 }
@@ -145,7 +185,7 @@ impl std::fmt::Debug for Features {
 
 impl From<Vec<Feature>> for Features {
     fn from(v: Vec<Feature>) -> Features {
-        Features(std::sync::Arc::new(Rows { id: next_rows_id(), revision: 0, data: v }))
+        Features(std::sync::Arc::new(Rows { id: next_rows_id(), revision: 0, data: v, pending: None }))
     }
 }
 
@@ -179,15 +219,42 @@ impl<'a> IntoIterator for &'a mut Features {
     }
 }
 
+/// Makes ids this process hands out from now on start at `base` or later: a process that holds rows of its own beside rows
+/// served by another (the page's view) keeps the two apart.
+pub fn set_rows_id_base(base: u64) {
+    NEXT_ROWS_ID.fetch_max(base, std::sync::atomic::Ordering::Relaxed);
+}
+
 impl Serialize for Features {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
+        if ROWS_LEFT_OUT.with(std::cell::Cell::get) {
+            return self.reference().serialize(s);
+        }
         self.0.data.serialize(s)
     }
 }
 
+/// A dataset's `features`: the rows, or (in a project in parts) the reference to them.
 impl<'de> Deserialize<'de> for Features {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Features, D::Error> {
-        Vec::<Feature>::deserialize(d).map(Features::from)
+        struct Either;
+        impl<'de> serde::de::Visitor<'de> for Either {
+            type Value = Features;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("a list of features, or a reference to them")
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> std::result::Result<Features, A::Error> {
+                let mut rows = Vec::with_capacity(seq.size_hint().unwrap_or(0).min(1 << 20));
+                while let Some(row) = seq.next_element::<Feature>()? {
+                    rows.push(row);
+                }
+                Ok(Features::from(rows))
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, map: A) -> std::result::Result<Features, A::Error> {
+                RowsRef::deserialize(serde::de::value::MapAccessDeserializer::new(map)).map(Features::awaiting)
+            }
+        }
+        d.deserialize_any(Either)
     }
 }
 
@@ -236,11 +303,12 @@ impl Serialize for Dataset {
         st.serialize_field("name", &self.name)?;
         st.serialize_field("geometry_type", &self.geometry_type)?;
         st.serialize_field("fields", &self.fields)?;
-        let none: &[Feature] = &[];
-        st.serialize_field(
-            "features",
-            if self.windowed || ROWS_LEFT_OUT.with(std::cell::Cell::get) { none } else { self.features.as_slice() },
-        )?;
+        if self.windowed {
+            let none: &[Feature] = &[];
+            st.serialize_field("features", none)?;
+        } else {
+            st.serialize_field("features", &self.features)?;
+        }
         st.serialize_field("source", &self.source)?;
         if let Some(crs) = &self.crs {
             st.serialize_field("crs", crs)?;
@@ -384,5 +452,64 @@ mod tests {
         assert_eq!(d.numeric_range(0, &[false, false]), None);
         assert_eq!(d.unique_values(0, &[true, false], 10), vec!["5"]);
         assert_eq!(d.value(99, 99), &Value::Null);
+    }
+}
+
+#[cfg(test)]
+mod rows_tests {
+    use super::*;
+
+    fn features(n: usize) -> Features {
+        (0..n).map(|i| Feature { id: i as u64 + 1, geometry: None, attrs: vec![Value::Int(i as i64)] }).collect()
+    }
+
+    fn dataset(features: Features) -> Dataset {
+        let mut d = Dataset::new("d", GeometryType::None, vec![Field::new("n", FieldType::Integer)]);
+        d.features = features;
+        d
+    }
+
+    #[test]
+    fn copies_share_an_id_and_a_changed_copy_is_a_new_set() {
+        let a = features(3);
+        let b = a.clone();
+        assert_eq!((a.id(), a.revision()), (b.id(), b.revision()));
+        let mut c = a.clone();
+        c.push(Feature { id: 9, geometry: None, attrs: vec![] });
+        assert_ne!(c.id(), a.id(), "a copy that is changed while another holds the rows is a new set");
+        let mut alone = features(2);
+        let (id, revision) = (alone.id(), alone.revision());
+        alone.push(Feature { id: 9, geometry: None, attrs: vec![] });
+        assert_eq!((alone.id(), alone.revision()), (id, revision + 1), "rows nobody shares change in place and count it");
+    }
+
+    #[test]
+    fn a_dataset_without_rows_names_them_and_reads_back_as_a_reference() {
+        let d = dataset(features(5));
+        let text = without_rows(|| serde_json::to_string(&d)).unwrap();
+        assert!(text.contains(r#""features":{"id":"#) && text.contains(r#""count":5"#), "{text}");
+        let back: Dataset = serde_json::from_str(&text).unwrap();
+        assert_eq!(back.features.len(), 0);
+        let wanted = back.features.pending().expect("awaiting its rows");
+        assert_eq!(wanted, d.features.reference());
+        // The same dataset with its rows reads as before, and a reference to nothing pending is none.
+        let whole: Dataset = serde_json::from_str(&serde_json::to_string(&d).unwrap()).unwrap();
+        assert_eq!((whole.features.len(), whole.features.pending()), (5, None));
+    }
+
+    #[test]
+    fn identity_travels_with_rows_that_came_from_elsewhere() {
+        let served = Features::with_identity(77, 4, features(2).into_vec());
+        assert_eq!(served.reference(), RowsRef { id: 77, revision: 4, count: 2 });
+        let text = without_rows(|| serde_json::to_string(&dataset(served))).unwrap();
+        assert!(text.contains(r#""id":77"#) && text.contains(r#""revision":4"#), "{text}");
+    }
+
+    #[test]
+    fn hostile_features_are_an_error_not_a_panic() {
+        for bad in [r#"{"id":1}"#, r#"{"id":"x","revision":0,"count":1}"#, r#""rows""#, "7", r#"{"id":-1,"revision":0,"count":1}"#] {
+            let text = format!(r#"{{"name":"d","geometry_type":"None","fields":[],"features":{bad}}}"#);
+            assert!(serde_json::from_str::<Dataset>(&text).is_err(), "{bad}");
+        }
     }
 }

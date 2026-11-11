@@ -514,9 +514,9 @@ fn the_project_is_served_in_parts_with_revisions() {
         let doc: Value = serde_json::from_slice(&body).unwrap();
         let mine = doc["maps"].as_array().unwrap().iter().find(|m| m["id"].as_u64() == Some(*id)).unwrap();
         let layer = mine["layers"].as_array().unwrap().iter().find(|l| l["name"] == "Fifty").expect("the opened layer");
-        assert!(layer["dataset"]["features"].as_array().is_some_and(Vec::is_empty), "no rows in a map's document: {layer}");
-        assert_eq!(layer["dataset"]["rows"]["count"].as_u64(), Some(50));
-        dataset_ids.push(layer["dataset"]["rows"]["id"].as_u64().unwrap());
+        assert!(layer["dataset"]["features"].is_object(), "a reference, not rows, in a map's document: {layer}");
+        assert_eq!(layer["dataset"]["features"]["count"].as_u64(), Some(50));
+        dataset_ids.push(layer["dataset"]["features"]["id"].as_u64().unwrap());
         let others = doc["maps"]
             .as_array()
             .unwrap()
@@ -529,8 +529,13 @@ fn the_project_is_served_in_parts_with_revisions() {
     assert_eq!(dataset_ids.len(), 1, "three maps share one set of rows, so one dataset id: {dataset_ids:?}");
     assert_eq!(engine.get("/project.json?map=999").0, 404, "a map the project lacks");
     assert_eq!(engine.get("/project.json?map=x").0, 404);
-    let whole = engine.get("/project.json").2;
-    assert!(whole.len() > 3 * 50 * 20, "the old route still serves the whole project");
+    // Without a part named, a page gets the map in view (a project it can read), never every row of every map.
+    let (status, _, body) = engine.get("/project.json");
+    assert_eq!(status, 200);
+    let active: Value = serde_json::from_slice(&body).unwrap();
+    let in_view = active["active_map"].as_u64().unwrap() as usize;
+    assert!(active["maps"][in_view]["layers"].as_array().is_some_and(|l| !l.is_empty()), "the map in view has its layers: {active}");
+    assert!(body.len() < 20_000, "and no rows: {} bytes", body.len());
 
     // The rows: FlatGeobuf in row order, with a tag, by range, and 304 for the tag.
     let dataset = format!("/dataset/{}", dataset_ids[0]);

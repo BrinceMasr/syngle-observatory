@@ -99,6 +99,8 @@ fn open_text(s: &mut Session, p: &Value) -> CmdResult {
     let text = super::ps(p, "text").ok_or("text is required")?;
     let proj = Project::from_json(text)?;
     reset(s, proj);
+    // A project in parts names its rows; the book fills what it holds and queues the rest for the front end.
+    s.rows_book.settle(&mut s.project);
     // The browser opens files by name and contents: the name still names the project.
     if let Some(file) = super::ps(p, "fileName") {
         name_from_file(s, std::path::Path::new(file));

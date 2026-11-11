@@ -8,6 +8,7 @@
 pub mod cmd;
 pub mod model;
 pub mod project;
+pub mod rows_book;
 pub mod sample;
 pub mod sources;
 #[cfg(test)]
@@ -372,6 +373,8 @@ pub struct Session {
     pub plugin_panels: std::collections::BTreeMap<String, rustgis_plugins::PanelState>,
     /// Data downloads of this project under way (Add Data › From URL), by id.
     downloading: Vec<u64>,
+    /// The rows of a project opened in parts (#471).
+    pub rows_book: rows_book::RowsBook,
     /// Downloads that landed, waiting for `layer.addDownload`.
     pub(crate) downloaded: Vec<(u64, Vec<u8>)>,
     /// Downloads a command asked for where nothing may wait (the browser): the parameters of
@@ -504,6 +507,7 @@ impl Session {
             plugin_runs: Vec::new(),
             plugin_panels: std::collections::BTreeMap::new(),
             downloading: Vec::new(),
+            rows_book: rows_book::RowsBook::default(),
             downloaded: Vec::new(),
             url_requests: Vec::new(),
             request_only: false,

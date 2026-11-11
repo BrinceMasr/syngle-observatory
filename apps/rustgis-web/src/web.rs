@@ -60,6 +60,8 @@ const LOADING_ID: &str = "rustgis_loading";
 
 pub fn start() {
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
+    // Rows this page makes itself never share an id with rows the engine serves it (#471).
+    rustgis_ui_egui::rustgis_engine::data::set_rows_id_base(1 << 48);
     wasm_bindgen_futures::spawn_local(async {
         let Some(document) = web_sys::window().and_then(|w| w.document()) else {
             log::error!("no document");
@@ -371,7 +373,7 @@ impl Embed {
             }
         }
         match self.changes.due(key(&app.session), web_time::Instant::now()) {
-            (true, _) => match serde_json::to_string(&app.session.project) {
+            (true, _) => match rustgis_ui_egui::rustgis_engine::data::without_rows(|| serde_json::to_string(&app.session.project)) {
                 Ok(text) => self.answer(&crate::embed::project(&text)),
                 Err(e) => log::error!("couldn't send the project: {e}"),
             },

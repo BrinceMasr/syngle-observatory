@@ -8,8 +8,8 @@
 //! - `GET /dataset/<id>`: those rows, as FlatGeobuf in row order (`fgb_rows`), by byte range, with an `ETag` of the
 //!   dataset's revision. A dataset's id is the identity of its allocation of rows, so maps that share rows share an id and
 //!   the page fetches them once.
-//! - `GET /project.json` (no query): the whole project, as before, for a page that does not know the parts. It goes when
-//!   the page takes the parts (#471, phase 2).
+//! - `GET /project.json` (no query), or `?map=active`: the map in view, as `?map=<id>`. There is no document with every row any
+//!   more: a page reads the rows by dataset (the view does, itself, from the references).
 //!
 //! The command loop owns the session, so after a command changes the project it publishes a [`Published`]: a shallow copy
 //! (rows are shared, not copied) from which the gateway's threads serve on demand. Nothing is serialised until a page asks,
@@ -51,8 +51,8 @@ impl Part {
 
 /// What the project was when its last change finished.
 pub struct Published {
-    /// The whole project, for the route that has not gone yet.
-    project: Project,
+    /// The map in view, by id.
+    active: Option<u32>,
     /// The project's document with no rows: every map's layers in place.
     document: Value,
     datasets: Vec<Part>,
@@ -93,38 +93,23 @@ impl Revisions {
     }
 }
 
-fn rows_of(dataset: &Dataset) -> Value {
-    json!({ "id": dataset.features.id(), "revision": dataset.features.revision(), "count": dataset.features.len() })
-}
-
 impl Published {
     fn build(project: &Project, revisions: &mut Revisions) -> Published {
-        let mut document = rustgis_engine::data::without_rows(|| serde_json::to_value(project)).unwrap_or(Value::Null);
+        // The rows are named in the document by the dataset's own `features` (a reference), so nothing is patched in.
+        let document = rustgis_engine::data::without_rows(|| serde_json::to_value(project)).unwrap_or(Value::Null);
         let mut datasets: Vec<Part> = Vec::new();
         let mut seen = |dataset: &Dataset| {
             if !datasets.iter().any(|p| p.id == dataset.features.id()) {
                 datasets.push(Part::of(dataset));
             }
         };
-        // The datasets name their rows in the document: the same walk as the project's own, in order.
-        if let Some(maps) = document.get_mut("maps").and_then(Value::as_array_mut) {
-            for (map, doc) in project.maps.iter().zip(maps) {
-                let Some(layers) = doc.get_mut("layers").and_then(Value::as_array_mut) else { continue };
-                for (layer, doc) in map.layers.iter().zip(layers) {
-                    seen(&layer.dataset);
-                    if let Some(dataset) = doc.get_mut("dataset").and_then(Value::as_object_mut) {
-                        dataset.insert("rows".into(), rows_of(&layer.dataset));
-                    }
-                }
+        for map in &project.maps {
+            for layer in &map.layers {
+                seen(&layer.dataset);
             }
         }
-        if let Some(tables) = document.get_mut("tables").and_then(Value::as_array_mut) {
-            for (table, doc) in project.tables.iter().zip(tables) {
-                seen(&table.dataset);
-                if let Some(dataset) = doc.as_object_mut() {
-                    dataset.insert("rows".into(), rows_of(&table.dataset));
-                }
-            }
+        for table in &project.tables {
+            seen(&table.dataset);
         }
         // Each map's revision follows its own document; the shell's follows everything else.
         let mut maps = Vec::new();
@@ -144,7 +129,7 @@ impl Published {
         }
         revisions.maps.retain(|id, _| live.contains(id));
         let shell_revision = Revisions::bump(&mut revisions.shell, fingerprint(&shell));
-        Published { project: project.clone(), document, datasets, shell_revision, maps }
+        Published { active: project.maps.get(project.active_map).map(|m| m.id), document, datasets, shell_revision, maps }
     }
 
     /// The names a page needs to know what changed: the shell's revision, each map's `[id, revision]` and each dataset's.
@@ -156,13 +141,18 @@ impl Published {
         })
     }
 
-    /// The whole project, as one document.
-    pub fn whole(&self) -> Vec<u8> {
-        serde_json::to_vec(&self.project).unwrap_or_default()
+    /// The document for what was asked: the shell, one map's layers, or the map in view.
+    pub fn answer(&self, wanted: &Wanted) -> Option<Vec<u8>> {
+        match wanted {
+            Wanted::Shell => self.document(None),
+            Wanted::Map(id) => self.document(Some(*id)),
+            Wanted::Active => self.document(Some(self.active?)),
+            Wanted::Bad => None,
+        }
     }
 
-    /// `?shell` (no map's layers) or `?map=<id>` (that map's layers): `None` for a map the project does not hold.
-    pub fn document(&self, map: Option<u32>) -> Option<Vec<u8>> {
+    /// No map's layers (`None`) or one map's, without rows: `None` for a map the project does not hold.
+    fn document(&self, map: Option<u32>) -> Option<Vec<u8>> {
         let mut document = self.document.clone();
         let maps = document.get_mut("maps").and_then(Value::as_array_mut)?;
         if let Some(wanted) = map
@@ -252,23 +242,26 @@ impl Parts {
 /// What a `/project.json` request asks for.
 #[derive(Debug, PartialEq)]
 pub enum Wanted {
-    /// No part named: the whole project.
-    Whole,
-    /// `?shell` (`None`) or `?map=<id>` (`Some`).
-    Part(Option<u32>),
+    /// No part named: the map in view, which is the project a page that knows nothing of parts can read.
+    Active,
+    /// `?shell`: no map's layers.
+    Shell,
+    /// `?map=<id>`: that map's layers.
+    Map(u32),
     /// A `map` that is not a map id.
     Bad,
 }
 
 /// Reads `?shell` or `?map=<id>` off a request target.
 pub fn wanted_part(target: &str) -> Wanted {
-    let Some((_, query)) = target.split_once('?') else { return Wanted::Whole };
-    let mut wanted = Wanted::Whole;
+    let Some((_, query)) = target.split_once('?') else { return Wanted::Active };
+    let mut wanted = Wanted::Active;
     for pair in query.split('&') {
         match pair.split_once('=') {
-            None if pair == "shell" => wanted = Wanted::Part(None),
+            None if pair == "shell" => wanted = Wanted::Shell,
+            Some(("map", "active")) => wanted = Wanted::Active,
             Some(("map", id)) => match id.parse::<u32>() {
-                Ok(id) => wanted = Wanted::Part(Some(id)),
+                Ok(id) => wanted = Wanted::Map(id),
                 Err(_) => return Wanted::Bad,
             },
             _ => {}

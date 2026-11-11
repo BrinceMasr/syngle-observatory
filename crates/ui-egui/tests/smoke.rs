@@ -1998,3 +1998,68 @@ fn a_shortcut_that_cannot_run_says_why() {
     h.step();
     assert!(h.state().session.notices_since(mark).is_empty());
 }
+
+/// A project opened from the engine's gateway in parts (#471): the document names its rows, they are downloaded by id from the
+/// same folder, once, and the layer is filled when they land. A document posted again that names the same rows fetches nothing.
+#[test]
+fn a_project_in_parts_has_its_rows_downloaded_by_id_once() {
+    use rustgis_engine::data::source::fgb_rows;
+    use std::io::{Read, Write};
+    let mut h = harness();
+    h.step();
+    h.state_mut().run("project.new", json!({})).unwrap();
+    let mut source = h.state().session.project.clone();
+    source.name = "In parts".into();
+    let mut ds = rustgis_engine::data::Dataset::new(
+        "pts",
+        rustgis_engine::data::GeometryType::None,
+        vec![rustgis_engine::data::Field::new("n", rustgis_engine::data::FieldType::Integer)],
+    );
+    ds.features = (0..25)
+        .map(|i| rustgis_engine::data::Feature { id: i + 1, geometry: None, attrs: vec![rustgis_engine::data::Value::Int(i as i64)] })
+        .collect();
+    source.maps[0].layers = vec![rustgis_engine::map::Layer::new(1, ds.clone())];
+    let want = source.maps[0].layers[0].dataset.features.reference();
+    let document = rustgis_engine::data::without_rows(|| serde_json::to_string(&source)).unwrap().into_bytes();
+    let rows = fgb_rows::write_rows(&ds.name, ds.geometry_type, &ds.fields, &source.maps[0].layers[0].dataset.features).unwrap();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    let served = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let log = served.clone();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut s) = stream else { continue };
+            let mut buf = [0u8; 2048];
+            let n = s.read(&mut buf).unwrap_or(0);
+            let target = String::from_utf8_lossy(&buf[..n]).split_whitespace().nth(1).unwrap_or("").to_string();
+            let body = if target.starts_with("/t/x/dataset/") { rows.clone() } else { document.clone() };
+            log.lock().unwrap().push(target);
+            let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+            let _ = s.write_all(&body);
+        }
+    });
+    h.state_mut().run("ui.openUrl", json!({"url": format!("http://{addr}/t/x/project.json?map=active")})).unwrap();
+    for _ in 0..200 {
+        h.step();
+        if h.state().session.map().layers.first().is_some_and(|l| l.dataset.features.len() == 25) {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let layer = &h.state().session.map().layers[0];
+    assert_eq!(layer.dataset.features.len(), 25, "the rows came by id and filled the layer");
+    assert_eq!(layer.dataset.features.reference(), want);
+    let asked = served.lock().unwrap().clone();
+    assert_eq!(asked.iter().filter(|t| t.starts_with("/t/x/dataset/")).count(), 1, "{asked:?}");
+    assert!(asked.iter().any(|t| *t == format!("/t/x/dataset/{}?revision={}", want.id, want.revision)), "{asked:?}");
+
+    // The same document posted again (the page's copy, after a pan): the rows are known, nothing is asked.
+    let text = rustgis_engine::data::without_rows(|| serde_json::to_string(&h.state().session.project)).unwrap();
+    h.state_mut().run("project.openText", json!({"text": text})).unwrap();
+    for _ in 0..5 {
+        h.step();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert_eq!(h.state().session.map().layers[0].dataset.features.len(), 25);
+    assert_eq!(served.lock().unwrap().iter().filter(|t| t.starts_with("/t/x/dataset/")).count(), 1);
+}

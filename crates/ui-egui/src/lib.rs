@@ -46,6 +46,7 @@ mod portalsui;
 mod relayshot;
 mod reportpane;
 mod ribbon;
+mod rowsfetch;
 mod s3ui;
 mod searchbox;
 mod serviceui;
@@ -472,6 +473,8 @@ pub struct UiState {
     /// session's download id, the address and where the download lands. A later one replaces it;
     /// opening another project meanwhile drops it.
     pub project_download: Option<(u64, String, Slot<Result<Vec<u8>, String>>)>,
+    /// The rows of a project opened in parts, and where they are downloaded from (#471).
+    pub(crate) rows: rowsfetch::Rows,
     /// The SQL pane's editor, results and history.
     pub sql: sqlpane::State,
     /// GeoTIFFs, FlatGeobufs and GeoParquets by address whose headers are being read: those
@@ -603,6 +606,7 @@ impl Default for UiState {
             pending_csv: None,
             downloads: Vec::new(),
             project_download: None,
+            rows: rowsfetch::Rows::default(),
             sql: Default::default(),
             cog_probes: Vec::new(),
             link_zoomed: false,
@@ -1837,6 +1841,7 @@ impl RustGisApp {
                     Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)),
                 );
                 self.session.notify(i18n::fmt("Opening {url}…", &[("url", url)]), false);
+                self.ui.rows.opened_from(url);
                 let id = self.session.download_started();
                 if let Some((old, ..)) = self.ui.project_download.replace((id, url.to_string(), slot)) {
                     self.session.download_failed(old);
@@ -2962,6 +2967,7 @@ impl RustGisApp {
         panes::poll_geolibre(self, ctx);
         panes::poll_plugin_run(self, ctx);
         self.poll_downloads();
+        self.poll_rows(ctx);
         // A value picked under Dynamic Text lasts while the text tool does, however the tool
         // changes (Esc, another tool, a text placed without Keep Tool, a command).
         if self.session.tool != rustgis_engine::Tool::Graphic("text") {

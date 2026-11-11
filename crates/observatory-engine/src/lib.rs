@@ -778,13 +778,8 @@ fn route(req: &Request, cfg: &Cfg, project: &parts::Parts) -> (u16, (String, u64
         // The project the view opens, as a document: `?project=<this>` needs no postMessage round trip.
         "/project.json" => {
             let published = project.current();
-            let bytes = match parts::wanted_part(&req.target) {
-                parts::Wanted::Whole => published.whole(),
-                parts::Wanted::Part(map) => match published.document(map) {
-                    Some(bytes) => bytes,
-                    None => return (404, (head(404, "text/plain", 0, None, false), 0), Vec::new()),
-                },
-                parts::Wanted::Bad => return (404, (head(404, "text/plain", 0, None, false), 0), Vec::new()),
+            let Some(bytes) = published.answer(&parts::wanted_part(&req.target)) else {
+                return (404, (head(404, "text/plain", 0, None, false), 0), Vec::new());
             };
             return (200, (head(200, "application/json", bytes.len() as u64, None, false), bytes.len() as u64), bytes);
         }

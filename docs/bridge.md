@@ -53,6 +53,15 @@ The command runs on that map and the map in view stays as it was. A name that tw
 names no map, is refused as `bad-params` with the list; a command that has a `map` of its own keeps its
 meaning (Syngle-Ecosystem #470).
 
+The **project is served in parts**, never as one document (Syngle-Ecosystem #471): `GET /project.json?shell` is the
+project with no map's layers, `?map=<id>` (or none, or `?map=active`) is that map's layers with no rows, and each dataset's
+`features` is a reference `{id, revision, count}` to its rows. `GET /dataset/<id>?revision=<n>` serves those rows as
+FlatGeobuf in row order (`fgb_rows`), by byte range, with an `ETag` and a 304 for `If-None-Match`. A dataset's id is the
+identity of its rows in memory, so maps that share rows share an id and the page fetches them once; a change to the rows
+moves their revision. The state names `shellRevision`, `mapRevisions` `[id, rev]` and `datasetRevisions` `[id, rev]`. The
+view (`rustgis_engine::rows_book`) keeps the rows it holds by id and fetches only a revision it has not got, showing the
+older rows until the newer land.
+
 The **state after every command** travels twice: as the `result` event's own `state`, and as the
 `bridge.state` line after it. The result is what SyngleCode's bridge reads the undo depth from when
 the command's promise settles, so it can tell an edit from a read.
