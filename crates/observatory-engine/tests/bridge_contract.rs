@@ -524,6 +524,9 @@ fn the_project_is_served_in_parts_with_revisions() {
             .filter(|m| m["id"].as_u64() != Some(*id))
             .all(|m| m["layers"].as_array().is_some_and(Vec::is_empty));
         assert!(others, "only the asked-for map has layers: {doc}");
+        // A page that shows this map (#473) finds it in view in its own document, whichever map the engine has in view.
+        let shown = doc["active_map"].as_u64().and_then(|i| doc["maps"][i as usize]["id"].as_u64());
+        assert_eq!(shown, Some(*id), "the document of map {id} has that map in view");
     }
     dataset_ids.dedup();
     assert_eq!(dataset_ids.len(), 1, "three maps share one set of rows, so one dataset id: {dataset_ids:?}");
@@ -590,6 +593,7 @@ fn the_state_reports_history_per_map_and_undo_leaves_the_other_map_alone() {
     engine.command(2, &json!({"name": "command", "id": "map.duplicate", "params": {"name": "Overview"}}));
     let (_, state, _) = engine.command(3, &json!({"name": "command", "id": "map.activate", "params": {"map": 1}}));
     let ids: Vec<u64> = state["mapUndo"].as_array().unwrap().iter().map(|m| m[0].as_u64().unwrap()).collect();
+    assert_eq!(state["map"].as_u64(), Some(ids[0]), "the state names the map in view: {state}");
     assert_eq!(ids.len(), 2, "{state}");
     // A style step in the map in view, then one in the other map, named from here.
     engine.command(4, &json!({"name": "command", "id": "layer.color", "params": {"layer": "Cities", "color": "#112233"}}));

@@ -160,12 +160,17 @@ impl Published {
         {
             return None;
         }
-        for ((id, _), doc) in self.maps.iter().zip(maps) {
+        // The map asked for is the one in view of this document, so a page showing it needs nothing else.
+        let shown = map.and_then(|wanted| self.maps.iter().position(|(id, _)| *id == wanted));
+        for ((id, _), doc) in self.maps.iter().zip(maps.iter_mut()) {
             if Some(*id) != map
                 && let Some(layers) = doc.get_mut("layers")
             {
                 *layers = json!([]);
             }
+        }
+        if let (Some(shown), Some(object)) = (shown, document.as_object_mut()) {
+            object.insert("active_map".into(), json!(shown));
         }
         serde_json::to_vec(&document).ok()
     }

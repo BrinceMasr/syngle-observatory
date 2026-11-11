@@ -68,7 +68,14 @@ function mount(options = {}) {
   const targets = [];
   const toView = [];
   const fetched = [];
+  const cleared = [];
   const listeners = [];
+  const documentEvents = [];
+  const pageDocument = {
+    hidden: false,
+    getElementById: () => frameElement,
+    addEventListener: (type, fn) => documentEvents.push({ type, fn }),
+  };
   const parent = {
     postMessage: (message, target) => {
       targets.push(target);
@@ -108,7 +115,10 @@ function mount(options = {}) {
   const frameElement = { contentWindow: frameWindow, src: "/web/?embed", addEventListener: (type, fn) => type === "load" && frameLoads.push(fn) };
   const window = {
     parent,
-    location: { href: `${ORIGIN}${TOKEN_PATH}/canvas/?project=1` },
+    location: { href: `${ORIGIN}${TOKEN_PATH}/canvas/${options.query ?? "?project=1"}`, search: options.query ?? "?project=1" },
+    clearTimeout: (timer) => {
+      cleared.push(timer);
+    },
     addEventListener: (type, fn) => {
       if (type === "message") listeners.push(fn);
     },
@@ -127,7 +137,7 @@ function mount(options = {}) {
   // The page's once-a-second gate reads Date.now(), so the tests own the clock: a fake Date that
   // only moves when a test advances it, which is what lets one tick past the gate without waiting.
   const clock = { now: 1_000_000 };
-  const sandbox = { window, document: { getElementById: () => frameElement }, ...(options.platform ? { navigator: { platform: options.platform } } : {}), URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console, Date: { now: () => clock.now } };
+  const sandbox = { window, document: pageDocument, ...(options.platform ? { navigator: { platform: options.platform } } : {}), URL, fetch, JSON, Uint8Array, Array, Object, String, Boolean, Error, console, Date: { now: () => clock.now } };
   vm.runInNewContext(PAGE, sandbox, { filename: "canvas.js" });
 
   const host = (message, origin = ORIGIN) => {
@@ -179,7 +189,7 @@ function mount(options = {}) {
     frameWindow.document = newViewDocument();
     for (const fn of frameLoads) fn();
   };
-  return { toHost, toView, fetched, host, view, frameWindow, drain, runTimers, tick, press, reloadView, canvas };
+  return { toHost, toView, fetched, host, view, frameWindow, drain, runTimers, tick, press, reloadView, canvas, timers, cleared, pageDocument, documentEvents };
 }
 
 /**
@@ -190,6 +200,7 @@ function mount(options = {}) {
 const VALUES = {
   camera: { camera: { center: [0, 0], res: 10 } },
   layers: { layers: [] },
+  "view-map": { id: 2 },
   selection: { layer: "Countries", rows: [1] },
   style: { layer: "Countries", style: {} },
 };
@@ -347,7 +358,7 @@ test("every view command the schema names is implemented by the page", async () 
   seed(mounted);
   for (const name of Object.keys(VALUES)) assert.ok(SCHEMA.view.commands[name], `VALUES names a schema command: ${name}`);
   const names = Object.keys(SCHEMA.view.commands);
-  assert.deepEqual(names.sort(), ["camera", "layers", "render-to-png", "selection", "style", "theme", "tool"].sort(), "the spec's seven");
+  assert.deepEqual(names.sort(), ["camera", "layers", "render-to-png", "selection", "style", "theme", "tool", "view-map"].sort(), "the spec's eight");
   for (const name of names) {
     const answer = await command(mounted, name);
     const refused = answer.host.find((m) => m.bridge === "error");
@@ -635,4 +646,61 @@ test("the page watches each document of the frame once, and names the canvas", (
   assert.equal(first.keydown.length, 1);
   mounted.press("Tab");
   assert.deepEqual(eventsOf(mounted), [{ type: "focus-exit", direction: "next" }], "one event per press");
+});
+
+// One page shows one map, by id, and a tab re-targets it (Syngle-Ecosystem #473, ADR 0022).
+test("a page addressed ?map=<id> reads that map's document, at startup and on reload", async () => {
+  const mounted = mount({ query: "?project=1&map=4" });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(mounted.fetched.length >= 1);
+  for (const address of mounted.fetched) assert.match(address, /\/project\.json\?map=4$/, address);
+  const answer = await command(mounted, "layers", { reload: true });
+  assert.ok(answer.host.find((m) => m.bridge === "state"));
+  assert.match(mounted.fetched.at(-1), /\/project\.json\?map=4$/);
+});
+
+test("view-map re-targets the page: the new map's document is fetched and pushed to the same view", async () => {
+  const mounted = mount();
+  seed(mounted);
+  mounted.fetched.length = 0;
+  const answer = await command(mounted, "view-map", { id: 7 });
+  assert.match(mounted.fetched[0], /\/project\.json\?map=7$/);
+  assert.equal(answer.host.find((m) => m.bridge === "error"), undefined);
+  assert.ok(answer.pushed.some((m) => m.rustgis === "project"), "the view takes the document");
+  // Later reloads follow the map the page was pointed at.
+  await command(mounted, "layers", { reload: true }, 2);
+  assert.match(mounted.fetched.at(-1), /\/project\.json\?map=7$/);
+});
+
+test("view-map to a map that is not there is refused and the page keeps showing its map", async () => {
+  const mounted = mount({
+    fetch: async (address) =>
+      /map=9$/.test(address)
+        ? { ok: false, status: 404, text: async () => "" }
+        : { ok: true, status: 200, text: async () => JSON.stringify(project()) },
+  });
+  seed(mounted);
+  const refused = await command(mounted, "view-map", { id: 9 });
+  assert.equal(refused.host.find((m) => m.bridge === "error").payload.code, "bad-params");
+  mounted.fetched.length = 0;
+  await command(mounted, "layers", { reload: true }, 2);
+  assert.doesNotMatch(mounted.fetched.at(-1), /map=9/, "the page still reads the map it had");
+  for (const bad of [-1, 1.5, "3", null]) {
+    const answer = await command(mounted, "view-map", { id: bad }, 3);
+    assert.equal(answer.host.find((m) => m.bridge === "error")?.payload.code, "bad-params", String(bad));
+  }
+});
+
+test("an idle page runs one slow timer, and a hidden page none (#473)", async () => {
+  const mounted = mount();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(mounted.timers.length, 1, "one timer is armed, not a fan of them");
+  mounted.pageDocument.hidden = true;
+  mounted.runTimers();
+  assert.equal(mounted.timers.length, 0, "a hidden page does not re-arm");
+  mounted.pageDocument.hidden = false;
+  const shown = mounted.documentEvents.find((e) => e.type === "visibilitychange");
+  assert.ok(shown, "the page listens for being shown");
+  shown.fn();
+  assert.equal(mounted.timers.length, 1, "shown again, it polls again");
 });

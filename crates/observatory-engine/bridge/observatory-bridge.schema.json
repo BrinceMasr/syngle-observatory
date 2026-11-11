@@ -248,6 +248,17 @@
           }
         }
       },
+      "view-map": {
+        "summary": "Show another map of the project in this page: the same page and view, no new instance.",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "number"
+          }
+        }
+      },
       "render-to-png": {
         "summary": "Draw the current map offscreen to a PNG and return its bytes base64-encoded.",
         "required": [],
@@ -316,6 +327,12 @@
         },
         "theme": {
           "type": "string"
+        },
+        "map": {
+          "type": [
+            "number",
+            "null"
+          ]
         }
       }
     },
@@ -618,6 +635,33 @@
             "string",
             "null"
           ]
+        },
+        "map": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "shellRevision": {
+          "type": "number"
+        },
+        "mapRevisions": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "datasetRevisions": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
         },
         "mapUndo": {
           "type": "array",

@@ -569,6 +569,12 @@ fn token_prefix(token: Option<&String>) -> String {
     token.map(|t| format!("/t/{t}")).unwrap_or_default()
 }
 
+/// The map a canvas page is asked to show: `?map=<id>`, digits only.
+fn map_of(target: &str) -> Option<u32> {
+    let (_, query) = target.split_once('?')?;
+    query.split('&').find_map(|pair| pair.strip_prefix("map=")).and_then(|id| id.parse().ok())
+}
+
 /// The address the canvas-only view is framed at: the launch token's path, then the flags the
 /// requesting page asked for. `?project=1` makes the view fetch the project document itself
 /// (`?project=<url>` is the fork's own flag); `?backend=webgl2` picks the WebGL2 backend;
@@ -585,7 +591,9 @@ fn view_embed(target: &str, token: Option<&String>, base: &str) -> String {
         embed.push_str("&webgl");
     }
     if target.contains("project=1") {
-        embed.push_str(&format!("&project={base}{t}/project.json"));
+        // A page that shows one map by id (`?map=<id>`, #473) has its view open that map's document.
+        let map = map_of(target).map(|id| format!("?map={id}")).unwrap_or_default();
+        embed.push_str(&format!("&project={base}{t}/project.json{map}"));
     }
     if target.contains("spike") {
         embed.push_str("&spike");
@@ -1210,6 +1218,12 @@ mod tests {
         // Whatever the base, the project address stays absolute and on it.
         assert!(view_embed("/canvas/?project=1", Some(&token), base).contains("&project=http://127.0.0.1:7391/t/5f2a/project.json"));
         assert!(!view_embed("/canvas/?project=1", Some(&token), base).contains("&project=/t/5f2a/project.json"));
+        // A page that shows one map by id has its view open that map's document; anything but digits is no map.
+        assert!(
+            view_embed("/canvas/?project=1&map=3", Some(&token), base).contains("&project=http://127.0.0.1:7391/t/5f2a/project.json?map=3")
+        );
+        assert!(!view_embed("/canvas/?project=1&map=3x", Some(&token), base).contains("?map="));
+        assert!(!view_embed("/canvas/?project=1&map=", Some(&token), base).contains("?map="));
     }
 
     #[test]

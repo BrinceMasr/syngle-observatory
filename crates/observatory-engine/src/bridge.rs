@@ -339,6 +339,7 @@ pub fn state(session: &Session) -> Value {
         // many steps undo would take back, and `undoLabel` is the top of them: the client records a
         // step of its own only when the depth grew, and rolls its cursor back when it did not move.
         // History is one stack per map (#472): these are the map in view's, and `mapUndo` lists every map's.
+        "map": session.project.maps.get(session.project.active_map).map(|m| m.id),
         "undoDepth": session.undo_depth(),
         "undoLabel": session.undo_label_full(),
         "redoDepth": session.redo_depth(),
@@ -474,7 +475,7 @@ mod tests {
     /// The engine commands the ticket names, one by one: a removal has to be a deliberate edit here.
     const SPEC_COMMANDS: [&str; 5] = ["dataset.open", "dataset.query", "catchment", "command", "mcp"];
     /// The view commands the spec's bridge section names.
-    const SPEC_VIEW_COMMANDS: [&str; 7] = ["layers", "style", "camera", "tool", "selection", "theme", "render-to-png"];
+    const SPEC_VIEW_COMMANDS: [&str; 8] = ["layers", "style", "camera", "tool", "selection", "theme", "view-map", "render-to-png"];
 
     #[test]
     fn the_schema_declares_the_version_the_code_speaks() {
@@ -527,7 +528,7 @@ mod tests {
     }
 
     #[test]
-    fn the_view_half_is_the_specs_seven_commands_and_they_all_validate() {
+    fn the_view_half_is_the_specs_eight_commands_and_they_all_validate() {
         let mut names = view_command_names();
         names.sort();
         let mut spec = SPEC_VIEW_COMMANDS.map(str::to_string).to_vec();

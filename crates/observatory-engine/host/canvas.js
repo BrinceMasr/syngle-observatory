@@ -68,8 +68,22 @@
     tool: ["tool"],
     selection: ["layer", "rows"],
     theme: ["theme"],
+    "view-map": ["id"],
     "render-to-png": ["width", "height"]
   };
+  // The map this page shows (#473): `?map=<id>` in its address, or `view-map {id}`; none means the map the engine has in
+  // view, which is what a page with no address for one has always shown.
+  var shownMap = (function () {
+    var m = /[?&]map=(\d+)(?:&|$)/.exec(window.location.search);
+    return m ? Number(m[1]) : null;
+  })();
+  // The document of the map this page shows, from the gateway beside the launch token's path (this page is
+  // `/t/<token>/canvas/`, so `../project.json` is `/t/<token>/project.json`).
+  function projectUrl() {
+    var url = new URL("../project.json", window.location.href);
+    if (shownMap !== null) url.searchParams.set("map", String(shownMap));
+    return url.href;
+  }
   var bridge = {
     version: BRIDGE,
     linked: false,
@@ -102,6 +116,7 @@
 
   function bridgeSnap() {
     var map = activeMap();
+    bridge.state.map = map && typeof map.id === "number" ? map.id : null;
     var layers = map && map.layers ? map.layers : [];
     // `style` is the layer's renderer, as the view holds it: the surface restyles the layer it
     // knows (#71) without guessing whether it draws one symbol or a range of classes.
@@ -196,7 +211,7 @@
       case "layers": {
         if (command.reload === true) {
           // After a command that changed the project, the engine's own document is the authority.
-          return fetch(new URL("../project.json", window.location.href).href, { cache: "no-store" })
+          return fetch(projectUrl(), { cache: "no-store" })
             .then(function (r) {
               return r.text();
             })
@@ -232,6 +247,28 @@
         if (command.active !== undefined) bridge.state.active = command.active;
         bridgeApply(id);
         return;
+      }
+      case "view-map": {
+        // Re-target this page at another map of the project: no new page, no new view, no new GL context. The view takes
+        // that map's document, and the rows it names that it does not hold yet.
+        if (typeof command.id !== "number" || !isFinite(command.id) || command.id < 0 || Math.floor(command.id) !== command.id) {
+          return bridgeError(id, "bad-params", "view-map needs the id of a map");
+        }
+        var previous = shownMap;
+        shownMap = command.id;
+        return fetch(projectUrl(), { cache: "no-store" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("no map " + command.id);
+            return r.text();
+          })
+          .then(function (text) {
+            bridge.project = JSON.parse(text);
+            return bridgeApply(id);
+          })
+          .catch(function (e) {
+            shownMap = previous;
+            bridgeError(id, "bad-params", "the map could not be shown: " + e);
+          });
       }
       case "style": {
         var layer = bridgeLayer(command.layer);
@@ -405,8 +442,22 @@
       lastStats = now;
       stats(now);
     }
-    window.setTimeout(poll, 100);
+    schedulePoll();
   }
+
+  // The page's one timer (#473: an idle page runs no loop). A development page reads the view's per-frame samples ten
+  // times a second; a shipped page only reports its stats once a second; a page nobody can see does neither, and starts
+  // again the moment it is shown.
+  var pollTimer = 0;
+  function schedulePoll() {
+    window.clearTimeout(pollTimer);
+    pollTimer = 0;
+    if (document.hidden) return;
+    pollTimer = window.setTimeout(poll, devSamples ? 100 : 1000);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && pollTimer === 0) poll();
+  });
 
   // The frame instrument: rAF timestamps and GPU work packets for the view's own page.
   function instrument() {
@@ -428,8 +479,7 @@
   // `/t/<token>/canvas/`, and `../project.json` is `/t/<token>/project.json` (or `/project.json`
   // when the launch has no token) — the address the gateway actually routes.
   function projectFromEngine(done) {
-    var url = new URL("../project.json", window.location.href);
-    fetch(url.href, { cache: "no-store" })
+    fetch(projectUrl(), { cache: "no-store" })
       .then(function (r) {
         return r.text();
       })
