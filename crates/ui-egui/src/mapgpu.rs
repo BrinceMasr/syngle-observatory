@@ -1208,6 +1208,11 @@ mod tests {
     /// frame is warped from flat bands (resampled, so a thin line's colour spreads), its GPU one
     /// drawn in perspective directly.
     fn assert_parity_within(name: &str, build: impl Fn() -> Map, view: &View, backends: wgpu::Backends, outliers: usize) {
+        assert_parity_bounded(name, build, view, backends, outliers, 1.5);
+    }
+
+    /// [`assert_parity_within`] with the raw mean's own bound (out of 255).
+    fn assert_parity_bounded(name: &str, build: impl Fn() -> Map, view: &View, backends: wgpu::Backends, outliers: usize, max_raw: f64) {
         let mut gm = build();
         let Some(gpu) = gpu_render_offscreen_on(&mut gm, view, backends) else { return }; // no adapter: skip
         let mut cm = build();
@@ -1234,7 +1239,7 @@ mod tests {
         let (mean_raw, _) = diff_stats(cpu.pixmap.data(), &gpu);
         let (w, h) = view.pixel_size();
         let structural = structural_outliers(cpu.pixmap.data(), &gpu, w as usize, h as usize);
-        assert!(mean_raw < 1.5 && structural <= outliers, "{name}: raw mean {mean_raw:.2}/255, {structural} structural outliers");
+        assert!(mean_raw < max_raw && structural <= outliers, "{name}: raw mean {mean_raw:.2}/255, {structural} structural outliers");
     }
 
     fn world_map() -> Map {
@@ -1289,7 +1294,10 @@ mod tests {
     #[test]
     fn parity_turned_world_sample() {
         let view = View { camera: Camera { bearing: 35.0, ..Camera::world() }, ..world_view() };
-        assert_parity("turned world sample", world_map, &view);
+        // A turned CPU frame is resampled from flat bands, so every edge spreads a little; Syngle's palette (#71) put more
+        // contrast between water and land than RustGIS's blues did, which took the raw mean from under 1.5 to 1.82. No
+        // structural mismatch, which is what catches wrong colours, missing content and bad z-order.
+        assert_parity_bounded("turned world sample", world_map, &view, wgpu::Backends::all(), 0, 2.2);
     }
 
     /// Structural mismatches a tilted view may have: 0.1 % of the 640 × 400 view, along thin
