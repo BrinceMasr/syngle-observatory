@@ -612,6 +612,21 @@
         },
         "redoDepth": {
           "type": "number"
+        },
+        "redoLabel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mapUndo": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
         }
       }
     },

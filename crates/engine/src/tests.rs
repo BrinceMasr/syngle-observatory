@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 use crate::{Project, Session, sample};
 
 /// Keeps tests away from the user's installed plugins.
-fn isolate_plugins() {
+pub(crate) fn isolate_plugins() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
         let dir = std::env::temp_dir().join(format!("rustgis-test-plugins-{}", std::process::id()));
@@ -246,7 +246,8 @@ fn undo_steps_share_the_layers_they_leave_alone() {
     s.run("layer.rename", &json!({"layer": "Nations", "name": "States"})).unwrap();
     let live = s.map().layer_by_name("States").unwrap();
     let id = live.id;
-    for (snap, _, _, _) in &s.undo {
+    for step in &s.undo {
+        let snap = &step.project;
         let old = snap.maps.iter().flat_map(|m| &m.layers).find(|l| l.id == id).unwrap();
         assert!(old.dataset.features.shares(&live.dataset.features), "the snapshot copied the features");
         assert_eq!(old.projected_cache().as_ptr(), live.projected_cache().as_ptr(), "the snapshot copied the projected geometry");
@@ -255,7 +256,7 @@ fn undo_steps_share_the_layers_they_leave_alone() {
     let before = s.map().layer_by_name("Cities").unwrap().dataset.features.len();
     s.run("edit.addFeature", &json!({"layer": "Cities", "geometry": {"type": "Point", "coordinates": [1.0, 2.0]}})).unwrap();
     let cities = s.map().layer_by_name("Cities").unwrap();
-    let (snap, _, _, _) = s.undo.last().unwrap();
+    let snap = &s.undo.last().unwrap().project;
     let old = snap.maps.iter().flat_map(|m| &m.layers).find(|l| l.id == cities.id).unwrap();
     assert!(!old.dataset.features.shares(&cities.dataset.features));
     assert_eq!((old.dataset.features.len(), cities.dataset.features.len()), (before, before + 1));
@@ -9384,8 +9385,11 @@ fn a_command_may_name_the_map_it_acts_on() {
     // By name, as the same text in another case.
     s.run("layer.color", &json!({"map": s.project.maps[0].name.to_uppercase(), "layer": layer, "color": "#112233"})).unwrap();
     assert_eq!(s.map().id, b);
-    // The step undo goes back to shows the map that was in view.
+    // Those steps are A's (#472): the map in view, B, has none of its own, and A's Undo takes the last back.
+    s.run("map.activate", &json!({"map": a})).unwrap();
     assert!(s.undo());
+    assert_eq!(s.map().id, a);
+    s.run("map.activate", &json!({"map": b})).unwrap();
     assert_eq!(s.map().id, b);
     // A failed command also leaves the view alone.
     assert!(s.run("layer.color", &json!({"map": a, "layer": "No such layer", "color": "#336699"})).is_err());

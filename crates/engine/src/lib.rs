@@ -6,6 +6,8 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 pub mod cmd;
+#[cfg(test)]
+mod map_undo_tests;
 pub mod model;
 pub mod project;
 pub mod rows_book;
@@ -268,8 +270,40 @@ pub struct Notice {
 
 const UNDO_LIMIT: usize = 40;
 
-/// An undo or redo step: the project before it, the layout open then, its label and who made it.
-type Step = (Project, Option<usize>, &'static str, Option<String>);
+/// An undo or redo step: the project before it, the layout open then, its label and who made it, and whose it is (#472, ADR 0022).
+///
+/// History is one stack per map: a step belongs to the map it was made in (`owner`), and the map in view undoes the last
+/// step that is its own. A step that changed more than one map's own content (a map added or removed, a table, a layout, the
+/// project's settings) belongs to the project (`owner` is `None`) and is on every map's stack, undone by putting the whole
+/// project back. A step that is a map's own keeps only that map (and the maps whose rows it changed), and undoing it puts that
+/// map back and the rows it changed in every map that holds them.
+struct Step {
+    project: Project,
+    layout: Option<usize>,
+    label: &'static str,
+    actor: Option<String>,
+    owner: Option<u32>,
+    /// The layers (map id, layer id) whose rows the step replaced: a row edit is one change to the data in every map that holds it.
+    rows: Vec<(u32, u32)>,
+    /// The other maps the step's rows changed in, for its label.
+    also: Vec<String>,
+}
+
+impl Step {
+    fn label(&self) -> String {
+        if self.also.is_empty() { self.label.to_string() } else { format!("{}, also in {}", self.label, self.also.join(", ")) }
+    }
+}
+
+/// The project with no map's content: what a step that is one map's own leaves alone.
+fn outside_maps(p: &mut Project) -> Value {
+    let (maps, active) = (std::mem::take(&mut p.maps), p.active_map);
+    p.active_map = 0;
+    let doc = rustgis_data::without_rows(|| serde_json::to_value(&*p)).unwrap_or(Value::Null);
+    p.maps = maps;
+    p.active_map = active;
+    doc
+}
 
 pub struct Session {
     pub project: Project,
@@ -722,6 +756,8 @@ impl Session {
     /// Runs `f` as the command `label`: when it `mutates`, the project is snapshotted for undo
     /// and restored if `f` fails or panics.
     pub(crate) fn guarded(&mut self, label: &'static str, mutates: bool, f: impl FnOnce(&mut Session) -> CmdResult) -> CmdResult {
+        // The map the command acts on owns the step it makes.
+        let acting = self.project.maps.get(self.project.active_map).map(|m| m.id);
         // The step undo goes back to shows the map that was in view, not the one a command named.
         let snapshot = mutates.then(|| {
             let mut before = self.project.clone();
@@ -760,13 +796,26 @@ impl Session {
             // session's own flag says so, not the answer, which a plugin's command could forge.
             (Ok(_), Some(_)) if std::mem::take(&mut self.request_only) => {}
             (Ok(_), Some(mut snap)) => {
+                let (owner, rows, also) = self.scope_of(&mut snap, acting);
                 // Undo keeps streamed layers' sources, not their windows: they read the view again.
                 strip_windows(&mut snap);
-                self.undo.push((snap, open_layout, label, self.actor.clone()));
-                if self.undo.len() > UNDO_LIMIT {
-                    self.undo.remove(0);
+                if owner.is_some() {
+                    // A map's own step keeps that map and the maps whose rows it changed, not the whole project.
+                    snap.maps.retain(|m| Some(m.id) == owner || rows.iter().any(|(map, _)| *map == m.id));
                 }
-                self.redo.clear();
+                self.undo.push(Step { project: snap, layout: open_layout, label, actor: self.actor.clone(), owner, rows, also });
+                // Each stack keeps its last steps; a project step counts for the project.
+                while self.undo.iter().filter(|u| u.owner == owner).count() > UNDO_LIMIT {
+                    if let Some(i) = self.undo.iter().position(|u| u.owner == owner) {
+                        self.undo.remove(i);
+                    }
+                }
+                // A new step ends the redo of its own stack, and of the project's.
+                if owner.is_none() {
+                    self.redo.clear();
+                } else {
+                    self.redo.retain(|r| r.owner.is_some() && r.owner != owner);
+                }
                 self.dirty = true;
             }
             (Err(_), Some(snap)) => {
@@ -822,33 +871,63 @@ impl Session {
         self.notices.get(self.notices.len() - n..).unwrap_or_default()
     }
 
+    /// The map in view: the one whose stack Undo and Redo work on.
+    fn view_map(&self) -> Option<u32> {
+        self.project.maps.get(self.project.active_map).map(|m| m.id)
+    }
+
+    fn on_stack(&self, step: &Step) -> bool {
+        step.owner.is_none() || step.owner == self.view_map()
+    }
+
+    /// The step undo would take back for the map in view, as its place in the history.
+    fn top_undo(&self) -> Option<usize> {
+        self.undo.iter().rposition(|u| self.on_stack(u))
+    }
+
+    fn top_redo(&self) -> Option<usize> {
+        self.redo.iter().rposition(|u| self.on_stack(u))
+    }
+
     pub fn can_undo(&self) -> bool {
-        !self.undo.is_empty()
+        self.top_undo().is_some()
     }
     pub fn can_redo(&self) -> bool {
-        !self.redo.is_empty()
+        self.top_redo().is_some()
     }
-    /// How many steps redo would bring back, beside [`Session::undo_depth`]. The Observatory bridge
-    /// (#67) reports both after every command, so a client can tell an edit (the undo depth grew)
-    /// from a command that only read, or replaced the project and cleared the history: only a grown
-    /// depth is a step of the shared history, and redo has to put the depth back up.
+    /// How many steps redo would bring back for the map in view, beside [`Session::undo_depth`]. The Observatory bridge
+    /// reports both: a client tells a step that was undone (and can be redone) from a command that only read, or replaced
+    /// the project and cleared the history: only a grown depth is a step of the shared history, and redo has to put the
+    /// depth back up.
     pub fn redo_depth(&self) -> usize {
-        self.redo.len()
+        self.redo.iter().filter(|u| self.on_stack(u)).count()
     }
     /// Who made the step undo would take back: `Some(None)` for the user, `Some(Some(name))`
     /// for an agent ([`Session::actor`]), `None` when there is nothing to undo.
     pub fn undo_actor(&self) -> Option<Option<&str>> {
-        self.undo.last().map(|u| u.3.as_deref())
+        self.top_undo().and_then(|i| self.undo.get(i)).map(|u| u.actor.as_deref())
     }
     /// Who made the step redo would bring back, as [`Session::undo_actor`].
     pub fn redo_actor(&self) -> Option<Option<&str>> {
-        self.redo.last().map(|u| u.3.as_deref())
+        self.top_redo().and_then(|i| self.redo.get(i)).map(|u| u.actor.as_deref())
     }
     pub fn undo_label(&self) -> Option<&'static str> {
-        self.undo.last().map(|u| u.2)
+        self.top_undo().and_then(|i| self.undo.get(i)).map(|u| u.label)
     }
     pub fn redo_label(&self) -> Option<&'static str> {
-        self.redo.last().map(|u| u.2)
+        self.top_redo().and_then(|i| self.redo.get(i)).map(|u| u.label)
+    }
+    /// The label with the other maps a row edit changed ("Add Feature, also in Overview").
+    pub fn undo_label_full(&self) -> Option<String> {
+        self.top_undo().and_then(|i| self.undo.get(i)).map(Step::label)
+    }
+    pub fn redo_label_full(&self) -> Option<String> {
+        self.top_redo().and_then(|i| self.redo.get(i)).map(Step::label)
+    }
+    /// How many steps undo and redo hold for a map (its own and the project's).
+    pub fn map_history(&self, map: u32) -> (usize, usize) {
+        let on = |u: &Step| u.owner.is_none() || u.owner == Some(map);
+        (self.undo.iter().filter(|u| on(u)).count(), self.redo.iter().filter(|u| on(u)).count())
     }
 
     /// Forgets undo/redo and extent history and marks the project clean (after new/open, or a
@@ -884,27 +963,134 @@ impl Session {
     }
 
     pub(crate) fn undo(&mut self) -> bool {
-        let Some((p, saved, label, actor)) = self.undo.pop() else { return false };
-        let (open, was) = (self.open_layout_name(), self.active_layout);
-        let cur = std::mem::replace(&mut self.project, p);
-        self.project.keep_table_ids(&cur);
-        self.project.keep_map_ids(&cur);
-        self.reopen_layout(open, saved);
-        self.redo.push((cur, was, label, actor));
-        self.touch_all_geometry();
-        true
+        while let Some(i) = self.top_undo() {
+            let step = self.undo.remove(i);
+            if let Some(counterpart) = self.swap_step(step) {
+                self.redo.push(counterpart);
+                return true;
+            }
+        }
+        false
     }
 
     pub(crate) fn redo(&mut self) -> bool {
-        let Some((p, saved, label, actor)) = self.redo.pop() else { return false };
+        while let Some(i) = self.top_redo() {
+            let step = self.redo.remove(i);
+            if let Some(counterpart) = self.swap_step(step) {
+                self.undo.push(counterpart);
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Puts a step's project back and answers the step that undoes that. A project step swaps the whole project; a map's own
+    /// step puts that map back, and the rows it changed back in every map that holds them, and leaves the other maps as
+    /// they are. `None` when the map the step belongs to has gone (it is dropped).
+    fn swap_step(&mut self, step: Step) -> Option<Step> {
+        let Step { project: before, layout: saved, label, actor, owner, rows, also } = step;
         let (open, was) = (self.open_layout_name(), self.active_layout);
-        let cur = std::mem::replace(&mut self.project, p);
-        self.project.keep_table_ids(&cur);
-        self.project.keep_map_ids(&cur);
+        let cur = match owner {
+            None => {
+                let cur = std::mem::replace(&mut self.project, before);
+                self.project.keep_table_ids(&cur);
+                self.project.keep_map_ids(&cur);
+                cur
+            }
+            Some(map) => {
+                let (here, there) = (self.project.map_index(map)?, before.map_index(map)?);
+                // What undoes this one: the same step's other side, holding only the maps it touches.
+                let touched = |id: u32| id == map || rows.iter().any(|(r, _)| *r == id);
+                let all = std::mem::take(&mut self.project.maps);
+                let mut cur = self.project.clone();
+                self.project.maps = all;
+                cur.maps = self.project.maps.iter().filter(|m| touched(m.id)).cloned().collect();
+                self.project.maps[here] = before.maps[there].clone();
+                for (map_id, layer_id) in &rows {
+                    let Some(rows_before) =
+                        before.map_index(*map_id).and_then(|m| before.maps[m].layer(*layer_id)).map(|l| l.dataset.features.clone())
+                    else {
+                        continue;
+                    };
+                    if let Some(layer) = self.project.map_index(*map_id).and_then(|m| self.project.maps[m].layer_mut(*layer_id)) {
+                        layer.dataset.features = rows_before;
+                    }
+                }
+                self.fix_active_layer();
+                self.touch_geometry_of(|id| id == map || rows.iter().any(|(r, _)| *r == id));
+                cur
+            }
+        };
         self.reopen_layout(open, saved);
-        self.undo.push((cur, was, label, actor));
-        self.touch_all_geometry();
-        true
+        if owner.is_none() {
+            self.touch_all_geometry();
+        }
+        Some(Step { project: cur, layout: was, label, actor, owner, rows, also })
+    }
+
+    /// Whose step a command's was, from the project before it (`before`) and now: the map it acted on, unless it changed the
+    /// project beyond maps' own content (then the project's). Rows a command changed in one map's layer are put in every
+    /// other map that held the same rows, so the data is one thing across maps; the layers that took the change are returned
+    /// with the names of the maps they are in.
+    fn scope_of(&mut self, before: &mut Project, acting: Option<u32>) -> (Option<u32>, Vec<(u32, u32)>, Vec<String>) {
+        let same_maps =
+            before.maps.len() == self.project.maps.len() && before.maps.iter().zip(&self.project.maps).all(|(a, b)| a.id == b.id);
+        let layer_before =
+            |p: &Project, map: u32, layer: u32| p.map_index(map).and_then(|m| p.maps[m].layer(layer)).map(|l| l.dataset.features.clone());
+        // The layers whose rows are not the rows they were.
+        let mut changed: Vec<(u32, u32)> = Vec::new();
+        if same_maps {
+            for m in &self.project.maps {
+                for l in &m.layers {
+                    if layer_before(before, m.id, l.id).is_some_and(|b| !b.shares(&l.dataset.features)) {
+                        changed.push((m.id, l.id));
+                    }
+                }
+            }
+        }
+        // Other maps' layers that held the same rows as a changed one, and have not changed themselves, take its new rows.
+        let mut taken: Vec<((u32, u32), rustgis_data::Features)> = Vec::new();
+        for (map, layer) in &changed {
+            let (Some(old), Some(new)) = (
+                layer_before(before, *map, *layer),
+                self.project.map_index(*map).and_then(|m| self.project.maps[m].layer(*layer)).map(|l| l.dataset.features.clone()),
+            ) else {
+                continue;
+            };
+            for m in &self.project.maps {
+                for l in &m.layers {
+                    let key = (m.id, l.id);
+                    if key != (*map, *layer)
+                        && !changed.contains(&key)
+                        && !taken.iter().any(|(k, _)| *k == key)
+                        && layer_before(before, m.id, l.id).is_some_and(|b| b.shares(&old) && b.shares(&l.dataset.features))
+                    {
+                        taken.push((key, new.clone()));
+                    }
+                }
+            }
+        }
+        for ((map, layer), features) in taken {
+            if let Some(l) = self.project.map_index(map).and_then(|m| self.project.maps[m].layer_mut(layer)) {
+                l.dataset.features = features;
+                l.touch_geometry();
+                changed.push((map, layer));
+            }
+        }
+        let project_wide = !same_maps || acting.is_none() || outside_maps(before) != outside_maps(&mut self.project);
+        if project_wide {
+            return (None, Vec::new(), Vec::new());
+        }
+        let mut also: Vec<String> = Vec::new();
+        for (map, _) in &changed {
+            if Some(*map) != acting
+                && let Some(name) = self.project.map_index(*map).map(|m| self.project.maps[m].name.clone())
+                && !also.contains(&name)
+            {
+                also.push(name);
+            }
+        }
+        (acting, changed, also)
     }
 
     fn open_layout_name(&self) -> Option<String> {
@@ -917,6 +1103,16 @@ impl Session {
     fn reopen_layout(&mut self, open: Option<String>, saved: Option<usize>) {
         let ls = &self.project.layouts;
         self.active_layout = open.and_then(|n| ls.iter().position(|l| l.name.eq_ignore_ascii_case(&n)).or(saved.filter(|i| *i < ls.len())));
+    }
+
+    /// Marks the geometry of the layers of the maps `which` picks as changed, so they are drawn again.
+    fn touch_geometry_of(&mut self, which: impl Fn(u32) -> bool) {
+        for m in self.project.maps.iter_mut().filter(|m| which(m.id)) {
+            for l in &mut m.layers {
+                l.touch_geometry();
+            }
+        }
+        self.revision = self.revision.wrapping_add(1);
     }
 
     fn touch_all_geometry(&mut self) {
@@ -942,7 +1138,7 @@ impl Session {
 
     /// How many changes can be undone.
     pub fn undo_depth(&self) -> usize {
-        self.undo.len()
+        self.undo.iter().filter(|u| self.on_stack(u)).count()
     }
 
     /// Moves every other map to the active map's centre and scale (View › Link Views).

@@ -579,3 +579,29 @@ fn shell_fields(engine: &Engine, map: u64) -> Value {
     let mine = doc["maps"].as_array().unwrap().iter().find(|m| m["id"].as_u64() == Some(map)).unwrap().clone();
     mine["layers"].as_array().unwrap().iter().find(|l| l["name"] == "Fifty").unwrap()["dataset"]["fields"].clone()
 }
+
+/// History is one stack per map (#472): the state's depths and labels are the map in view's, `mapUndo` lists every map's, and an
+/// undo in one map leaves the other's style.
+#[test]
+fn the_state_reports_history_per_map_and_undo_leaves_the_other_map_alone() {
+    let mut engine = Engine::start("map-undo");
+    assert_eq!(engine.hello(1).get("event").and_then(Value::as_str), Some("bridge.ready"));
+    engine.command(1, &json!({"name": "command", "id": "project.sample", "params": {}}));
+    engine.command(2, &json!({"name": "command", "id": "map.duplicate", "params": {"name": "Overview"}}));
+    let (_, state, _) = engine.command(3, &json!({"name": "command", "id": "map.activate", "params": {"map": 1}}));
+    let ids: Vec<u64> = state["mapUndo"].as_array().unwrap().iter().map(|m| m[0].as_u64().unwrap()).collect();
+    assert_eq!(ids.len(), 2, "{state}");
+    // A style step in the map in view, then one in the other map, named from here.
+    engine.command(4, &json!({"name": "command", "id": "layer.color", "params": {"layer": "Cities", "color": "#112233"}}));
+    let (_, state, _) = engine
+        .command(5, &json!({"name": "command", "id": "layer.color", "params": {"map": ids[1], "layer": "Cities", "color": "#445566"}}));
+    let depth = |state: &Value, i: usize| state["mapUndo"][i][1].as_u64().unwrap();
+    assert_eq!((depth(&state, 0), depth(&state, 1)), (2, 2), "each map has the copy and its own style step: {state}");
+    assert_eq!(state["undoDepth"], state["mapUndo"][0][1], "the state's depth is the map in view's");
+    assert_eq!(state["undoLabel"].as_str(), Some("Symbol Color"));
+    let (_, state, _) = engine.command(6, &json!({"name": "command", "id": "edit.undo", "params": {}}));
+    assert_eq!((depth(&state, 0), depth(&state, 1)), (1, 2), "undo took back the map in view's step only: {state}");
+    assert_eq!(state["redoDepth"].as_u64(), Some(1));
+    assert_eq!(state["redoLabel"].as_str(), Some("Symbol Color"));
+    assert_eq!(state["undoLabel"].as_str(), Some("Duplicate Map"));
+}

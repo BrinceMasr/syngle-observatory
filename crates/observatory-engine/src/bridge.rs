@@ -338,9 +338,15 @@ pub fn state(session: &Session) -> Value {
         // The fork's own history, so a client can tell an edit from a read (#67). `undoDepth` is how
         // many steps undo would take back, and `undoLabel` is the top of them: the client records a
         // step of its own only when the depth grew, and rolls its cursor back when it did not move.
+        // History is one stack per map (#472): these are the map in view's, and `mapUndo` lists every map's.
         "undoDepth": session.undo_depth(),
-        "undoLabel": session.undo_label(),
+        "undoLabel": session.undo_label_full(),
         "redoDepth": session.redo_depth(),
+        "redoLabel": session.redo_label_full(),
+        "mapUndo": session.project.maps.iter().map(|m| {
+            let (undo, redo) = session.map_history(m.id);
+            json!([m.id, undo, redo])
+        }).collect::<Vec<_>>(),
     })
 }
 
