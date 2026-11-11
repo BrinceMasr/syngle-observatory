@@ -396,7 +396,16 @@ fn bridge_lines(session: &mut Session, project: &parts::Parts, linked: &std::syn
                         "payload": {"type": "progress", "id": id, "name": name, "phase": "start"},
                     });
                     let revision = session.revision;
-                    match bridge::run(session, &command) {
+                    // Any line may name the map it is about (#474): it runs with that map active and the map in view stays.
+                    let ran = match msg["command"].get("map").filter(|m| !m.is_null()) {
+                        None => bridge::run(session, &command),
+                        Some(named) => match session.named_map(named) {
+                            Err(e) => Err(bridge::BridgeError::bad_params(e.to_string())),
+                            Ok(None) => bridge::run(session, &command),
+                            Ok(Some(index)) => session.on_map(index, |s| bridge::run(s, &command)),
+                        },
+                    };
+                    match ran {
                         Ok(value) => {
                             // A command that changed the project leaves the view's copy stale: the
                             // project document is re-served, and the client asks the view to take it

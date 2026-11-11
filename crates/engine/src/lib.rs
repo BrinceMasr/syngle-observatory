@@ -671,6 +671,13 @@ impl Session {
         Ok((map != self.project.active_map).then_some(map))
     }
 
+    /// The map a bridge line names with `map` (an id or a name), when it is not the one in view: for the lines that are
+    /// not registered commands (a query, a catchment, an open), which have no `params` of their own to carry it in.
+    pub fn named_map(&self, named: &Value) -> Result<Option<usize>, project::NoMap> {
+        let map = project::find_map(&self.project.maps, named)?;
+        Ok((map != self.project.active_map).then_some(map))
+    }
+
     /// Runs `f` with the map at `map` active, then puts back the map that was in view, with its
     /// active layer and open table. The map in view is found again by id: a command may add or
     /// remove maps. If it removed that one, the view is wherever the command left it.
@@ -928,6 +935,13 @@ impl Session {
     pub fn map_history(&self, map: u32) -> (usize, usize) {
         let on = |u: &Step| u.owner.is_none() || u.owner == Some(map);
         (self.undo.iter().filter(|u| on(u)).count(), self.redo.iter().filter(|u| on(u)).count())
+    }
+
+    /// The labels of the step undo and the step redo would take back in a map (its own and the project's), as the map's
+    /// history shows them.
+    pub fn map_labels(&self, map: u32) -> (Option<String>, Option<String>) {
+        let on = |u: &&Step| u.owner.is_none() || u.owner == Some(map);
+        (self.undo.iter().rev().find(on).map(Step::label), self.redo.iter().rev().find(on).map(Step::label))
     }
 
     /// Forgets undo/redo and extent history and marks the project clean (after new/open, or a

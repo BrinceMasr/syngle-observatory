@@ -609,3 +609,29 @@ fn the_state_reports_history_per_map_and_undo_leaves_the_other_map_alone() {
     assert_eq!(state["redoLabel"].as_str(), Some("Symbol Color"));
     assert_eq!(state["undoLabel"].as_str(), Some("Duplicate Map"));
 }
+
+#[test]
+fn any_engine_line_may_name_its_map_and_the_map_in_view_stays() {
+    let mut engine = Engine::start("line-map");
+    assert_eq!(engine.hello(1).get("event").and_then(Value::as_str), Some("bridge.ready"));
+    engine.command(1, &json!({"name": "command", "id": "project.sample", "params": {}}));
+    engine.command(2, &json!({"name": "command", "id": "map.duplicate", "params": {"name": "Overview"}}));
+    let (_, state, _) = engine.command(3, &json!({"name": "command", "id": "map.activate", "params": {"map": 1}}));
+    let ids: Vec<u64> = state["mapUndo"].as_array().unwrap().iter().map(|m| m[0].as_u64().unwrap()).collect();
+    // The other map's layer gets a name the map in view has not.
+    engine.command(4, &json!({"name": "command", "id": "layer.rename", "params": {"map": ids[1], "layer": "Cities", "name": "Towns"}}));
+    let (missing, ..) = engine.command(5, &json!({"name": "dataset.query", "dataset": "Towns", "limit": 1}));
+    assert_eq!(missing["type"].as_str(), Some("error"), "the map in view has no Towns: {missing}");
+    let (value, state, _) = engine.command(6, &json!({"name": "dataset.query", "dataset": "Towns", "limit": 1, "map": ids[1]}));
+    assert_eq!(value["dataset"].as_str(), Some("Towns"), "the other map's layer answers: {value}");
+    assert_eq!(state["map"].as_u64(), Some(ids[0]), "the map in view stayed: {state}");
+    // Every map is described as its own page sees it: the renamed layer is in the other map's entry and not in the first's.
+    let named = |i: usize| state["maps"][i]["datasets"].as_array().unwrap().iter().filter_map(Value::as_str).collect::<Vec<_>>();
+    assert_eq!(state["maps"][1]["id"].as_u64(), Some(ids[1]));
+    assert!(named(1).contains(&"Towns") && !named(0).contains(&"Towns"), "{state}");
+    assert_eq!(state["maps"][0]["layers"], state["layers"], "the map in view's entry is the state's own numbers");
+    let (value, ..) = engine.command(7, &json!({"name": "dataset.query", "dataset": "Towns", "limit": 1, "map": "Overview"}));
+    assert_eq!(value["dataset"].as_str(), Some("Towns"), "a name works too: {value}");
+    let (bad, ..) = engine.command(8, &json!({"name": "dataset.query", "dataset": "Towns", "map": "Nowhere"}));
+    assert_eq!(bad["code"].as_str(), Some("bad-params"), "{bad}");
+}

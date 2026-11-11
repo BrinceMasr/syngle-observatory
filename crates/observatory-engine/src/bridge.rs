@@ -344,6 +344,23 @@ pub fn state(session: &Session) -> Value {
         "undoLabel": session.undo_label_full(),
         "redoDepth": session.redo_depth(),
         "redoLabel": session.redo_label_full(),
+        // Each map as its own page sees it (#474): a window shows one map of the project while another is in view
+        // here, and reads its layers, rows and history from its own entry, not from the map in view's.
+        "maps": session.project.maps.iter().map(|m| {
+            let (undo, redo) = session.map_history(m.id);
+            let (undo_label, redo_label) = session.map_labels(m.id);
+            json!({
+                "id": m.id,
+                "name": m.name,
+                "layers": m.layers.len(),
+                "features": m.layers.iter().map(|l| l.dataset.features.len()).sum::<usize>(),
+                "datasets": m.layers.iter().map(|l| Value::String(l.name.clone())).collect::<Vec<_>>(),
+                "undoDepth": undo,
+                "undoLabel": undo_label,
+                "redoDepth": redo,
+                "redoLabel": redo_label,
+            })
+        }).collect::<Vec<_>>(),
         "mapUndo": session.project.maps.iter().map(|m| {
             let (undo, redo) = session.map_history(m.id);
             json!([m.id, undo, redo])

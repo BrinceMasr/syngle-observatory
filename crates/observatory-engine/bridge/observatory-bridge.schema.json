@@ -427,10 +427,15 @@
       },
       "history": {
         "summary": "The person pressed the platform's undo or redo chord in the map: Ctrl+Z or Cmd+Z (undo), Ctrl+Shift+Z or Cmd+Shift+Z (redo), and Ctrl+Y (redo, on the platforms that have it). The canvas takes the keyboard and a framed page's keys never reach its host, so without this event Ctrl+Z would do nothing wherever the person's focus is after touching the map. The page decides which chord is the platform's (Cmd on a Mac, Ctrl elsewhere), sends one event per press (never a repeat, never while a text field has the keys), and the view keeps the key too (the canvas-only view has no shortcut of its own). The host decides what the step does. Optional, like focus-exit.",
-        "required": ["step"],
+        "required": [
+          "step"
+        ],
         "properties": {
           "step": {
-            "enum": ["undo", "redo"]
+            "enum": [
+              "undo",
+              "redo"
+            ]
           }
         }
       },
@@ -505,6 +510,12 @@
           },
           "layerName": {
             "type": "string"
+          },
+          "map": {
+            "type": [
+              "number",
+              "string"
+            ]
           }
         }
       },
@@ -528,6 +539,12 @@
           },
           "offset": {
             "type": "number"
+          },
+          "map": {
+            "type": [
+              "number",
+              "string"
+            ]
           }
         }
       },
@@ -559,6 +576,12 @@
           },
           "minutes": {
             "type": "number"
+          },
+          "map": {
+            "type": [
+              "number",
+              "string"
+            ]
           }
         }
       },
@@ -573,6 +596,12 @@
           },
           "params": {
             "type": "object"
+          },
+          "map": {
+            "type": [
+              "number",
+              "string"
+            ]
           }
         }
       },
@@ -584,6 +613,12 @@
         "properties": {
           "message": {
             "type": "string"
+          },
+          "map": {
+            "type": [
+              "number",
+              "string"
+            ]
           }
         }
       }
@@ -661,6 +696,12 @@
             "items": {
               "type": "number"
             }
+          }
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "type": "object"
           }
         },
         "mapUndo": {
