@@ -51,6 +51,9 @@ pub struct Project {
     /// free its id.
     #[serde(default)]
     next_table_id: u32,
+    /// The id the next map gets: removing a map, or undoing its addition, doesn't free its id.
+    #[serde(default)]
+    next_map_id: u32,
     #[serde(default)]
     pub gp_history: Vec<GpRecord>,
     #[serde(default)]
@@ -136,6 +139,64 @@ impl From<TableFile> for Table {
     fn from(t: TableFile) -> Self {
         let TableFile { id, name, geometry_type, fields, features, source } = t;
         Table { id, dataset: Dataset { name, geometry_type, fields, features: features.into(), source, crs: None, windowed: false } }
+    }
+}
+
+/// Why a `map` parameter names no one map.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NoMap {
+    /// Not a name or an id at all (an object, a negative number, a fraction).
+    NotAMap,
+    /// No map has that name or id.
+    Unknown(String),
+    /// More than one map answers to it: these, as `(id, name)`.
+    Ambiguous(String, Vec<(u32, String)>),
+}
+
+impl std::fmt::Display for NoMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NoMap::NotAMap => write!(f, "map must be a map's id or name"),
+            NoMap::Unknown(text) => write!(f, "no map '{}'", crate::clip(text, 80)),
+            NoMap::Ambiguous(text, maps) => {
+                let list: Vec<String> = maps.iter().take(8).map(|(id, name)| format!("{id} ('{}')", crate::clip(name, 40))).collect();
+                write!(f, "'{}' is more than one map: give the id of one of {}", crate::clip(text, 80), list.join(", "))
+            }
+        }
+    }
+}
+
+/// The map a `map` parameter stands for, as its position among `maps`: a number is an id; text
+/// is a name (as written, else ignoring case) or an id written as text. Text that more than one
+/// map answers to (two maps of one name, or one map's name that is another's id) is refused with
+/// the maps it could mean, never guessed. The one rule commands, tools and the bridge find a map
+/// by.
+pub fn find_map(maps: &[Map], value: &serde_json::Value) -> Result<usize, NoMap> {
+    let by_id = |id: u64| u32::try_from(id).ok().filter(|id| *id != 0).and_then(|id| maps.iter().position(|m| m.id == id));
+    match value {
+        serde_json::Value::Number(n) => match n.as_u64() {
+            Some(id) => by_id(id).ok_or_else(|| NoMap::Unknown(n.to_string())),
+            None => Err(NoMap::NotAMap),
+        },
+        serde_json::Value::String(text) => {
+            let exact: Vec<usize> = maps.iter().enumerate().filter(|(_, m)| m.name == *text).map(|(i, _)| i).collect();
+            let mut found = if exact.is_empty() {
+                maps.iter().enumerate().filter(|(_, m)| m.name.eq_ignore_ascii_case(text)).map(|(i, _)| i).collect()
+            } else {
+                exact
+            };
+            if let Some(i) = text.trim().parse::<u64>().ok().and_then(by_id)
+                && !found.contains(&i)
+            {
+                found.push(i);
+            }
+            match found.as_slice() {
+                [] => Err(NoMap::Unknown(text.clone())),
+                [i] => Ok(*i),
+                many => Err(NoMap::Ambiguous(text.clone(), many.iter().filter_map(|i| maps.get(*i)).map(|m| (m.id, m.name.clone())).collect())),
+            }
+        }
+        _ => Err(NoMap::NotAMap),
     }
 }
 
@@ -332,6 +393,7 @@ impl Project {
             active_map: 0,
             tables: Vec::new(),
             next_table_id: 1,
+            next_map_id: 1,
             gp_history: Vec::new(),
             layouts: Vec::new(),
             folders: Vec::new(),
@@ -352,6 +414,38 @@ impl Project {
             shared: Vec::new(),
             data_stores: Vec::new(),
         }
+    }
+
+    /// Gives an id to every map that has none (made by a command, or from before maps had ids)
+    /// and a new one to the later of two maps with the same id (a copy, an imported map, a hand
+    /// edit): the others keep theirs, which windows, tabs and agents hold. The new ones come after
+    /// every id given so far, so none is that of a map removed earlier.
+    pub fn give_map_ids(&mut self) {
+        let mut ids = std::collections::HashSet::new();
+        let stale: Vec<usize> = self.maps.iter().enumerate().filter(|(_, m)| m.id == 0 || !ids.insert(m.id)).map(|(i, _)| i).collect();
+        let top = self.maps.iter().map(|m| m.id).max().unwrap_or(0);
+        let mut next = self.next_map_id.max(top.wrapping_add(1)).max(1);
+        for i in stale {
+            while !ids.insert(next) {
+                next = next.wrapping_add(1).max(1);
+            }
+            if let Some(m) = self.maps.get_mut(i) {
+                m.id = next;
+            }
+        }
+        let top = self.maps.iter().map(|m| m.id).max().unwrap_or(0);
+        self.next_map_id = self.next_map_id.max(top.wrapping_add(1)).max(1);
+    }
+
+    /// Keeps the map ids given in another state of the project from being given again in this
+    /// one, which takes its place (undo, redo): the counter never goes back.
+    pub(crate) fn keep_map_ids(&mut self, other: &Project) {
+        self.next_map_id = self.next_map_id.max(other.next_map_id);
+    }
+
+    /// Where the map of an id is among `maps`.
+    pub fn map_index(&self, id: u32) -> Option<usize> {
+        self.maps.iter().position(|m| m.id == id)
     }
 
     /// The standalone table of an id.
@@ -402,6 +496,7 @@ impl Project {
         if self.active_map >= self.maps.len() {
             self.active_map = 0;
         }
+        self.give_map_ids();
         // Tables from before they had ids (0), or with an id repeated by a hand edit, get new
         // ones; the others keep theirs, which commands and views may hold. The new ones come
         // after every id given so far, so none is that of a table removed earlier.
@@ -537,6 +632,7 @@ impl Project {
     pub fn map_mut(&mut self) -> &mut Map {
         if self.maps.is_empty() {
             self.maps.push(Map::new("Map"));
+            self.give_map_ids();
         }
         let i = if self.active_map < self.maps.len() { self.active_map } else { 0 };
         self.active_map = i;

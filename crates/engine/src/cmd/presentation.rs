@@ -76,10 +76,7 @@ pub fn commands() -> Vec<C> {
         .when(need_presentation)
         .params(r#"{"presentation"?}"#),
         C::new("presentation.mapPage", "Map Page", "Publish › Page", |s, p| {
-            let map = match ps(p, "map") {
-                Some(n) => s.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(n)).ok_or_else(|| format!("no map '{n}'"))?,
-                None => s.map(),
-            };
+            let map = s.project.maps.get(super::navigate::map_at(s, p)?).ok_or("no such map")?;
             let name = map.name.clone();
             // The map view as it is now, unless a place is given.
             let c = map.center_lonlat();
@@ -89,7 +86,7 @@ pub fn commands() -> Vec<C> {
             add_page(s, p, title, PageKind::Map { map: name, center, width_m })
         })
         .when(need_presentation)
-        .params(r#"{"presentation"?, "map"?: name (default: the active map, at its current view), "lon"?, "lat"?, "widthM"?: ground width shown (m), "title"?, "at"?: page index}"#),
+        .params(r#"{"presentation"?, "map"?: id|name (default: the active map, at its current view), "lon"?, "lat"?, "widthM"?: ground width shown (m), "title"?, "at"?: page index}"#),
         C::new("presentation.blankPage", "Blank Page", "Publish › Page", |s, p| {
             let background = super::layout::color(p, "background", Rgba::rgb(0xFF, 0xFF, 0xFF))?;
             let text: String = ps(p, "text").unwrap_or("").chars().take(MAX_TEXT).collect();

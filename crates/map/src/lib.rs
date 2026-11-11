@@ -664,6 +664,11 @@ impl LayerGroup {
 /// A map: an ordered list of layers (index 0 draws on top), a basemap and a camera.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Map {
+    /// Stays with the map through a rename, unique among its project's maps, and never 0 once a
+    /// project holds it (the project gives it: a map made on its own, or read from a file written
+    /// before maps had ids, has 0 until then). A name is a label; this says which map is meant.
+    #[serde(default)]
+    pub id: u32,
     pub name: String,
     pub layers: Vec<Layer>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -785,6 +790,7 @@ pub struct LabelDisplay {
 impl Map {
     pub fn new(name: impl Into<String>) -> Self {
         Map {
+            id: 0,
             name: name.into(),
             layers: Vec::new(),
             service_groups: Vec::new(),

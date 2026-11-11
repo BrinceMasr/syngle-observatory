@@ -73,6 +73,12 @@ impl CommandSpec {
         self.mutates = false;
         self
     }
+    /// Whether `map` is one of its own parameters (a bookmark's map, the map to rename): it then
+    /// says what it does with it. Any other command takes `map` as the map to act on
+    /// ([`Session::run`]).
+    pub fn reads_map(&self) -> bool {
+        self.param_keys().is_some_and(|keys| keys.contains(&"map"))
+    }
     pub const fn when(mut self, f: fn(&Session) -> Option<&'static str>) -> Self {
         self.enabled = f;
         self
@@ -295,6 +301,8 @@ pub struct Session {
     notices_given: u64,
     /// Layer whose attribute table is open.
     pub table_layer: Option<u32>,
+    /// The id of the map in view while a command acts on another one ([`Session::on_map`]).
+    in_view: Option<u32>,
     /// The standalone table shown in the attribute table instead of a layer, by its id.
     pub table_standalone: Option<u32>,
     /// Edits per layer id since the project was last saved (Edit › Status). A failed command's
@@ -462,6 +470,7 @@ impl Session {
             notices: Vec::new(),
             notices_given: 0,
             table_layer: None,
+            in_view: None,
             table_standalone: None,
             clipboard: None,
             layer_clipboard: None,
@@ -605,10 +614,59 @@ impl Session {
             return self.run_plugin(id, params);
         }
         let Some(&spec) = self.registry.get(id) else { return Err(format!("unknown command '{id}'")) };
+        // A command may name the map it acts on: it runs with that map active and leaves the map
+        // in view as it was, so two windows on one project never fight over it.
+        match self.other_map(id, params).map_err(|e| e.to_string())? {
+            Some(map) => self.on_map(map, |s| s.run_spec(spec, id, params)),
+            None => self.run_spec(spec, id, params),
+        }
+    }
+
+    /// The map a command acts on when that is not the one in view: `params.map`, an id or a
+    /// name, for a command that has no `map` parameter of its own. `None` is the map in view.
+    pub fn other_map(&self, id: &str, params: &Value) -> Result<Option<usize>, project::NoMap> {
+        let Some(named) = params.get("map").filter(|m| !m.is_null()) else { return Ok(None) };
+        if id.starts_with(rustgis_plugins::PREFIX) || self.registry.get(id).is_none_or(|spec| spec.reads_map()) {
+            return Ok(None);
+        }
+        let map = project::find_map(&self.project.maps, named)?;
+        Ok((map != self.project.active_map).then_some(map))
+    }
+
+    /// Runs `f` with the map at `map` active, then puts back the map that was in view, with its
+    /// active layer and open table. The map in view is found again by id: a command may add or
+    /// remove maps. If it removed that one, the view is wherever the command left it.
+    pub fn on_map<R>(&mut self, map: usize, f: impl FnOnce(&mut Session) -> R) -> R {
+        if map == self.project.active_map || map >= self.project.maps.len() {
+            return f(self);
+        }
+        let seen = (self.map().id, self.active_layer, self.table_layer);
+        // Only the outermost call knows which map is in view (a script's line may name a third).
+        let outer = self.in_view.is_none();
+        if outer {
+            self.in_view = Some(seen.0);
+        }
+        self.project.active_map = map;
+        self.active_layer = self.map().layers.first().map(|l| l.id);
+        self.table_layer = None;
+        let res = f(self);
+        if outer {
+            self.in_view = None;
+        }
+        if let Some(back) = self.project.map_index(seen.0) {
+            self.project.active_map = back;
+            (self.active_layer, self.table_layer) = (seen.1, seen.2);
+        }
+        self.fix_active_layer();
+        res
+    }
+
+    fn run_spec(&mut self, spec: CommandSpec, id: &str, params: &Value) -> CmdResult {
         // Keys the command does not read: said, so a script or an agent can correct itself.
         if let (Value::Object(given), Some(known)) = (params, spec.param_keys()) {
-            // Bounded: the keys come from the caller (the first few, each clipped).
-            let unknown: Vec<&String> = given.keys().filter(|k| !known.contains(&k.as_str())).collect();
+            // Bounded: the keys come from the caller (the first few, each clipped). `map` is every
+            // command's: the map it acts on.
+            let unknown: Vec<&String> = given.keys().filter(|k| !known.contains(&k.as_str()) && k.as_str() != "map").collect();
             if !unknown.is_empty() {
                 let mut said: Vec<String> = unknown.iter().take(5).map(|k| format!("'{}'", clip(k, 40))).collect();
                 if unknown.len() > 5 {
@@ -660,7 +718,14 @@ impl Session {
     /// Runs `f` as the command `label`: when it `mutates`, the project is snapshotted for undo
     /// and restored if `f` fails or panics.
     pub(crate) fn guarded(&mut self, label: &'static str, mutates: bool, f: impl FnOnce(&mut Session) -> CmdResult) -> CmdResult {
-        let snapshot = mutates.then(|| self.project.clone());
+        // The step undo goes back to shows the map that was in view, not the one a command named.
+        let snapshot = mutates.then(|| {
+            let mut before = self.project.clone();
+            if let Some(seen) = self.in_view.and_then(|id| before.map_index(id)) {
+                before.active_map = seen;
+            }
+            before
+        });
         let open_layout = self.active_layout;
         // The project's generation rolls back with it: a project opened part way (a plugin's
         // command through its bridge) and then undone is the one before, still open.
@@ -674,6 +739,8 @@ impl Session {
         let said = self.notices_given;
         let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(self)))
             .unwrap_or_else(|_| Err(format!("{label} failed unexpectedly; the project was restored")));
+        // A map the command made (new, a copy, an imported one) gets its id.
+        self.project.give_map_ids();
         // A command that changed a streamed layer's features or fields (not by reading its
         // source) would lose the change at the next read: undone, with a way to edit it instead.
         let res = match (&res, &snapshot) {
@@ -817,6 +884,7 @@ impl Session {
         let (open, was) = (self.open_layout_name(), self.active_layout);
         let cur = std::mem::replace(&mut self.project, p);
         self.project.keep_table_ids(&cur);
+        self.project.keep_map_ids(&cur);
         self.reopen_layout(open, saved);
         self.redo.push((cur, was, label, actor));
         self.touch_all_geometry();
@@ -828,6 +896,7 @@ impl Session {
         let (open, was) = (self.open_layout_name(), self.active_layout);
         let cur = std::mem::replace(&mut self.project, p);
         self.project.keep_table_ids(&cur);
+        self.project.keep_map_ids(&cur);
         self.reopen_layout(open, saved);
         self.undo.push((cur, was, label, actor));
         self.touch_all_geometry();

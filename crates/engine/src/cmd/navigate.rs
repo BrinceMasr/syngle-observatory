@@ -120,11 +120,11 @@ pub fn commands() -> Vec<C> {
         })
         .view(),
         C::new("bookmark.add", "New Bookmark", "Home › Navigate › Bookmarks", add_bookmark).params(
-            r#"{"name"?: string (a number is added when another bookmark has it), "description"?: string, "map"?: name (default: the active map; its current view)}"#,
+            r#"{"name"?: string (a number is added when another bookmark has it), "description"?: string, "map"?: id|name (default: the active map; its current view)}"#,
         ),
         C::new("bookmark.go", "Go To Bookmark", "Home › Navigate › Bookmarks", go_bookmark)
             .view()
-            .params(r#"{"name": string, "map"?: name (the bookmark's map), "pan"?: bool (keep the current scale)}"#),
+            .params(r#"{"name": string, "map"?: id|name (the bookmark's map), "pan"?: bool (keep the current scale)}"#),
         C::new("bookmark.remove", "Remove Bookmark", "Home › Navigate › Bookmarks", |s, p| {
             let (mi, bi) = bookmark_at(s, p)?;
             if let Some(m) = s.project.maps.get_mut(mi) {
@@ -132,7 +132,7 @@ pub fn commands() -> Vec<C> {
             }
             Ok(Value::Null)
         })
-        .params(r#"{"name": string, "map"?: name (default: the active map)}"#),
+        .params(r#"{"name": string, "map"?: id|name (default: the active map)}"#),
         C::new("bookmark.rename", "Rename Bookmark", "Bookmarks", |s, p| {
             let new = ps(p, "newName").map(str::trim).filter(|n| !n.is_empty()).ok_or("newName is required")?;
             let (mi, bi) = bookmark_at(s, p)?;
@@ -142,7 +142,7 @@ pub fn commands() -> Vec<C> {
             }
             Ok(json!({"name": name}))
         })
-        .params(r#"{"name": string, "newName": string (a number is added when another bookmark has it), "map"?: name}"#),
+        .params(r#"{"name": string, "newName": string (a number is added when another bookmark has it), "map"?: id|name}"#),
         C::new("bookmark.update", "Update Bookmark", "Bookmarks", |s, p| {
             let (mi, bi) = bookmark_at(s, p)?;
             // The view it takes is the one on screen: another map's would be a view not seen.
@@ -157,7 +157,7 @@ pub fn commands() -> Vec<C> {
             }
             Ok(Value::Null)
         })
-        .params(r#"{"name": string (it takes the current view; its map must be in view), "map"?: name}"#),
+        .params(r#"{"name": string (it takes the current view; its map must be in view), "map"?: id|name}"#),
         C::new("bookmark.describe", "Bookmark Description", "Bookmarks", |s, p| {
             let text: String = ps(p, "description").ok_or("description is required")?.trim().chars().take(MAX_DESCRIPTION).collect();
             let (mi, bi) = bookmark_at(s, p)?;
@@ -166,7 +166,7 @@ pub fn commands() -> Vec<C> {
             }
             Ok(Value::Null)
         })
-        .params(r#"{"name": string, "description": string (empty clears it), "map"?: name}"#),
+        .params(r#"{"name": string, "description": string (empty clears it), "map"?: id|name}"#),
         C::new("bookmark.move", "Move Bookmark", "Bookmarks", |s, p| {
             let to = super::uint(p, "to").ok_or("to is required (an index)")?;
             let (mi, bi) = bookmark_at(s, p)?;
@@ -177,7 +177,7 @@ pub fn commands() -> Vec<C> {
             }
             Ok(Value::Null)
         })
-        .params(r#"{"name": string, "to": index (0: first; past the end: last), "map"?: name}"#),
+        .params(r#"{"name": string, "to": index (0: first; past the end: last), "map"?: id|name}"#),
         C::new("bookmark.save", "Export Bookmarks", "Home › Navigate › Bookmarks", |s, p| super::items::save_item(s, "bookmarks", p))
             .view()
             .params(r#"{"path": "*.rgisbookmarks"}"#),
@@ -185,14 +185,13 @@ pub fn commands() -> Vec<C> {
             .params(r#"{"path"?: "*.rgisbookmarks", "text"?: bookmarks JSON, "data"?: base64 file}"#),
         C::new("map.new", "New Map", "Home › Project", new_map).params(r#"{"name"?: string}"#),
         C::new("map.activate", "Activate Map", "Browser", |s, p| {
-            let n = s_name(p)?;
-            let i = s.project.maps.iter().position(|m| m.name.eq_ignore_ascii_case(n)).ok_or_else(|| format!("no map '{n}'"))?;
+            let i = named_map(s, p)?;
             s.project.active_map = i;
             s.active_layer = s.map().layers.first().map(|l| l.id);
             s.table_layer = None;
             Ok(Value::Null)
         })
-        .params(r#"{"name": string}"#)
+        .params(r#"{"name"?: string, "map"?: id|name (either says which map)}"#)
         .view(),
         C::new("map.rename", "Rename Map", "Layers", |s, p| {
             let n = s_name(p)?.trim();
@@ -209,15 +208,14 @@ pub fn commands() -> Vec<C> {
             follow_renamed_map(s, &old, &name);
             Ok(json!({"name": name}))
         })
-        .params(r#"{"name": string (the new name; a number is added when another map has it), "map"?: name (default: the active map)}"#),
+        .params(r#"{"name": string (the new name; a number is added when another map has it), "map"?: id|name (default: the active map)}"#),
         C::new("map.duplicate", "Duplicate Map", "Browser", duplicate_map)
-            .params(r#"{"map"?: name (default: the active map), "name"?: string (default: "<map> copy"; a number is added when another map has it)}"#),
+            .params(r#"{"map"?: id|name (default: the active map), "name"?: string (default: "<map> copy"; a number is added when another map has it)}"#),
         C::new("map.remove", "Delete Map", "Browser", |s, p| {
             if s.project.maps.len() < 2 {
                 return Err("a project keeps at least one map".into());
             }
-            let n = s_name(p)?;
-            let i = s.project.maps.iter().position(|m| m.name.eq_ignore_ascii_case(n)).ok_or_else(|| format!("no map '{n}'"))?;
+            let i = named_map(s, p)?;
             s.project.maps.remove(i);
             // Deleting another map keeps the one in view (a map tab's close button).
             let active = s.project.active_map;
@@ -230,7 +228,7 @@ pub fn commands() -> Vec<C> {
             }
             Ok(Value::Null)
         })
-        .params(r#"{"name": string}"#),
+        .params(r#"{"name"?: string, "map"?: id|name (either says which map)}"#),
     ]
 }
 
@@ -252,13 +250,23 @@ fn s_name(p: &Value) -> Result<&str, String> {
     ps(p, "name").ok_or_else(|| "name is required".to_string())
 }
 
-/// The map `map` names (default: the active one). A `map` that isn't a name is an error, never
-/// the active map.
+/// The map `map` names, by id or by name (default: the active one). A `map` that names no one
+/// map is an error, never the active map.
 pub(crate) fn map_at(s: &Session, p: &Value) -> Result<usize, String> {
     match p.get("map") {
         None | Some(Value::Null) => Ok(s.project.active_map),
-        Some(Value::String(m)) => s.project.maps.iter().position(|x| x.name.eq_ignore_ascii_case(m)).ok_or_else(|| format!("no map '{m}'")),
-        Some(_) => Err("map must be a map's name".into()),
+        Some(m) => crate::project::find_map(&s.project.maps, m).map_err(|e| e.to_string()),
+    }
+}
+
+/// The map a command about maps themselves is for: `map` (an id or a name), else `name`.
+fn named_map(s: &Session, p: &Value) -> Result<usize, String> {
+    match p.get("map") {
+        None | Some(Value::Null) => {
+            let n = s_name(p)?;
+            s.project.maps.iter().position(|m| m.name.eq_ignore_ascii_case(n)).ok_or_else(|| format!("no map '{n}'"))
+        }
+        Some(m) => crate::project::find_map(&s.project.maps, m).map_err(|e| e.to_string()),
     }
 }
 

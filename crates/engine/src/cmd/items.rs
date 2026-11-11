@@ -55,7 +55,7 @@ pub fn commands() -> Vec<C> {
         // Map and layer files.
         C::new("map.save", "Save Map File", "Publish › Save As", |s, p| save_item(s, "map", p))
         .view()
-        .params(r#"{"path": "*.rgismap", "map"?: name}"#),
+        .params(r#"{"path": "*.rgismap", "map"?: id|name}"#),
         C::new("map.import", "Import", "Home › Project", import_maps).params(r#"{"path": "*.rgismap|*.rgis|*.rgispkg" | "text": map file JSON | "data": base64 file}"#),
         C::new("layer.save", "Save Layer File", "Publish › Save As", |s, p| save_item(s, "layer", p))
         .view()
@@ -929,10 +929,7 @@ pub const ITEMS: &[(&str, &str, &str)] = &[
 pub fn item_bytes(s: &mut Session, kind: &str, p: &Value) -> Result<(String, Vec<u8>), String> {
     let (name, bytes) = match kind {
         "map" => {
-            let map = match ps(p, "map") {
-                Some(n) => s.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(n)).ok_or_else(|| format!("no map '{n}'"))?,
-                None => s.map(),
-            };
+            let map = s.project.maps.get(super::navigate::map_at(s, p)?).ok_or("no such map")?;
             (map.name.clone(), to_json(&embedded_map(map, &mut MAX_EMBED.clone()))?)
         }
         "layer" => {
