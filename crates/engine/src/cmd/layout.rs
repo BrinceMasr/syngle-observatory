@@ -375,12 +375,7 @@ fn add_frame(s: &mut Session, p: &Value) -> CmdResult {
         }
         o => return Err(format!("unknown frame shape '{o}'")),
     };
-    let map = match ps(p, "map") {
-        Some(n) => {
-            s.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(n)).map(|m| m.name.clone()).ok_or_else(|| format!("no map '{n}'"))?
-        }
-        None => s.map().name.clone(),
-    };
+    let map = s.project.maps.get(super::navigate::map_at(s, p)?).map(|m| m.name.clone()).ok_or("no such map")?;
     let i = index(s, p)?;
     let l = s.project.layouts.get(i).ok_or("no layout")?;
     let n = l.elements.len() as f64;
@@ -879,16 +874,9 @@ fn update(s: &mut Session, p: &Value) -> CmdResult {
         };
         (restyle(kind, p)?, grid, indicator)
     };
-    let map_name = match ps(p, "map") {
-        Some(n) => Some(
-            s.project
-                .maps
-                .iter()
-                .find(|m| m.name.eq_ignore_ascii_case(n))
-                .map(|m| m.name.clone())
-                .ok_or_else(|| format!("no map '{n}'"))?,
-        ),
-        None => None,
+    let map_name = match p.get("map") {
+        None | Some(Value::Null) => None,
+        Some(_) => Some(s.project.maps.get(super::navigate::map_at(s, p)?).map(|m| m.name.clone()).ok_or("no such map")?),
     };
     let col = match ps(p, "color") {
         Some(c) => Some(Rgba::from_hex(c).ok_or("color must be #RRGGBB or #RRGGBBAA")?),

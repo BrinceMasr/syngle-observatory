@@ -48,6 +48,11 @@ not just the handshake, so a stale page or a stale sidecar is refused the moment
   either transport closes both. Even a body that is not JSON is refused in the bridge's own
   `bad-params` shape, never with a bare 400 page.
 
+A `command` may name the map it acts on with `map`, an id or a name (ids are in `info.project`'s `mapList`).
+The command runs on that map and the map in view stays as it was. A name that two maps share, or one that
+names no map, is refused as `bad-params` with the list; a command that has a `map` of its own keeps its
+meaning (Syngle-Ecosystem #470).
+
 The **state after every command** travels twice: as the `result` event's own `state`, and as the
 `bridge.state` line after it. The result is what SyngleCode's bridge reads the undo depth from when
 the command's promise settles, so it can tell an edit from a read.

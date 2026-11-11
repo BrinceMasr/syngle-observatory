@@ -34,7 +34,8 @@ pub fn defs() -> Vec<ToolDef> {
                 "type": "object",
                 "properties": {
                     "name_filter": {"type": "string", "description": "Only the layers and tables whose name holds this (ignoring case)"},
-                    "include_fields": {"type": "boolean", "description": "List each layer's fields (default true); false keeps a large project short"}
+                    "include_fields": {"type": "boolean", "description": "List each layer's fields (default true); false keeps a large project short"},
+                    "map": {"type": ["string", "integer"], "description": "The map to list, by id or name (default: the map in view); its id and name are in `mapList`"}
                 }
             }),
         },
@@ -102,6 +103,7 @@ pub fn defs() -> Vec<ToolDef> {
                 "type": "object",
                 "properties": {
                     "layer": {"type": "string", "description": "Layer name or id"},
+                    "map": {"type": ["string", "integer"], "description": "The map the layer is in, by id or name (default: the map in view)"},
                     "where": {"type": "string", "description": "A where clause; empty for all rows"},
                     "fields": {"type": "array", "items": {"type": "string"}, "description": "Only these fields (default all)"},
                     "order_by": {"type": "string", "description": "Sort by this field"},
@@ -256,7 +258,7 @@ pub fn run_with_budget(s: &mut Session, call: &ToolCall, tokens: usize) -> Resul
     let v = match call.name.as_str() {
         "list_layers" => s.run(
             "info.project",
-            &json!({"nameFilter": str_arg(a, "name_filter"), "includeFields": a.get("include_fields").and_then(Value::as_bool).unwrap_or(true)}),
+            &json!({"nameFilter": str_arg(a, "name_filter"), "includeFields": a.get("include_fields").and_then(Value::as_bool).unwrap_or(true), "map": a.get("map")}),
         )?,
         "search_commands" => search_commands(s, a)?,
         "search_tools" => search_tools(a)?,
@@ -279,7 +281,10 @@ pub fn run_with_budget(s: &mut Session, call: &ToolCall, tokens: usize) -> Resul
             let r = s.run("gp.run", &json!({"tool": tool, "params": params_arg(a)?})).map_err(|e| error_with_notices(e, s, mark))?;
             with_notices(with_new_layers(r, s, &before), s, mark)
         }
-        "read_features" => read_features(s, a)?,
+        "read_features" => match s.other_map("info.project", a).map_err(|e| e.to_string())? {
+            Some(map) => s.on_map(map, |s| read_features(s, a))?,
+            None => read_features(s, a)?,
+        },
         // MCP's `run` (not offered to the in-app assistant): a script in one call.
         "run" => return run_script(s, a, tokens),
         "search_docs" => crate::docs::search(&str_arg(a, "query").unwrap_or_default(), limit_arg(a, 8, 30))?,

@@ -33,11 +33,8 @@ pub fn layer_ids(session: &Session) -> HashSet<u32> {
 
 /// A layer's name as a file stem: letters, digits, `_` and `-`, whatever else becomes `_`.
 fn stem_of(name: &str) -> String {
-    let stem: String = name
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
-        .take(STEM_LIMIT)
-        .collect();
+    let stem: String =
+        name.chars().map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).take(STEM_LIMIT).collect();
     if stem.trim_matches('_').is_empty() { "layer".to_string() } else { stem }
 }
 

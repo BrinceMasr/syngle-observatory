@@ -980,6 +980,14 @@ fn hostile_params_never_panic() {
         json!({"kind": "colorbar", "ticks": -1e308, "tickSide": 7, "orientation": "x", "layer": "", "reverse": "maybe"}),
         json!({"type": "albers", "lon_0": f64::MAX, "lat_1": "x", "lat_2": -1e308}),
         json!({"kind": "legend", "element": 1, "exclude": [null, 7, "", {"x": 1}]}),
+        // The map a command acts on (#470): ids, names and shapes that are none.
+        json!({"map": {"x": 1}, "layer": "Countries", "name": "x"}),
+        json!({"map": -1, "layer": 1, "name": "x"}),
+        json!({"map": 1e30, "name": "x", "newName": "y"}),
+        json!({"map": "", "layer": "Countries", "name": ""}),
+        json!({"map": [1, 2], "name": "Map", "layer": 7}),
+        json!({"map": "99999999999999999999", "name": "x"}),
+        json!({"map": 1, "layer": "Countries", "color": "#ffffff", "name": "Map"}),
         // MySQL addresses that can't be read, so nothing connects.
         json!({"database": "mysql://u:p#@[::1/x?ssl-mode=nope", "password": 7, "layer": ":", "crs": "EPSG:-1"}),
         json!({"database": "MARIADB://u@h:99999999/%zz?ssl-mode=VERIFY_CA&ssl-ca=/nonexistent", "sql": "SELECT 1"}),
@@ -9321,4 +9329,83 @@ fn project_text_is_the_saved_file_and_changes_nothing() {
     // What it answers opens as the same project.
     let again = Project::from_json(&text).unwrap();
     assert_eq!(again.tables.len(), s.project.tables.len());
+}
+
+/// Maps have stable ids (Syngle-Ecosystem #470, ADR 0022): a project from before them is given ids on open and keeps
+/// them on save, a copy gets a new one, and a rename keeps it.
+#[test]
+fn maps_have_stable_ids() {
+    let mut s = world();
+    s.run("map.new", &json!({"name": "B"})).unwrap();
+    let ids = |s: &Session| s.project.maps.iter().map(|m| m.id).collect::<Vec<_>>();
+    let first = ids(&s);
+    assert!(first.iter().all(|id| *id != 0) && first[0] != first[1], "{first:?}");
+    // A project written before maps had ids.
+    let mut old = serde_json::to_value(&s.project).unwrap();
+    for map in old["maps"].as_array_mut().unwrap() {
+        map.as_object_mut().unwrap().remove("id");
+    }
+    old.as_object_mut().unwrap().remove("next_map_id");
+    let opened = Project::from_json(&old.to_string()).unwrap();
+    let given: Vec<u32> = opened.maps.iter().map(|m| m.id).collect();
+    assert!(given.iter().all(|id| *id != 0) && given[0] != given[1], "{given:?}");
+    let saved = serde_json::to_value(&opened).unwrap();
+    assert_eq!(saved["maps"][0]["id"], json!(given[0]), "saved with its id");
+    assert_eq!(Project::from_json(&saved.to_string()).unwrap().maps.iter().map(|m| m.id).collect::<Vec<_>>(), given);
+    // A copy is a new map; a rename is the same one.
+    s.run("map.duplicate", &json!({"map": first[0]})).unwrap();
+    let all = ids(&s);
+    assert_eq!(all.len(), 3);
+    assert!(all.iter().collect::<std::collections::HashSet<_>>().len() == 3, "the copy has its own id: {all:?}");
+    s.run("map.rename", &json!({"map": first[1], "name": "Renamed"})).unwrap();
+    assert_eq!(s.project.maps.iter().find(|m| m.id == first[1]).map(|m| m.name.as_str()), Some("Renamed"));
+    // An id is never given again after its map went.
+    s.run("map.remove", &json!({"map": first[1]})).unwrap();
+    s.run("map.new", &json!({"name": "C"})).unwrap();
+    assert!(!ids(&s).contains(&first[1]), "the removed map's id is not reused: {:?}", ids(&s));
+}
+
+/// `map` on any command names the map it acts on, by id or name; the map in view stays as it was (#470).
+#[test]
+fn a_command_may_name_the_map_it_acts_on() {
+    let mut s = world();
+    s.run("map.new", &json!({"name": "B"})).unwrap();
+    let a = s.project.maps[0].id;
+    let b = s.project.maps[1].id;
+    assert_eq!(s.map().id, b, "B is in view");
+    let layer = s.project.maps[0].layers[0].name.clone();
+    let color_of = |s: &Session, map: usize| format!("{:?}", s.project.maps[map].layers.first().map(|l| &l.renderer));
+    let before = (color_of(&s, 0), color_of(&s, 1));
+    // By id, while another map is in view.
+    s.run("layer.color", &json!({"map": a, "layer": layer, "color": "#336699"})).unwrap();
+    assert_ne!(color_of(&s, 0), before.0, "A was restyled");
+    assert_eq!(s.map().id, b, "the map in view is unchanged");
+    assert_eq!(s.project.maps[1].layers.len(), 0);
+    // By name, as the same text in another case.
+    s.run("layer.color", &json!({"map": s.project.maps[0].name.to_uppercase(), "layer": layer, "color": "#112233"})).unwrap();
+    assert_eq!(s.map().id, b);
+    // The step undo goes back to shows the map that was in view.
+    assert!(s.undo());
+    assert_eq!(s.map().id, b);
+    // A failed command also leaves the view alone.
+    assert!(s.run("layer.color", &json!({"map": a, "layer": "No such layer", "color": "#336699"})).is_err());
+    assert_eq!(s.map().id, b);
+    // Refusals are typed and say which maps.
+    for bad in [json!(0), json!(99999), json!("nope"), json!(-1), json!(1.5), json!({"x": 1}), json!([1]), json!(true)] {
+        let err = s.run("layer.color", &json!({"map": bad, "layer": layer, "color": "#336699"})).unwrap_err();
+        assert!(!err.is_empty(), "{bad}");
+        assert_eq!(s.map().id, b, "{bad}");
+    }
+    // Two maps of one name: refused with the list, never guessed.
+    s.run("map.duplicate", &json!({"map": a, "name": "B"})).unwrap();
+    s.project.maps.iter_mut().for_each(|m| {
+        if m.name.starts_with('B') {
+            m.name = "B".into()
+        }
+    });
+    let err = s.run("layer.color", &json!({"map": "B", "layer": layer, "color": "#336699"})).unwrap_err();
+    assert!(err.contains("more than one map") && err.contains("id"), "{err}");
+    // A command with a `map` of its own keeps its meaning.
+    assert!(s.run("map.activate", &json!({"map": a})).is_ok());
+    assert_eq!(s.map().id, a);
 }

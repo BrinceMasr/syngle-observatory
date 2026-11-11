@@ -244,10 +244,7 @@ pub fn share_bytes(s: &mut Session, kind: &str, p: &Value) -> Result<(String, Ve
 
 /// A map to share, its layer groups folded into their layers (the shared formats have none).
 fn map_of(s: &Session, p: &Value) -> Result<Map, String> {
-    let mut m = match ps(p, "map") {
-        Some(n) => s.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(n)).cloned().ok_or_else(|| format!("no map '{n}'"))?,
-        None => s.map().clone(),
-    };
+    let mut m = s.project.maps.get(super::navigate::map_at(s, p)?).cloned().ok_or("no such map")?;
     m.bake_groups();
     Ok(m)
 }

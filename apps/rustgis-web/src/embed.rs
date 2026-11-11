@@ -77,7 +77,11 @@ pub type Key = (u64, usize, [u64; 5]);
 
 pub fn key(s: &rustgis_engine::Session) -> Key {
     let c = &s.project.map().camera;
-    (s.revision, s.project.active_map, [c.center.x.to_bits(), c.center.y.to_bits(), c.res.to_bits(), c.bearing.to_bits(), c.pitch.to_bits()])
+    (
+        s.revision,
+        s.project.active_map,
+        [c.center.x.to_bits(), c.center.y.to_bits(), c.res.to_bits(), c.bearing.to_bits(), c.pitch.to_bits()],
+    )
 }
 
 /// Decides when a change is posted.
@@ -158,7 +162,7 @@ mod tests {
     #[test]
     fn a_change_is_posted_once_it_settles_and_never_echoed() {
         let t = Instant::now();
-        let k = |rev| (rev, 0, [0, 0, 0]);
+        let k = |rev| (rev, 0, [0, 0, 0, 0, 0]);
         let mut c = Changes::default();
         // The first project is the page's to send.
         assert_eq!(c.due(k(1), t), (false, None));

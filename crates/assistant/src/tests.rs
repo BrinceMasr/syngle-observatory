@@ -727,6 +727,32 @@ fn mcp_list_layers_filters_by_name_and_drops_fields() {
     assert!(layers[0].get("fields").is_none(), "{text}");
 }
 
+/// A tool names the map it reads or edits, by id or name, and the map in view stays as it was (#470).
+#[test]
+fn tools_name_the_map_they_act_on() {
+    let (server, mut s) = (mcp::Server::default(), sample());
+    s.run("map.new", &json!({"name": "Second"})).unwrap();
+    let first = s.project.maps[0].id;
+    let view = s.map().id;
+    let (err, text) = call_tool(&server, &mut s, "list_layers", json!({"map": first, "include_fields": false}));
+    assert!(!err, "{text}");
+    let listed: Value = serde_json::from_str(&text).unwrap();
+    assert!(listed["layers"].as_array().unwrap().len() > 1 && listed["activeMap"] != "Second", "{text}");
+    assert!(listed["mapList"].as_array().unwrap().len() == 2, "{text}");
+    let (err, text) = call_tool(&server, &mut s, "list_layers", json!({"map": "no such map"}));
+    assert!(err && text.contains("no map"), "{text}");
+    let (err, text) = call_tool(&server, &mut s, "read_features", json!({"map": first, "layer": "Rivers", "limit": 1}));
+    assert!(!err, "{text}");
+    let (err, text) = call_tool(
+        &server,
+        &mut s,
+        "run_command",
+        json!({"command": "layer.color", "params": {"map": first, "layer": "Rivers", "color": "#336699"}}),
+    );
+    assert!(!err, "{text}");
+    assert_eq!(s.map().id, view, "the map in view is unchanged");
+}
+
 /// `snapshot` outside the desktop relay draws the map offscreen at the view's shape and says
 /// what it shows; saving it needs file access, and asks for approval.
 #[test]

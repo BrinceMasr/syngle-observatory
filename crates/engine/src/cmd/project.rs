@@ -254,6 +254,7 @@ fn info(s: &mut Session, p: &Value) -> CmdResult {
         "path": s.path.as_ref().map(|p| p.display().to_string()),
         "unsaved": s.dirty,
         "maps": s.project.maps.iter().map(|m| m.name.clone()).collect::<Vec<_>>(),
+        "mapList": s.project.maps.iter().enumerate().map(|(i, m)| json!({"id": m.id, "name": m.name, "active": i == s.project.active_map})).collect::<Vec<_>>(),
         "activeMap": m.name,
         "basemap": m.basemap.code(),
         "projection": m.projection.code(),

@@ -439,7 +439,11 @@ pub fn run(session: &mut Session, command: &EngineCommand) -> Result<Value, Brid
                 }
             }
         }
-        EngineCommand::Command { id, params } => session.run(id, params).map_err(BridgeError::engine),
+        EngineCommand::Command { id, params } => {
+            // A `map` that names no one map is the caller's mistake, said as one before anything runs (#470).
+            session.other_map(id, params).map_err(|e| BridgeError::bad_params(e.to_string()))?;
+            session.run(id, params).map_err(BridgeError::engine)
+        }
         EngineCommand::Mcp { message } => {
             // This session *is* the project the person has open, as the desktop's relay is, so the
             // pass-through is a relay's: commands that replace the project stay theirs, and a tool
@@ -528,7 +532,9 @@ mod tests {
         for key in ["layers", "active", "camera", "tool", "selection", "theme"] {
             assert!(view["state"]["required"].as_array().unwrap().contains(&json!(key)), "{key} in the view state");
         }
-        for event in ["camera-changed", "selection-changed", "feature-clicked", "tool-result", "frame-stats", "focus-exit", "key", "history"] {
+        for event in
+            ["camera-changed", "selection-changed", "feature-clicked", "tool-result", "frame-stats", "focus-exit", "key", "history"]
+        {
             assert!(view["events"].get(event).is_some(), "{event} is a view event");
         }
         for event in ["progress", "result", "error"] {
@@ -594,5 +600,35 @@ mod tests {
         assert_eq!(line["protocolVersion"], PROTOCOL_VERSION);
         assert_eq!(line["payload"]["id"], 4);
         assert_eq!(line["payload"]["name"], "dataset.query");
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic)]
+mod map_param_tests {
+    use super::*;
+    use rustgis_engine::project::Project;
+
+    fn command(map: Value) -> EngineCommand {
+        EngineCommand::Command { id: "info.project".into(), params: json!({ "map": map }) }
+    }
+
+    /// A `map` that names no one map is `bad-params`, said before anything runs; one that does runs on that map and
+    /// leaves the map in view as it was (Syngle-Ecosystem #470).
+    #[test]
+    fn a_map_that_is_none_is_refused_as_bad_params_and_a_named_one_leaves_the_view_alone() {
+        let mut session = Session::new(Project::default());
+        session.run("project.sample", &Value::Null).unwrap();
+        session.run("map.new", &json!({"name": "Second"})).unwrap();
+        let view = session.map().id;
+        let first = session.project.maps[0].id;
+        let answer = run(&mut session, &command(json!(first))).unwrap();
+        assert_eq!(answer["activeMap"], session.project.maps[0].name.as_str());
+        assert_eq!(session.map().id, view, "the map in view is unchanged");
+        for bad in [json!(0), json!(99999), json!("nope"), json!(-1), json!(1.5), json!({"x": 1}), json!([1]), json!(true)] {
+            let error = run(&mut session, &command(bad.clone())).unwrap_err();
+            assert_eq!(error.code, "bad-params", "{bad}: {}", error.message);
+            assert_eq!(session.map().id, view, "{bad}");
+        }
     }
 }
