@@ -94,6 +94,18 @@ a step of its own **only when the depth grew**. Undo and redo go back through `e
 not happen rolls its cursor back. The two histories are then one history, and neither side can serve
 a step the other cannot take back.
 
+### Several maps (ADR 0022, Syngle #470 to #474)
+
+The history is one stack **per map**: `undoDepth`, `undoLabel`, `redoDepth` and `redoLabel` are the map in view's, and
+`mapUndo: [[id, undo, redo]]` has every map's depths. A change to the whole project sits on every map's stack, and a row edit
+shared by several maps is one step labelled "..., also in B". `maps` describes each map for a page pinned to it (id, name,
+layers, features, datasets, depths and labels), so a window that shows map B while A is in view reads B's own numbers.
+
+Any `command` may carry `map` (an id, or a name): it runs on that map and the map in view stays. A line that is not a registered
+command (`dataset.query`, `mcp`) takes `map` beside `name` and is run the same way; an unknown map is `bad-params`. The view
+command `view-map {id}` re-targets a canvas page to a map without a new page or GL context, and a page opened with `?map=<id>`
+shows that map from the start.
+
 ## Failing loudly
 
 A peer whose `protocolVersion` is not this bridge's is refused with `error` /
