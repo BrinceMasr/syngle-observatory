@@ -417,7 +417,7 @@ as GeoLibre's Earthaccess panel does, through NASA's Common Metadata Repository 
 
 Searching needs no account, but NASA's data servers ask for an
 [Earthdata Login](https://urs.earthdata.nasa.gov) token to read most files. Paste one in the pane's
-**Earthdata Login** section (or run `earthdata.login`): it is kept until RustGIS closes, never in
+**Earthdata Login** section (or run `earthdata.login`): it is kept until Syngle Observatory closes, never in
 the project, and sent only over HTTPS to NASA's Earthdata data servers (`*.earthdatacloud.nasa.gov`
 and `*.earthdata.nasa.gov`), never to the login server itself; a redirect away from them (to the
 presigned address the file is served from) goes without it. A file the token doesn't open says

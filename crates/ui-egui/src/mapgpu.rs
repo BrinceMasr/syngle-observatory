@@ -1295,7 +1295,7 @@ mod tests {
     fn parity_turned_world_sample() {
         let view = View { camera: Camera { bearing: 35.0, ..Camera::world() }, ..world_view() };
         // A turned CPU frame is resampled from flat bands, so every edge spreads a little; Syngle's palette (#71) put more
-        // contrast between water and land than RustGIS's blues did, which took the raw mean from under 1.5 to 1.82. No
+        // contrast between water and land than the upstream blues did, which took the raw mean from under 1.5 to 1.82. No
         // structural mismatch, which is what catches wrong colours, missing content and bad z-order.
         assert_parity_bounded("turned world sample", world_map, &view, wgpu::Backends::all(), 0, 2.2);
     }

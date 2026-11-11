@@ -425,7 +425,7 @@ fn auth(app: &mut RustGisApp, ui: &mut egui::Ui, w: f32) {
                 let _ = app.run("earthdata.logout", Value::Null);
             }
         }
-        ui.label(egui::RichText::new(tl!("Reading a granule's files needs an Earthdata Login token, which works for every NASA DAAC. It is kept until RustGIS closes, never in the project, and sent only to NASA's Earthdata data servers.")).small().weak());
+        ui.label(egui::RichText::new(tl!("Reading a granule's files needs an Earthdata Login token, which works for every NASA DAAC. It is kept until Syngle Observatory closes, never in the project, and sent only to NASA's Earthdata data servers.")).small().weak());
         ui.horizontal(|ui| {
             ui.add(egui::TextEdit::singleline(&mut app.ui.earthaccess.token).password(true).hint_text(tl!("Paste a token")).desired_width(w - 80.0));
             if ui.button(tl!("Save")).clicked() && !app.ui.earthaccess.token.trim().is_empty() {

@@ -44,7 +44,7 @@ pub struct Symbol {
 
 /// Default palette for new layers (cycled by layer id): Syngle's own (#71) — navy first for
 /// areas, ink for marks, then the chart roles, so a canvas opened on its own already reads as
-/// Syngle rather than as RustGIS. A theme sends the ink the other way round through the bridge.
+/// Syngle rather than as the upstream project. A theme sends the ink the other way round through the bridge.
 const LAYER_COLORS: [[u8; 3]; 8] = [
     [0x2C, 0x4B, 0x86],
     [0x1B, 0x1A, 0x17],
