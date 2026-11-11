@@ -151,6 +151,22 @@ impl Engine {
         (status, content_type, body)
     }
 
+    /// A GET with extra request headers, answered with (status, head, body).
+    fn get_with(&self, path: &str, headers: &str) -> (u16, String, Vec<u8>) {
+        use std::io::Read;
+        let mut stream = std::net::TcpStream::connect(("127.0.0.1", self.port)).expect("the gateway's port");
+        stream.set_read_timeout(Some(ANSWER_TIMEOUT)).ok();
+        let request = format!("GET /t/{TOKEN}{path} HTTP/1.1\r\nHost: 127.0.0.1\r\n{headers}Connection: close\r\n\r\n");
+        stream.write_all(request.as_bytes()).expect("a request");
+        let mut raw = Vec::new();
+        stream.read_to_end(&mut raw).expect("the answer");
+        let split = raw.windows(4).position(|w| w == b"\r\n\r\n").unwrap_or(raw.len());
+        let head = String::from_utf8_lossy(&raw[..split]).to_string();
+        let body = raw.get(split + 4..).unwrap_or(&[]).to_vec();
+        let status = head.split_whitespace().nth(1).and_then(|s| s.parse::<u16>().ok()).unwrap_or(0);
+        (status, head, body)
+    }
+
     /// A `POST /bridge` on the token-guarded gateway: one bridge line in, the lines the engine
     /// answered with, parsed. Answers (status, lines).
     fn post(&self, line: &Value) -> (u16, Vec<Value>) {
@@ -461,4 +477,100 @@ fn answer_state(lines: &[Value]) -> Value {
             (payload.get("type").and_then(Value::as_str) == Some("result")).then(|| payload.get("state").cloned())?
         })
         .unwrap_or(Value::Null)
+}
+
+/// The project in parts (#471): a shell, a map's layers without rows, and the rows by dataset. Maps that share rows share a
+/// dataset, a style edit moves one map's revision and no dataset's, and a row edit moves a dataset's and the maps' views of it.
+#[test]
+fn the_project_is_served_in_parts_with_revisions() {
+    let mut engine = Engine::start("parts");
+    assert_eq!(engine.hello(1).get("event").and_then(Value::as_str), Some("bridge.ready"));
+    let rows: Vec<String> = (0..50)
+        .map(|i| format!(r#"{{"type":"Feature","properties":{{"n":{i}}},"geometry":{{"type":"Point","coordinates":[{i}.5,10.25]}}}}"#))
+        .collect();
+    let file =
+        write(&engine.root, "fifty.geojson", format!(r#"{{"type":"FeatureCollection","features":[{}]}}"#, rows.join(",")).as_bytes());
+    let (_, state, _) = engine.command(1, &json!({"name": "command", "id": "project.new", "params": {}}));
+    assert!(state["shellRevision"].as_u64().is_some(), "the state names the shell's revision: {state}");
+    engine.command(2, &json!({"name": "dataset.open", "kind": "path", "target": file.display().to_string(), "layerName": "Fifty"}));
+    for id in 3..5 {
+        engine.command(id, &json!({"name": "command", "id": "map.duplicate", "params": {}}));
+    }
+    let (_, state_after_copies, _) = engine.command(5, &json!({"name": "command", "id": "map.activate", "params": {"map": 1}}));
+
+    // The shell: every map, with its id, and no layers and no rows.
+    let (status, content_type, body) = engine.get("/project.json?shell");
+    assert_eq!((status, content_type.as_str()), (200, "application/json"));
+    let shell: Value = serde_json::from_slice(&body).expect("the shell is JSON");
+    let maps = shell["maps"].as_array().expect("maps");
+    assert_eq!(maps.len(), 3, "{shell}");
+    assert!(maps.iter().all(|m| m["layers"].as_array().is_some_and(Vec::is_empty) && m["id"].as_u64().is_some_and(|id| id > 0)), "{shell}");
+    // One map's document: its layers, without rows, each naming its rows.
+    let ids: Vec<u64> = maps.iter().filter_map(|m| m["id"].as_u64()).collect();
+    let mut dataset_ids = Vec::new();
+    for id in &ids {
+        let (status, _, body) = engine.get(&format!("/project.json?map={id}"));
+        assert_eq!(status, 200);
+        let doc: Value = serde_json::from_slice(&body).unwrap();
+        let mine = doc["maps"].as_array().unwrap().iter().find(|m| m["id"].as_u64() == Some(*id)).unwrap();
+        let layer = mine["layers"].as_array().unwrap().iter().find(|l| l["name"] == "Fifty").expect("the opened layer");
+        assert!(layer["dataset"]["features"].as_array().is_some_and(Vec::is_empty), "no rows in a map's document: {layer}");
+        assert_eq!(layer["dataset"]["rows"]["count"].as_u64(), Some(50));
+        dataset_ids.push(layer["dataset"]["rows"]["id"].as_u64().unwrap());
+        let others = doc["maps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["id"].as_u64() != Some(*id))
+            .all(|m| m["layers"].as_array().is_some_and(Vec::is_empty));
+        assert!(others, "only the asked-for map has layers: {doc}");
+    }
+    dataset_ids.dedup();
+    assert_eq!(dataset_ids.len(), 1, "three maps share one set of rows, so one dataset id: {dataset_ids:?}");
+    assert_eq!(engine.get("/project.json?map=999").0, 404, "a map the project lacks");
+    assert_eq!(engine.get("/project.json?map=x").0, 404);
+    let whole = engine.get("/project.json").2;
+    assert!(whole.len() > 3 * 50 * 20, "the old route still serves the whole project");
+
+    // The rows: FlatGeobuf in row order, with a tag, by range, and 304 for the tag.
+    let dataset = format!("/dataset/{}", dataset_ids[0]);
+    let (status, head, rows) = engine.get_with(&dataset, "");
+    assert_eq!(status, 200, "{head}");
+    let tag = head.lines().find_map(|l| l.strip_prefix("ETag: ")).expect("an ETag").to_string();
+    assert_eq!(&rows[..3], b"fgb");
+    let fields: Vec<rustgis_engine::data::Field> = serde_json::from_value(shell_fields(&engine, ids[0])).unwrap();
+    let read = rustgis_engine::data::source::fgb_rows::read_rows(&rows, &fields).expect("the rows read back");
+    assert_eq!(read.len(), 50);
+    assert_eq!(read[7].attrs[0], rustgis_engine::data::Value::Int(7));
+    let (status, _, body) = engine.get_with(&dataset, "Range: bytes=0-7\r\n");
+    assert_eq!((status, body.as_slice()), (206, &rows[..8]));
+    assert_eq!(engine.get_with(&dataset, &format!("If-None-Match: {tag}\r\n")).0, 304);
+    assert_eq!(engine.get("/dataset/123456789").0, 404);
+    assert_eq!(engine.get("/dataset/x").0, 404);
+
+    // A style edit in the map in view moves that map's revision and no dataset's.
+    let before = state_after_copies;
+    let (_, after_style, _) =
+        engine.command(6, &json!({"name": "command", "id": "layer.color", "params": {"layer": "Fifty", "color": "#aa0000"}}));
+    assert_eq!(after_style["datasetRevisions"], before["datasetRevisions"], "a style edit leaves the rows alone: {after_style}");
+    let moved: Vec<bool> = before["mapRevisions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(after_style["mapRevisions"].as_array().unwrap())
+        .map(|(a, b)| a != b)
+        .collect();
+    assert_eq!(moved.iter().filter(|m| **m).count(), 1, "one map's document changed: {before} then {after_style}");
+    assert_eq!(after_style["shellRevision"], before["shellRevision"], "a style is in a map's layers, not in the shell: {after_style}");
+    // A row edit gives the edited rows a revision (or an id) the page has not seen.
+    let (_, after_rows, _) = engine
+        .command(7, &json!({"name": "command", "id": "edit.addField", "params": {"layer": "Fifty", "name": "more", "type": "Integer"}}));
+    assert_ne!(after_rows["datasetRevisions"], after_style["datasetRevisions"], "a field edit changes the rows: {after_rows}");
+}
+
+fn shell_fields(engine: &Engine, map: u64) -> Value {
+    let (_, _, body) = engine.get(&format!("/project.json?map={map}"));
+    let doc: Value = serde_json::from_slice(&body).unwrap();
+    let mine = doc["maps"].as_array().unwrap().iter().find(|m| m["id"].as_u64() == Some(map)).unwrap().clone();
+    mine["layers"].as_array().unwrap().iter().find(|l| l["name"] == "Fifty").unwrap()["dataset"]["fields"].clone()
 }

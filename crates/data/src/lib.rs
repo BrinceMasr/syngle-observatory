@@ -60,8 +60,39 @@ pub struct Feature {
 /// A dataset's features, shared until changed: cloning them (an undo snapshot, a copy of the
 /// project) copies a pointer, and the first change through one of the copies copies the rows
 /// for it. A large layer is then held once however many undo steps leave it alone.
-#[derive(Clone, Default)]
-pub struct Features(std::sync::Arc<Vec<Feature>>);
+///
+/// The rows carry an identity and a revision, for serving them in parts (#471): the id belongs to
+/// the allocation, so every copy that shares the rows shares the id, and a copy made to change them
+/// is a new set with an id of its own; the revision counts the times these rows were reached for
+/// change, so `(id, revision)` names exactly one content.
+#[derive(Clone)]
+pub struct Features(std::sync::Arc<Rows>);
+
+struct Rows {
+    id: u64,
+    revision: u64,
+    data: Vec<Feature>,
+}
+
+/// The id the next set of rows gets: never reused in a process.
+static NEXT_ROWS_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+fn next_rows_id() -> u64 {
+    NEXT_ROWS_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+
+impl Clone for Rows {
+    /// A copy made to be changed is another set of rows: it gets an id of its own.
+    fn clone(&self) -> Rows {
+        Rows { id: next_rows_id(), revision: 0, data: self.data.clone() }
+    }
+}
+
+impl Default for Features {
+    fn default() -> Features {
+        Features::from(Vec::new())
+    }
+}
 
 impl Features {
     /// Whether two are the same rows in memory (one cloned from the other, neither changed since).
@@ -69,40 +100,52 @@ impl Features {
         std::sync::Arc::ptr_eq(&self.0, &other.0)
     }
 
+    /// The identity of this allocation of rows: shared by every copy that shares them.
+    pub fn id(&self) -> u64 {
+        self.0.id
+    }
+
+    /// How many times these rows were reached for change: with [`Features::id`] it names one content.
+    pub fn revision(&self) -> u64 {
+        self.0.revision
+    }
+
     /// The rows, taking them out of the share (copying them only when another copy holds them).
     pub fn into_vec(self) -> Vec<Feature> {
-        std::sync::Arc::unwrap_or_clone(self.0)
+        std::sync::Arc::unwrap_or_clone(self.0).data
     }
 }
 
 impl std::ops::Deref for Features {
     type Target = Vec<Feature>;
     fn deref(&self) -> &Vec<Feature> {
-        &self.0
+        &self.0.data
     }
 }
 
 impl std::ops::DerefMut for Features {
     fn deref_mut(&mut self) -> &mut Vec<Feature> {
-        std::sync::Arc::make_mut(&mut self.0)
+        let rows = std::sync::Arc::make_mut(&mut self.0);
+        rows.revision += 1;
+        &mut rows.data
     }
 }
 
 impl PartialEq for Features {
     fn eq(&self, other: &Features) -> bool {
-        self.shares(other) || *self.0 == *other.0
+        self.shares(other) || self.0.data == other.0.data
     }
 }
 
 impl std::fmt::Debug for Features {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        self.0.data.fmt(f)
     }
 }
 
 impl From<Vec<Feature>> for Features {
     fn from(v: Vec<Feature>) -> Features {
-        Features(std::sync::Arc::new(v))
+        Features(std::sync::Arc::new(Rows { id: next_rows_id(), revision: 0, data: v }))
     }
 }
 
@@ -124,7 +167,7 @@ impl<'a> IntoIterator for &'a Features {
     type Item = &'a Feature;
     type IntoIter = std::slice::Iter<'a, Feature>;
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.0.data.iter()
     }
 }
 
@@ -138,7 +181,7 @@ impl<'a> IntoIterator for &'a mut Features {
 
 impl Serialize for Features {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
-        self.0.serialize(s)
+        self.0.data.serialize(s)
     }
 }
 
@@ -168,6 +211,24 @@ pub struct Dataset {
     pub windowed: bool,
 }
 
+thread_local! {
+    /// Set while [`without_rows`] runs: datasets then serialise with no rows.
+    static ROWS_LEFT_OUT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Runs `f` with every dataset serialising without its rows, on this thread: the project in parts
+/// (#471) is its shell and its maps' layers without rows, and its rows are served by dataset.
+pub fn without_rows<R>(f: impl FnOnce() -> R) -> R {
+    struct Restore(bool);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            ROWS_LEFT_OUT.with(|flag| flag.set(self.0));
+        }
+    }
+    let _restore = Restore(ROWS_LEFT_OUT.with(|flag| flag.replace(true)));
+    f()
+}
+
 impl Serialize for Dataset {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
@@ -176,7 +237,10 @@ impl Serialize for Dataset {
         st.serialize_field("geometry_type", &self.geometry_type)?;
         st.serialize_field("fields", &self.fields)?;
         let none: &[Feature] = &[];
-        st.serialize_field("features", if self.windowed { none } else { self.features.as_slice() })?;
+        st.serialize_field(
+            "features",
+            if self.windowed || ROWS_LEFT_OUT.with(std::cell::Cell::get) { none } else { self.features.as_slice() },
+        )?;
         st.serialize_field("source", &self.source)?;
         if let Some(crs) = &self.crs {
             st.serialize_field("crs", crs)?;

@@ -12,6 +12,7 @@ pub mod duckdb;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod external;
 pub mod fgb;
+pub mod fgb_rows;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod gdal;
 #[cfg(not(target_arch = "wasm32"))]

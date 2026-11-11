@@ -38,6 +38,7 @@
 
 pub mod bridge;
 pub mod emit;
+pub mod parts;
 
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::net::{TcpListener, TcpStream};
@@ -132,7 +133,7 @@ pub fn run(args: &[String]) -> i32 {
     let serve_counters = Arc::clone(&counters);
     // The project the view should open is also served as a document, so a host can point the view at
     // `?project=<url>` and skip the postMessage handshake entirely.
-    let project = Arc::new(std::sync::Mutex::new(String::from("{}")));
+    let project = Arc::new(parts::Parts::default());
     let serve_project = Arc::clone(&project);
     std::thread::spawn(move || {
         for stream in listener.incoming() {
@@ -164,6 +165,7 @@ pub fn run(args: &[String]) -> i32 {
     if let Some(preload) = opt("--preload") {
         let kind = if preload.starts_with("http") { "url" } else { "path" };
         let out = open(&mut session, &preload, kind, None, true);
+        project.publish(&session.project);
         emit(&json!({"event":"preloaded","t":now_ms(),"result":out}));
     }
 
@@ -213,11 +215,7 @@ pub fn run(args: &[String]) -> i32 {
                 // Progress, not an answer: an id here would resolve the caller's promise early.
                 emit(&json!({"event":"opening","kind":kind,"target":target,"t":now_ms()}));
                 let out = open(&mut session, &target, kind, name.as_deref(), zoom);
-                if let Some(text) = out.get("project").and_then(Value::as_str)
-                    && let Ok(mut shared) = project.lock()
-                {
-                    *shared = text.to_string();
-                }
+                project.publish(&session.project);
                 emit(&json!({"event":"opened","id":id,"t":now_ms(),"result":out}));
             }
             Command::Project => {
@@ -361,12 +359,7 @@ struct BridgeJob {
 /// The handshake is one fact per process ([`Cfg`]-lifetime `linked`): a peer that says hello on
 /// either transport links both, and a version refusal on either closes both, which is what "a peer
 /// on another version is served nothing" means once there is more than one way in.
-fn bridge_lines(
-    session: &mut Session,
-    project: &std::sync::Mutex<String>,
-    linked: &std::sync::atomic::AtomicBool,
-    msg: &Value,
-) -> Vec<Value> {
+fn bridge_lines(session: &mut Session, project: &parts::Parts, linked: &std::sync::atomic::AtomicBool, msg: &Value) -> Vec<Value> {
     use std::sync::atomic::Ordering;
     let id = msg.get("id").cloned().unwrap_or(Value::Null);
     // The version check comes first and is loud: a peer that speaks another protocol is refused,
@@ -382,7 +375,7 @@ fn bridge_lines(
                 "event": "bridge.ready",
                 "protocolVersion": bridge::PROTOCOL_VERSION,
                 "t": now_ms(),
-                "state": bridge::state(session),
+                "state": state_of(session, project),
             })]
         }
         "command" if !linked.load(Ordering::Relaxed) => {
@@ -408,16 +401,13 @@ fn bridge_lines(
                             // A command that changed the project leaves the view's copy stale: the
                             // project document is re-served, and the client asks the view to take it
                             // again.
-                            if session.revision != revision
-                                && let Ok(text) = serde_json::to_string(&session.project)
-                                && let Ok(mut shared) = project.lock()
-                            {
-                                *shared = text;
+                            if session.revision != revision {
+                                project.publish(&session.project);
                             }
                             // State after every command, in the result and on its own line: the
                             // result gives the client the undo depth the command left, so it knows
                             // before its promise settles whether the fork's history grew (#67).
-                            let state = bridge::state(session);
+                            let state = state_of(session, project);
                             vec![
                                 progress,
                                 json!({
@@ -449,6 +439,54 @@ fn answer_render(session: &mut Session, job: RenderJob) {
     let _ = job.reply.send(png);
 }
 
+/// The bridge's state with the revisions of what the gateway serves in parts (`parts`).
+fn state_of(session: &Session, project: &parts::Parts) -> Value {
+    let mut state = bridge::state(session);
+    if let (Some(state), Value::Object(revisions)) = (state.as_object_mut(), project.current().revisions()) {
+        state.extend(revisions);
+    }
+    state
+}
+
+/// `GET /dataset/<id>`: a dataset's rows as FlatGeobuf, whole or by range, tagged with their revision.
+fn dataset_answer(req: &Request, id: &str, project: &parts::Parts) -> (u16, (String, u64), Vec<u8>) {
+    let not_found = || (404, (head(404, "text/plain", 0, None, false), 0), Vec::new());
+    let Ok(id) = id.parse::<u64>() else { return not_found() };
+    let Some((tag, rows)) = project.dataset(id) else { return not_found() };
+    let rows = match rows {
+        Ok(rows) => rows,
+        Err(e) => {
+            log(&format!("dataset {id}: {e}"));
+            let body = e.into_bytes();
+            let n = body.len() as u64;
+            return (422, (head(422, "text/plain", n, None, false), n), body);
+        }
+    };
+    let with_tag = |mut h: String| {
+        h.truncate(h.len() - 2);
+        h.push_str(&format!("ETag: {tag}\r\n\r\n"));
+        h.replace("Cache-Control: no-store", "Cache-Control: no-cache")
+    };
+    if req.if_none_match.as_deref().is_some_and(|m| m.split(',').any(|t| t.trim() == tag)) {
+        return (304, (with_tag(head(304, "application/octet-stream", 0, None, false)), 0), Vec::new());
+    }
+    let size = rows.len() as u64;
+    let last = size.saturating_sub(1);
+    let wanted = req.range.map(|r| match r {
+        ByteRange::From { start, end } => (start.min(last), end.unwrap_or(last).min(last)),
+        ByteRange::Last(n) => (size.saturating_sub(n), last),
+    });
+    match wanted {
+        Some((start, end)) if size > 0 && end >= start => {
+            let body = rows[start as usize..=end as usize].to_vec();
+            let n = body.len() as u64;
+            let cr = format!("bytes {start}-{end}/{size}");
+            (206, (with_tag(head(206, "application/octet-stream", n, Some(&cr), false)), n), body)
+        }
+        _ => (200, (with_tag(head(200, "application/octet-stream", size, None, false)), size), rows.to_vec()),
+    }
+}
+
 fn emit(v: &Value) {
     let mut out = std::io::stdout().lock();
     let _ = writeln!(out, "{v}");
@@ -476,6 +514,8 @@ enum ByteRange {
 }
 
 struct Request {
+    /// The `If-None-Match` header, when the caller sent one.
+    if_none_match: Option<String>,
     method: String,
     target: String,
     range: Option<ByteRange>,
@@ -560,7 +600,7 @@ const CANVAS_HTML: &str = include_str!("../host/index.html");
 /// Its script: the parent half of the view's channel (see `host/canvas.js`).
 const CANVAS_JS: &str = include_str!("../host/canvas.js");
 
-fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::sync::Mutex<String>) -> std::io::Result<()> {
+fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &parts::Parts) -> std::io::Result<()> {
     use std::sync::atomic::Ordering;
     stream.set_nodelay(true).ok();
     let mut reader = BufReader::new(stream.try_clone()?);
@@ -588,12 +628,14 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::
     let mut length = 0usize;
     let mut range = None;
     let mut token = None;
+    let mut if_none_match = None;
     for h in lines {
         let Some((k, v)) = h.split_once(':') else { continue };
         match k.trim().to_ascii_lowercase().as_str() {
             "range" => range = parse_range(v.trim()),
             "content-length" => length = v.trim().parse().unwrap_or(0),
             "x-observatory-token" => token = Some(v.trim().to_string()),
+            "if-none-match" => if_none_match = Some(v.trim().to_string()),
             _ => {}
         }
     }
@@ -610,7 +652,7 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::
     }
     // A token-guarded gateway answers nothing else: without the launch token the request is
     // refused before any file is touched (the token may sit in the path, the query or the header).
-    let mut req = Request { method, target, range, token, body };
+    let mut req = Request { method, target, range, token, body, if_none_match };
     if !authorized(&req, cfg.token.as_ref()) {
         counters.requests.fetch_add(1, Ordering::Relaxed);
         log(&format!("{} {} 403", req.method, req.target));
@@ -647,7 +689,7 @@ fn handle(mut stream: TcpStream, cfg: &Cfg, counters: &Counters, project: &std::
 }
 
 /// Builds the whole response: (status, (head, content length), body).
-fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, (String, u64), Vec<u8>) {
+fn route(req: &Request, cfg: &Cfg, project: &parts::Parts) -> (u16, (String, u64), Vec<u8>) {
     // The bridge, for a host that does not own this process's pipe: one JSON line in the body, the
     // lines the engine would have written to stdout in the answer. It is the same dispatch the
     // stdin protocol uses (`bridge_lines`), so a peer posting here and a peer writing to the pipe
@@ -688,6 +730,10 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
                 (504, (head(504, "text/plain", n, None, false), n), body)
             }
         };
+    }
+    // A dataset's rows, by range, with the revision for a tag (`parts`).
+    if let Some(id) = req.target.split('?').next().and_then(|p| p.strip_prefix("/dataset/")) {
+        return dataset_answer(req, id, project);
     }
     let (path, forced_type) = match req.target.split('?').next().unwrap_or("/") {
         "/" | "/host/" | "/host/index.html" => ("host/index.html".to_string(), Some("text/html; charset=utf-8")),
@@ -731,8 +777,15 @@ fn route(req: &Request, cfg: &Cfg, project: &std::sync::Mutex<String>) -> (u16, 
         "/health" => return (200, (head(200, "text/plain", 2, None, false), 2), b"ok".to_vec()),
         // The project the view opens, as a document: `?project=<this>` needs no postMessage round trip.
         "/project.json" => {
-            let text = project.lock().map(|p| p.clone()).unwrap_or_default();
-            let bytes = text.into_bytes();
+            let published = project.current();
+            let bytes = match parts::wanted_part(&req.target) {
+                parts::Wanted::Whole => published.whole(),
+                parts::Wanted::Part(map) => match published.document(map) {
+                    Some(bytes) => bytes,
+                    None => return (404, (head(404, "text/plain", 0, None, false), 0), Vec::new()),
+                },
+                parts::Wanted::Bad => return (404, (head(404, "text/plain", 0, None, false), 0), Vec::new()),
+            };
             return (200, (head(200, "application/json", bytes.len() as u64, None, false), bytes.len() as u64), bytes);
         }
         "/spike/instrument.js" => {
@@ -846,6 +899,7 @@ fn head(status: u16, ty: &str, length: u64, content_range: Option<&str>, cache: 
     let reason = match status {
         200 => "OK",
         206 => "Partial Content",
+        304 => "Not Modified",
         404 => "Not Found",
         422 => "Unprocessable Content",
         503 => "Service Unavailable",
@@ -957,8 +1011,10 @@ mod tests {
         Cfg { token: Some(token.to_string()), ..cfg(root) }
     }
 
-    fn the_project() -> std::sync::Mutex<String> {
-        std::sync::Mutex::new(String::from("{\"name\":\"test\"}"))
+    fn the_project() -> parts::Parts {
+        let mut project = Project::default();
+        project.name = "test".into();
+        parts::Parts::of(&project)
     }
 
     #[test]
@@ -982,6 +1038,7 @@ mod tests {
             range: parse_range("bytes=-4"),
             token: None,
             body: Vec::new(),
+            if_none_match: None,
         };
         let (status, (head, len), body) = route(&req, &cfg(&root), &the_project());
         assert_eq!(status, 206);
@@ -994,7 +1051,14 @@ mod tests {
     fn a_whole_file_answer_is_200_and_carries_the_reader_headers() {
         let root = tmp_dir("whole");
         std::fs::write(root.join("data/notes.json"), b"hi").ok();
-        let req = Request { method: "GET".into(), target: "/data/notes.json".into(), range: None, token: None, body: Vec::new() };
+        let req = Request {
+            method: "GET".into(),
+            target: "/data/notes.json".into(),
+            range: None,
+            token: None,
+            body: Vec::new(),
+            if_none_match: None,
+        };
         let (status, (head, len), body) = route(&req, &cfg(&root), &the_project());
         assert_eq!(status, 200);
         assert_eq!(len, 2);
@@ -1010,7 +1074,14 @@ mod tests {
     fn traversal_out_of_a_served_root_is_refused() {
         let root = tmp_dir("traversal");
         std::fs::write(root.join("secret.txt"), b"secret").ok();
-        let req = Request { method: "GET".into(), target: "/data/%2e%2e/secret.txt".into(), range: None, token: None, body: Vec::new() };
+        let req = Request {
+            method: "GET".into(),
+            target: "/data/%2e%2e/secret.txt".into(),
+            range: None,
+            token: None,
+            body: Vec::new(),
+            if_none_match: None,
+        };
         let (status, _, body) = route(&req, &cfg(&root), &the_project());
         assert_eq!(status, 404);
         assert!(body.is_empty());
@@ -1021,18 +1092,26 @@ mod tests {
         let root = tmp_dir("meta");
         let project = the_project();
         let health = route(
-            &Request { method: "GET".into(), target: "/health".into(), range: None, token: None, body: Vec::new() },
+            &Request { method: "GET".into(), target: "/health".into(), range: None, token: None, body: Vec::new(), if_none_match: None },
             &cfg(&root),
             &project,
         );
         assert_eq!((health.0, health.2), (200, b"ok".to_vec()));
         let doc = route(
-            &Request { method: "GET".into(), target: "/project.json".into(), range: None, token: None, body: Vec::new() },
+            &Request {
+                method: "GET".into(),
+                target: "/project.json".into(),
+                range: None,
+                token: None,
+                body: Vec::new(),
+                if_none_match: None,
+            },
             &cfg(&root),
             &project,
         );
         assert_eq!(doc.0, 200);
-        assert_eq!(doc.2, b"{\"name\":\"test\"}");
+        let whole: Value = serde_json::from_slice(&doc.2).unwrap();
+        assert_eq!(whole["name"], "test");
         assert!((doc.1).0.contains("Content-Type: application/json"));
     }
 
@@ -1090,7 +1169,7 @@ mod tests {
     /// A request as the app's renderer sends it: no token in the path (the app puts it there
     /// itself when it opens a dataset), just what the gateway sees.
     fn req(target: &str) -> Request {
-        Request { method: "GET".into(), target: target.into(), range: None, token: None, body: Vec::new() }
+        Request { method: "GET".into(), target: target.into(), range: None, token: None, body: Vec::new(), if_none_match: None }
     }
 
     #[test]
