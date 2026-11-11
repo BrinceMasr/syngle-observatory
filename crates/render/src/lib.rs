@@ -3357,6 +3357,11 @@ mod tests {
         assert!(!world().is_empty());
     }
 
+    /// A pixel drawn in the selection colour (Syngle's accent since #71; it was cyan, which these tests once hard-coded).
+    fn is_selection_colour(r: u8, g: u8, b: u8) -> bool {
+        [(r, SELECTION.0[0]), (g, SELECTION.0[1]), (b, SELECTION.0[2])].iter().all(|(got, want)| got.abs_diff(*want) <= 12)
+    }
+
     #[test]
     fn a_selected_text_graphic_is_framed_with_its_label() {
         let mut m = Map::new("Map");
@@ -3380,8 +3385,9 @@ mod tests {
             text::draw(&mut pm, l, 1.0);
         }
         let edge = (200.0 - text::measure("Selected text", 14.0, false) / 2.0 - 3.0).round() as u32;
-        let cyan = |x: u32, y: u32| pm.pixel(x, y).is_some_and(|c| c.alpha() > 200 && c.red() < 60 && c.green() > 180 && c.blue() > 200);
-        assert!((0..300).any(|y| (edge - 1..=edge + 1).any(|x| cyan(x, y))), "no frame at x = {edge}");
+        let framed_px =
+            |x: u32, y: u32| pm.pixel(x, y).is_some_and(|c| c.alpha() > 200 && is_selection_colour(c.red(), c.green(), c.blue()));
+        assert!((0..300).any(|y| (edge - 1..=edge + 1).any(|x| framed_px(x, y))), "no frame at x = {edge}");
     }
 
     #[test]
@@ -3431,7 +3437,8 @@ mod tests {
         let h = fnv1a(r.pixmap.data());
         // Point markers are stamped from sprites at quarter-pixel offsets (the cities' anti-aliased
         // edges moved by up to an eighth of a pixel); nothing else changed this frame.
-        assert_eq!(h, 0x89e2_f6ec_5589_a46e, "golden pixmap hash changed: {h:#x}");
+        // The map's colours became Syngle's (#71): the basemap, the first layers' fills and the selection colour.
+        assert_eq!(h, 0x40bf_66d5_9f16_977e, "golden pixmap hash changed: {h:#x}");
     }
 
     fn square_layer(m: &mut Map, name: &str, x: f64, y: f64, s: f64) -> u32 {
@@ -3925,7 +3932,7 @@ mod tests {
         let y = y.round() as u32;
         let (fw, fh) = bbox(y.saturating_sub(12)..y + 12);
         assert!(fw < w && fw > 4 && fw.abs_diff(fh) <= 1, "{fw} × {fh}");
-        let ring = r.pixmap.pixels().iter().any(|p| p.red() < 40 && p.green() > 200 && p.blue() > 230);
+        let ring = r.pixmap.pixels().iter().any(|p| is_selection_colour(p.red(), p.green(), p.blue()));
         assert!(ring, "the selected marker is ringed");
         // Both stand in the drape's list, far first.
         let up = upright_markers(&mut m, &view, 0.3);
