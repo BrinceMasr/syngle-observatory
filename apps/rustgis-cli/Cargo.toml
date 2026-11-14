@@ -14,3 +14,5 @@ rustgis-engine = { workspace = true, features = ["geolibre"] }
 serde_json = { workspace = true }
 rustgis-assistant = { workspace = true }
 syngle-observatory-engine = { path = "../../crates/observatory-engine" }
+# The government data lookup (`gov`).
+observatory-gov = { path = "../../crates/observatory-gov" }

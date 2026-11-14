@@ -3446,6 +3446,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "observatory-gov"
+version = "0.3.0"
+dependencies = [
+ "memchr",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "zip 2.4.2",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4259,6 +4270,7 @@ dependencies = [
 name = "rustgis-cli"
 version = "0.3.0"
 dependencies = [
+ "observatory-gov",
  "rustgis-assistant",
  "rustgis-engine",
  "serde_json",

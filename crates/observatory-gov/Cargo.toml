@@ -1,0 +1,28 @@
+# The Australian government data lookup (`syngle-map gov ...`, Syngle-Ecosystem #628 to #630): the official extracts
+# (ABN Bulk Extract, ASIC, G-NAF, ABS, ASGS) parsed as a stream into a versioned, read-by-position index. A library, so
+# the sidecar's find-place can call the address index later without a second implementation. Native only: nothing
+# below `apps/` depends on it, so the browser build never links it.
+[package]
+name = "observatory-gov"
+description = "Syngle Observatory's Australian government data lookup: parsers, index, query and refresh"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "observatory_gov"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+memchr = "2"
+# The official downloads are ZIP files (the ABN extract, the ASIC datasets, G-NAF).
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]

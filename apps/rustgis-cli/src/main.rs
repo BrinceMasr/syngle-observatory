@@ -26,6 +26,8 @@
 //! be run with `--cmd`.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod gov;
+
 use std::io::Write;
 use std::process::ExitCode;
 
@@ -556,6 +558,9 @@ fn mcp(s: &mut Session, args: &[String]) -> Result<(), String> {
 }
 
 fn main() -> ExitCode {
+    if std::env::args_os().nth(1).is_some_and(|a| a == "gov") {
+        return gov::main();
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first().map(|s| s.as_str()) else { return usage() };
     if !args.iter().any(|a| a == "--no-plugins") {

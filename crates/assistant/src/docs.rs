@@ -43,6 +43,7 @@ pub const PAGES: &[Page] = pages![
     "plugins.md",
     "i18n.md",
     "architecture.md",
+    "gov.md",
     "bridge.md",
     "contributing.md",
     "sponsor.md",
