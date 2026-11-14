@@ -58,6 +58,28 @@ const DATA_EXTS: &[&str] = &[
 const CANVAS_ID: &str = "rustgis_canvas";
 const LOADING_ID: &str = "rustgis_loading";
 
+/// Makes the canvas's WebGL2 context before wgpu does, with the attributes [`crate::context::OFF`] turns off.
+#[cfg(feature = "canvas-only")]
+fn opaque_webgl2(canvas: &web_sys::HtmlCanvasElement) {
+    let options = js_sys::Object::new();
+    for key in crate::context::OFF {
+        if js_sys::Reflect::set(&options, &key.into(), &JsValue::FALSE).is_err() {
+            return;
+        }
+    }
+    if let Err(e) = canvas.get_context_with_context_options("webgl2", &options) {
+        log::warn!("webgl2 context options: {e:?}");
+    }
+}
+
+/// Whether the browser offers WebGPU (`navigator.gpu`).
+fn browser_has_webgpu() -> bool {
+    web_sys::window()
+        .and_then(|w| js_sys::Reflect::get(&w, &"navigator".into()).ok())
+        .and_then(|n| js_sys::Reflect::get(&n, &"gpu".into()).ok())
+        .is_some_and(|gpu| !gpu.is_undefined() && !gpu.is_null())
+}
+
 pub fn start() {
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
     // Rows this page makes itself never share an id with rows the engine serves it (#471).
@@ -82,6 +104,10 @@ pub fn start() {
             && let eframe::egui_wgpu::WgpuSetup::CreateNew(create) = &mut options.wgpu_options.wgpu_setup
         {
             create.instance_descriptor.backends = eframe::wgpu::Backends::GL;
+        }
+        #[cfg(feature = "canvas-only")]
+        if crate::context::webgl2_is_the_backend(&query(), browser_has_webgpu()) {
+            opaque_webgl2(&canvas);
         }
         let result = eframe::WebRunner::new()
             .start(

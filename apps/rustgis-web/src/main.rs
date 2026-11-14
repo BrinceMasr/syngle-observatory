@@ -15,6 +15,8 @@
 
 // Pure logic, tested natively; only the browser build uses it.
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+mod context;
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 mod embed;
 #[cfg(target_arch = "wasm32")]
 mod geolibre;
