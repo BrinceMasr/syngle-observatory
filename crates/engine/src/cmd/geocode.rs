@@ -11,7 +11,7 @@ use crate::{CmdResult, CommandSpec as C, Session};
 pub fn commands() -> Vec<C> {
     vec![
         C::new("map.findPlace", "Find Place", "Home › Navigate", find_place).params(
-            r#"{"query": "a place or an address", "provider"?: "nominatim" (OpenStreetMap, default) | "photon", "url"?: "a geocoding server of your own", "limit"?: 1–20, "go"?: bool (zooms to the first, default true)}"#,
+            r#"{"query": "a place or an address", "provider"?: "nominatim" (OpenStreetMap, default) | "photon" | "gnaf" (an Australian address, offline, from the index `syngle-map gov refresh --from <folder>` builds), "url"?: "a geocoding server of your own", "limit"?: 1–20, "go"?: bool (zooms to the first, default true)}"#,
         ),
         C::new("layer.geocode", "Geocode Addresses", "Home › Add › Add Data", geocode).params(
             r#"{"table"?: name|id (a standalone table, such as a CSV of addresses), "layer"?: name|id (or the active layer), "address": field | [fields] (joined with commas, such as street, city, country), "provider"?: "nominatim" | "photon", "url"?: "a geocoding server of your own (more than 100 addresses)", "name"?: text, "places"?: "answers already looked up, {address: {lon, lat, name} | null} (the app's background run; nothing is fetched)"}"#,
@@ -41,15 +41,19 @@ pub fn go_to_place(s: &mut Session, p: &Place) {
 
 fn find_place(s: &mut Session, p: &Value) -> CmdResult {
     let query = ps(p, "query").map(str::trim).filter(|q| !q.is_empty()).ok_or("query is required")?;
-    let g = geocoder(p)?;
     let limit = f(p, "limit").map(|l| l.clamp(1.0, 20.0) as usize).unwrap_or(5);
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = (s, query, g, limit);
+        let _ = (s, query, limit);
+        geocoder(p)?;
         Err("in the web app, find places with Home › Navigate › Find Place".into())
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
+        if super::gnaf::wanted(p) {
+            return super::gnaf::find(s, p, query, limit, &observatory_gov::Env::from_process());
+        }
+        let g = geocoder(p)?;
         let places = crate::render::rustgis_tiles::geocode::search_blocking(&g, query, limit)?;
         if super::b(p, "go").unwrap_or(true)
             && let Some(first) = places.first()

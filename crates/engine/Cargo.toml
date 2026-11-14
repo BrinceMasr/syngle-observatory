@@ -27,6 +27,10 @@ sys-locale = { version = "0.3", features = ["js"] }
 # The GeoLibre tool suite (native only: its tools read and write files).
 rustgis-geolibre = { workspace = true, optional = true }
 
+# The offline Australian address index (`map.findPlace` with provider "gnaf"); a native library, so the browser build never links it.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+observatory-gov = { path = "../observatory-gov" }
+
 [features]
 geolibre = ["dep:rustgis-geolibre"]
 # Spike A (#43): carry the raised view-read windows through to `rustgis-map`, so a spike build of an

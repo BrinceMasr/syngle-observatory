@@ -9,6 +9,8 @@ pub mod earthdata;
 pub mod edit;
 pub mod effects;
 pub mod geocode;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod gnaf;
 pub mod gp;
 pub mod graphics;
 pub mod group;

@@ -13,7 +13,7 @@ const PAGE: &str = "docs/data-sources.md";
 
 /// The catalogue's sources the map did not open when the catalogue was written (`want`) and that it opens now. A source here
 /// is written like any other, with its command; one that is not says it is not built yet. The ticket that builds one adds its id.
-const BUILT: &[&str] = &[];
+const BUILT: &[&str] = &["gnaf-find-place"];
 
 /// The sections, in order: the catalogue's `group`, the heading a person or an agent searches for, and what the section is for.
 const GROUPS: &[(&str, &str, &str)] = &[
@@ -40,7 +40,7 @@ const GROUPS: &[(&str, &str, &str)] = &[
     (
         "places",
         "Australian addresses",
-        "`map.findPlace` finds a place by name or address and can go to it. It answers from Nominatim or Photon over the internet.",
+        "`map.findPlace` finds a place by name or address and can go to it. By default it asks Nominatim over the internet (`\"provider\": \"photon\"` asks Photon); for an Australian address, `\"provider\": \"gnaf\"` answers from an index on this machine, with no network.",
     ),
 ];
 
@@ -62,6 +62,10 @@ const NOTES: &[(&str, &str)] = &[
     (
         "copernicus-glo30-tile",
         "GLO-30 Public has no tiles over the ocean (read the height as zero there) and leaves out a few countries' tiles that the Copernicus Programme has not released.",
+    ),
+    (
+        "gnaf-find-place",
+        "This reads an index on this machine, not the internet, so build it once: download the GDA2020 G-NAF zip from the page above, put it in a folder with a `manifest.json` that names it as the `gnaf` source, and run `syngle-map gov refresh --from <folder>` (the manifest and the other government sources are in [Government data](gov.md)). Until then the command answers with no places and a note that says so. An answer has up to `limit` places, each `{name, lon, lat, bbox}` like the other providers (`bbox` is null for an address), the closest address first, and a `source` with the data version, date, licence and attribution: show the attribution with the address. The Open G-NAF licence does not allow using the data to compile an address for the sending of mail unless each address is checked against a second source. On the real August 2026 index (about 16 million addresses) a street address takes 0.3 to 15 ms, and a search of one common word such as `street` 60 to 100 ms (measured for [Government data](gov.md)).",
     ),
     (
         "copernicus-glo30-stac",

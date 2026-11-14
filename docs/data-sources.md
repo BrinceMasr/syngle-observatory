@@ -155,7 +155,7 @@ syngle-map run --cmd 'portal.search={"portal":"ckan","query":"g-naf","url":"http
 
 ## Australian addresses
 
-`map.findPlace` finds a place by name or address and can go to it. It answers from Nominatim or Photon over the internet.
+`map.findPlace` finds a place by name or address and can go to it. By default it asks Nominatim over the internet (`"provider": "photon"` asks Photon); for an Australian address, `"provider": "gnaf"` answers from an index on this machine, with no network.
 
 ### Offline Australian address search in the map's own find-place
 
@@ -164,4 +164,8 @@ syngle-map run --cmd 'portal.search={"portal":"ckan","query":"g-naf","url":"http
 - **Size:** 1.73 GiB zip, indexed locally
 - **Pages read:** <https://data.gov.au/data/dataset/geocoded-national-address-file-g-naf>
 
-Not built yet: the map cannot open this source today.
+```sh
+syngle-map run --cmd 'map.findPlace={"go":false,"provider":"gnaf","query":"1 Macquarie Road Parramatta"}'
+```
+
+This reads an index on this machine, not the internet, so build it once: download the GDA2020 G-NAF zip from the page above, put it in a folder with a `manifest.json` that names it as the `gnaf` source, and run `syngle-map gov refresh --from <folder>` (the manifest and the other government sources are in [Government data](gov.md)). Until then the command answers with no places and a note that says so. An answer has up to `limit` places, each `{name, lon, lat, bbox}` like the other providers (`bbox` is null for an address), the closest address first, and a `source` with the data version, date, licence and attribution: show the attribution with the address. The Open G-NAF licence does not allow using the data to compile an address for the sending of mail unless each address is checked against a second source. On the real August 2026 index (about 16 million addresses) a street address takes 0.3 to 15 ms, and a search of one common word such as `street` 60 to 100 ms (measured for [Government data](gov.md)).
