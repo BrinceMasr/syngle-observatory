@@ -1,6 +1,6 @@
 // A minimal Chrome DevTools Protocol client on Node's global WebSocket (Node 22 or newer): no dependencies, so an
 // evaluator runs from a fresh checkout. Method names and parameters are the protocol's own
-// (https://chromedevtools.github.io/devtools-protocol/); Orca's trace benchmarks and RustGIS's navigate.mjs use the same calls.
+// (https://chromedevtools.github.io/devtools-protocol/); Orca's trace benchmarks and the upstream map's navigate.mjs use the same calls.
 
 export class Cdp {
   #ws;
