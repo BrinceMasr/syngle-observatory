@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Transfer error="">
+  <TransferInfo>
+    <FileSequenceNumber>1</FileSequenceNumber>
+    <RecordCount>12</RecordCount>
+    <ExtractTime>2026-11-12T21:34:30</ExtractTime>
+  </TransferInfo>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20120701">14100200301</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>HARBOUR ROOFING PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>NSW</State><Postcode>2000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100200306</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20120701"/>
+    <OtherEntity><NonIndividualName type="TRD"><NonIndividualNameText>HARBOUR ROOFING</NonIndividualNameText></NonIndividualName></OtherEntity>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20150301">69100200402</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>HARBOUR ROOFING SUPPLIES PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>NSW</State><Postcode>2150</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100200404</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20150301"/>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20180101">35100200503</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>HARBOUR &amp; CO PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>VIC</State><Postcode>3000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100200502</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20180101"/>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20190701">90100200604</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>BLUE GUM ADVISORY GROUP PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>VIC</State><Postcode>3000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100200600</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20190701"/>
+    <OtherEntity><NonIndividualName type="TRD"><NonIndividualNameText>BLUE GUM ADVISORY</NonIndividualNameText></NonIndividualName></OtherEntity>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20100701">56100200705</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>RED KANGAROO LOGISTICS PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>QLD</State><Postcode>4000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100200708</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20100701"/>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="CAN" ABNStatusFromDate="20240515">22100200806</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>SOUTHERN CROSS DIGITAL PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>WA</State><Postcode>6000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100200806</ASICNumber>
+    <GST status="CAN" GSTStatusFromDate="20240515"/>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20140701">77100200907</ABN>
+    <EntityType>
+      <EntityTypeInd>TRT</EntityTypeInd>
+      <EntityTypeText>Other Trust</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>TASMANIAN TIMBER TRUST</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>TAS</State><Postcode>7000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <GST status="ACT" GSTStatusFromDate="20140701"/>
+    <OtherEntity><NonIndividualName type="TRD"><NonIndividualNameText>TASSIE TIMBER</NonIndividualNameText></NonIndividualName></OtherEntity>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20170701">91100201008</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>NORTHERN TERRITORY SURVEY SERVICES PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>NT</State><Postcode>0800</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100201009</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20170701"/>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="CAN" ABNStatusFromDate="20261102">57100201109</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>CAPITAL FIXTURE HOLDINGS PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>ACT</State><Postcode>2600</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100201107</ASICNumber>
+    <GST status="CAN" GSTStatusFromDate="20261102"/>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20110701">35100201200</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>ADELAIDE FIXTURE BAKERY PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>SA</State><Postcode>5000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100201205</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20110701"/>
+    <OtherEntity><NonIndividualName type="BN"><NonIndividualNameText>FIXTURE LOAF</NonIndividualNameText></NonIndividualName></OtherEntity>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20000101">90100201301</ABN>
+    <EntityType>
+      <EntityTypeInd>IND</EntityTypeInd>
+      <EntityTypeText>Individual/Sole Trader</EntityTypeText>
+    </EntityType>
+    <LegalEntity>
+      <IndividualName type="LGL">
+        <GivenName>ALEX</GivenName>
+        <GivenName>J</GivenName>
+        <FamilyName>TESTPERSON</FamilyName>
+      </IndividualName>
+      <BusinessAddress><AddressDetails><State>NSW</State><Postcode>2000</Postcode></AddressDetails></BusinessAddress>
+    </LegalEntity>
+    <OtherEntity><NonIndividualName type="BN"><NonIndividualNameText>TESTPERSON GARDENING</NonIndividualNameText></NonIndividualName></OtherEntity>
+  </ABR>
+  <ABR recordLastUpdatedDate="20261112" replaced="N">
+    <ABN status="ACT" ABNStatusFromDate="20261103">56100201402</ABN>
+    <EntityType>
+      <EntityTypeInd>PRV</EntityTypeInd>
+      <EntityTypeText>Australian Private Company</EntityTypeText>
+    </EntityType>
+    <MainEntity>
+      <NonIndividualName type="MN"><NonIndividualNameText>NEW HORIZON FIXTURES PTY LTD</NonIndividualNameText></NonIndividualName>
+      <BusinessAddress><AddressDetails><State>NSW</State><Postcode>2000</Postcode></AddressDetails></BusinessAddress>
+    </MainEntity>
+    <ASICNumber ASICNumberType="undetermined">100201401</ASICNumber>
+    <GST status="ACT" GSTStatusFromDate="20261103"/>
+  </ABR>
+</Transfer>

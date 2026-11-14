@@ -1,0 +1,111 @@
+{
+ "type": "FeatureCollection",
+ "name": "SA2_FIXTURE",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "SA2_CODE21": "100000001",
+    "SA2_NAME21": "Fixture Sydney",
+    "STE_NAME21": "New South Wales"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       151,
+       -34
+      ],
+      [
+       151.4,
+       -34
+      ],
+      [
+       151.4,
+       -33.7
+      ],
+      [
+       151,
+       -33.7
+      ],
+      [
+       151,
+       -34
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "SA2_CODE21": "200000001",
+    "SA2_NAME21": "Fixture Melbourne",
+    "STE_NAME21": "Victoria"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       144.8,
+       -37.95
+      ],
+      [
+       145.1,
+       -37.95
+      ],
+      [
+       145.1,
+       -37.7
+      ],
+      [
+       144.8,
+       -37.7
+      ],
+      [
+       144.8,
+       -37.95
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "SA2_CODE21": "300000001",
+    "SA2_NAME21": "Fixture Outback",
+    "STE_NAME21": "Northern Territory"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       130,
+       -25
+      ],
+      [
+       134,
+       -25
+      ],
+      [
+       134,
+       -22
+      ],
+      [
+       130,
+       -22
+      ],
+      [
+       130,
+       -25
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

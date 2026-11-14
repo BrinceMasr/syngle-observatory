@@ -1,0 +1,54 @@
+{
+  "format": 1,
+  "sources": {
+    "abr": {
+      "asOf": "2026-11-12",
+      "files": [
+        "abn/public_split_1_10.xml"
+      ],
+      "licence": "CC BY 3.0 AU",
+      "publisher": "Australian Business Register"
+    },
+    "asic": {
+      "asOf": "2026-11-10",
+      "files": [
+        "asic/company_202611.csv"
+      ],
+      "licence": "CC BY 3.0 AU",
+      "publisher": "ASIC"
+    },
+    "asicBn": {
+      "asOf": "2026-11-11",
+      "files": [
+        "asic/business_names_202611.csv"
+      ],
+      "licence": "CC BY 3.0 AU",
+      "publisher": "ASIC"
+    },
+    "gnaf": {
+      "asOf": "2026-08-17",
+      "files": [
+        "gnaf/Standard"
+      ],
+      "licence": "CC BY 4.0 (Open G-NAF EULA)",
+      "publisher": "Geoscape Australia"
+    },
+    "abs": {
+      "asOf": "2026-11-10",
+      "files": [
+        "abs/dataflows.json",
+        "abs/data/FIXTURE_POP.csv"
+      ],
+      "licence": "CC BY 4.0",
+      "publisher": "Australian Bureau of Statistics"
+    },
+    "asgs": {
+      "asOf": "2026-07-21",
+      "files": [
+        "asgs/SA2_FIXTURE.geojson"
+      ],
+      "licence": "CC BY 4.0",
+      "publisher": "Australian Bureau of Statistics"
+    }
+  }
+}

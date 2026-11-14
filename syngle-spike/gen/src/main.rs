@@ -11,6 +11,7 @@
 //! spatially coherent (a range read fetches one corner of the country, not a stripe of the world).
 //!
 //! Usage: `cargo run --release -- --count 1000000 --out ../data/points_1m`
+//! Also writes `<out>.xy`: every point's lon and lat as little-endian f32 pairs (the evaluators' fidelity gate reads it).
 
 use arrow_array::{ArrayRef, BinaryArray, Float32Array, Float64Array, Int64Array, RecordBatch, StringArray, StructArray};
 use arrow_schema::{DataType, Field as AField, Schema};
@@ -281,6 +282,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("generated {count} points in {:?}", t0.elapsed());
     if let Some(dir) = std::path::Path::new(&out).parent() {
         std::fs::create_dir_all(dir)?;
+    }
+    // The evaluators' fidelity gate (evals/map-perf/fidelity.mjs) needs where every point is: lon, lat as little-endian
+    // f32 pairs, in the order the other files hold them.
+    {
+        let mut xy = Vec::with_capacity(points.len() * 8);
+        for p in &points {
+            xy.extend_from_slice(&(p.lon as f32).to_le_bytes());
+            xy.extend_from_slice(&(p.lat as f32).to_le_bytes());
+        }
+        std::fs::write(format!("{out}.xy"), xy)?;
     }
     let parquet_path = format!("{out}.geoparquet");
     let t = std::time::Instant::now();

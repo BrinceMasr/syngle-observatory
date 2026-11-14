@@ -1,0 +1,2 @@
+# Evaluator scripts are LF everywhere, so their checksums agree on every checkout.
+* text eol=lf

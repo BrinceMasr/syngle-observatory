@@ -1,0 +1,27 @@
+{
+ "meta": {
+  "schema": "https://raw.githubusercontent.com/sdmx-twg/sdmx-json/develop/structure-message/tools/schemas/1.0/sdmx-json-structure-schema.json"
+ },
+ "data": {
+  "dataflows": [
+   {
+    "id": "FIXTURE_POP",
+    "version": "1.0.0",
+    "agencyID": "ABS",
+    "name": "Fixture: estimated resident population by state, annual"
+   },
+   {
+    "id": "FIXTURE_CPI",
+    "version": "2.0.0",
+    "agencyID": "ABS",
+    "name": "Fixture: consumer price index, monthly"
+   },
+   {
+    "id": "FIXTURE_LABOUR",
+    "version": "1.1.0",
+    "agencyID": "ABS",
+    "name": "Fixture: labour force, monthly"
+   }
+  ]
+ }
+}

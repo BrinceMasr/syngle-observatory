@@ -1,0 +1,308 @@
+{
+  "group": "gov",
+  "label": "baseline-base-rustgis",
+  "at": "2026-11-14T05:18:01.241Z",
+  "commit": "7168620",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
+    "cores": 16,
+    "platform": "win32"
+  },
+  "runs": 5,
+  "scores": {
+    "gov.golden.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.golden.abn.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.golden.name.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.golden.company.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.golden.address.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.golden.stats.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.golden.area.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.determinism.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.versioned.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.lifecycle.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.hostile.passPct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.answerBytes.p95": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "bytes",
+      "bar": 1200,
+      "meetsBar": false
+    },
+    "gov.abn.p95Ms": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.name.p95Ms": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 150,
+      "meetsBar": false
+    },
+    "gov.address.p95Ms": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 150,
+      "meetsBar": false
+    },
+    "gov.stats.p95Ms": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.area.p95Ms": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "gov.coldCallMs": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 400,
+      "meetsBar": false
+    },
+    "gov.build.secPerMillionRecords": {
+      "runs": 0,
+      "median": null,
+      "min": null,
+      "max": null,
+      "spread": null,
+      "values": [],
+      "direction": "lower",
+      "unit": "s",
+      "bar": 120,
+      "meetsBar": false
+    }
+  }
+}
