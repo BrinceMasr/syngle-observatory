@@ -362,11 +362,15 @@ impl Embed {
                     Err(e) => app.session.notify(e, true),
                 },
                 Some(Msg::Run { id, command, params }) => {
+                    let before = key(&app.session);
                     let outcome = if crate::embed::runnable(&command) {
                         app.run(&command, params)
                     } else {
                         Err(format!("{command}: only the app's own commands (ui.*) run from the embedding page"))
                     };
+                    if outcome.is_ok() && crate::embed::mirrors_page(&command) {
+                        self.changes.follow(before, key(&app.session));
+                    }
                     self.answer(&crate::embed::result(id, outcome));
                 }
                 None => {}

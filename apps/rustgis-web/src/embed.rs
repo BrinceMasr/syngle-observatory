@@ -56,6 +56,12 @@ pub fn runnable(command: &str) -> bool {
     command.strip_prefix("ui.").is_some_and(|rest| !rest.is_empty())
 }
 
+/// Whether `command` only applies what the page already holds (the layer list it just sent), so the project it changes
+/// is not a change to post back.
+pub fn mirrors_page(command: &str) -> bool {
+    command == "ui.layers"
+}
+
 pub fn ready() -> Value {
     json!({"rustgis": "ready"})
 }
@@ -98,6 +104,18 @@ impl Changes {
     pub fn seen(&mut self, key: Key) {
         self.seen = Some(key);
         self.pending = None;
+    }
+
+    /// A command the page asked for took the project from `before` to `after` and the page holds the result: if `before`
+    /// was what the page had, `after` is now, so nothing is posted back for it. A change still waiting to settle is not
+    /// the page's, and is left to post.
+    pub fn follow(&mut self, before: Key, after: Key) {
+        if self.seen == Some(before) {
+            self.seen = Some(after);
+            if self.pending.is_some_and(|(k, _)| k == after) {
+                self.pending = None;
+            }
+        }
     }
 
     /// Whether the project, now `key`, should be posted. The first project is the page's to send,
@@ -178,5 +196,21 @@ mod tests {
         // A change undone before it settles posts nothing.
         assert_eq!(c.due(k(5), t), (false, Some(SETTLE)));
         assert_eq!(c.due(k(4), t + SETTLE), (false, None));
+    }
+
+    #[test]
+    fn a_command_the_page_asked_for_is_not_echoed_unless_a_change_was_waiting() {
+        let t = Instant::now();
+        let k = |rev| (rev, 0, [0, 0, 0, 0, 0]);
+        let mut c = Changes::default();
+        c.seen(k(1));
+        c.follow(k(1), k(2));
+        assert_eq!(c.due(k(2), t), (false, None), "the page's own layer list is not posted back");
+        // A pan that was waiting when the command ran still posts, and carries the command's result too.
+        assert_eq!(c.due(k(3), t), (false, Some(SETTLE)));
+        c.follow(k(3), k(4));
+        assert_eq!(c.due(k(4), t + SETTLE), (false, Some(SETTLE)), "the pending change is the pan's: its clock starts again");
+        assert_eq!(c.due(k(4), t + SETTLE + SETTLE), (true, None));
+        assert!(mirrors_page("ui.layers") && !mirrors_page("ui.theme"));
     }
 }

@@ -384,9 +384,12 @@ test("the view commands change the project the view is given, through the fork's
 
   // layers: order and visibility, and the names the state reports.
   const layers = await command(mounted, "layers", { layers: [{ name: "Cities", visible: false }, { name: "Countries" }], active: "Cities" });
-  const ordered = JSON.parse(layers.pushed.find((m) => m.rustgis === "project").text).maps[0].layers;
-  assert.deepEqual(ordered.map((l) => l.name), ["Cities", "Countries"], "the view draws what the host ordered");
-  assert.equal(ordered[0].visible, false);
+  // The view takes the layer list by name, through the app's own `ui.layers`, never the whole project: a project opens
+  // again from its sources, which empties every streamed layer for a read.
+  assert.equal(layers.pushed.some((m) => m.rustgis === "project"), false, "no project goes down for a switch or an order");
+  const layerRun = layers.pushed.find((m) => m.rustgis === "run");
+  assert.equal(layerRun.command, "ui.layers");
+  assert.deepEqual(layerRun.params.layers, [{ name: "Cities", visible: false }, { name: "Countries", visible: true }], "the view draws what the host ordered");
   // Each layer carries its renderer (#71): the surface restyles what the view actually draws.
   assert.deepEqual(layers.host.find((m) => m.bridge === "state").state.layers, [
     { name: "Cities", visible: false, style: {} },
@@ -415,6 +418,22 @@ test("the view commands change the project the view is given, through the fork's
   // tool: the bridge carries which of the eight is active.
   const tool = await command(mounted, "tool", { tool: "measure" });
   assert.equal(tool.host.find((m) => m.bridge === "state").state.tool, "measure");
+});
+
+test("a layer list the view refuses goes down again as the whole project, one it takes goes down no more", async () => {
+  const mounted = mount();
+  seed(mounted);
+  await command(mounted, "layers", { layers: [{ name: "Cities", visible: false }, { name: "Countries" }] });
+  mounted.drain();
+  mounted.view({ rustgis: "result", id: "bridge-layers", ok: true, value: null });
+  assert.equal(mounted.drain().pushed.length, 0, "an accepted list needs nothing more");
+  mounted.view({ rustgis: "result", id: "bridge-layers", ok: false, error: "there is no layer 'Cities'" });
+  const resent = mounted.drain().pushed.find((m) => m.rustgis === "project");
+  assert.ok(resent, "the view holds another project: it is given the page's copy");
+  const layers = JSON.parse(resent.text).maps[0].layers;
+  assert.deepEqual(layers.map((l) => [l.name, l.visible]), [["Cities", false], ["Countries", true]]);
+  mounted.view({ rustgis: "result", id: "bridge", ok: false, error: "another command" });
+  assert.equal(mounted.drain().pushed.length, 0, "only the layer list's own answer resends");
 });
 
 test("render-to-png asks the engine's gateway and answers with the PNG's bytes", async () => {

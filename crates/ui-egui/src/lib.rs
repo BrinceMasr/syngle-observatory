@@ -24,6 +24,7 @@ mod dialogs;
 mod docpanes;
 mod earthaccessui;
 mod editpanes;
+mod embedlayers;
 mod failureui;
 mod geocodeui;
 mod globe_drape;
@@ -1685,6 +1686,12 @@ impl RustGisApp {
             "ui.theme" => {
                 self.ui.dark = p.get("dark").and_then(Value::as_bool).unwrap_or(!self.ui.dark);
                 self.ui.dark_follows_system = false;
+            }
+            // The embedding page's layer list: shown or hidden, and in what order, by name (`embedlayers`).
+            "ui.layers" => {
+                if embedlayers::arrange(self.session.map_mut(), p)? {
+                    self.session.revision = self.session.revision.wrapping_add(1);
+                }
             }
             "ui.map.gpu" => {
                 self.map.gpu_enabled = p.get("on").and_then(Value::as_bool).unwrap_or(!self.map.gpu_enabled);

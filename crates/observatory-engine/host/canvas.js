@@ -149,6 +149,23 @@
     bridgeTell("state", { id: id === undefined ? null : id, state: bridge.state });
   }
 
+  // The layer list (which layers are shown, and in what order) goes down by name as the app's own `ui.layers`, not as the
+  // whole project: a project opens again from its sources, so every streamed layer would drop its window and read the
+  // view again (the layer shown empty for a read, hidden or not). The page's copy is already changed; if the view does
+  // not take the list (it holds another project), the answer comes back refused and the project goes down whole.
+  var LAYERS_RUN = "bridge-layers";
+  function bridgeApplyLayers(id) {
+    var map = activeMap();
+    var layers = map && map.layers ? map.layers : [];
+    runUi("ui.layers", {
+      layers: layers.map(function (l) {
+        return { name: l.name, visible: l.visible !== false };
+      })
+    }, LAYERS_RUN);
+    bridgeSnap();
+    bridgeTell("state", { id: id === undefined ? null : id, state: bridge.state });
+  }
+
   function bridgeLayer(name) {
     var map = activeMap();
     if (!map || !map.layers) return null;
@@ -156,8 +173,8 @@
     return null;
   }
 
-  function runUi(command, params) {
-    toView({ rustgis: "run", id: "bridge", command: command, params: params || {} });
+  function runUi(command, params, runId) {
+    toView({ rustgis: "run", id: runId || "bridge", command: command, params: params || {} });
   }
 
   // Base64 without a dependency, in pieces: a map PNG is megabytes and one spread would overflow.
@@ -245,7 +262,7 @@
         });
         map.layers = ordered;
         if (command.active !== undefined) bridge.state.active = command.active;
-        bridgeApply(id);
+        bridgeApplyLayers(id);
         return;
       }
       case "view-map": {
@@ -331,6 +348,11 @@
   // where `camera-changed` and `selection-changed` really come from, so the host learns what the
   // hand did, not what the host asked for.
   function bridgeFromView(message) {
+    if (message.rustgis === "result" && message.id === LAYERS_RUN) {
+      // The view could not take the layer list: it holds another project than this page's copy, so it is given the copy.
+      if (message.ok === false && bridge.project) toView({ rustgis: "project", text: JSON.stringify(bridge.project) });
+      return;
+    }
     if (message.rustgis !== "project" || typeof message.text !== "string") return;
     var next;
     try {
