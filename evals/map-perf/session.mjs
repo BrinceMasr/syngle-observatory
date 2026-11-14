@@ -13,9 +13,9 @@ import { decodePng, inkMask, pointRecall, readXy, RECALL_BAR } from "./fidelity.
 // Installed in every frame before its scripts run. The view's iframe starts as an empty document and is then navigated, and
 // Chrome keeps that window across the navigation but drops the old document's animation callbacks, so the frame ticker is
 // started on demand (`start`) in the document that is there, and every time is `performance.timeOrigin` of that document plus
-// its own timestamp (epoch milliseconds). An input is a wheel step or a pointer move with a button down (a drag move): a move
-// with none down (the hover before a press, the pointer's return after a release) moves no camera, and scored it read the press
-// delay or the gap to the next drag.
+// its own timestamp (epoch milliseconds). An input is a wheel step or a pointer move that moves, with a button down (a drag
+// move): a hover before a press, the pointer's return after a release and a move of no distance change no camera, and scored
+// they read the press delay or the gap to the next drag.
 export const INIT_SCRIPT = `(() => {
   if (window.__eval) return;
   const E = (window.__eval = { recording: false, loop: 0, raf: [], inputs: [], long: [], gpuSubmits: 0, glDraws: 0 });
@@ -26,7 +26,7 @@ export const INIT_SCRIPT = `(() => {
     requestAnimationFrame(tick);
   };
   E.stop = () => { E.recording = false; E.loop++; };
-  for (const type of ["pointermove", "wheel"]) addEventListener(type, (e) => { if (E.recording && (type === "wheel" || e.buttons)) E.inputs.push(performance.timeOrigin + e.timeStamp); }, { capture: true, passive: true });
+  for (const type of ["pointermove", "wheel"]) addEventListener(type, (e) => { if (E.recording && (type === "wheel" || (e.buttons && (e.movementX || e.movementY)))) E.inputs.push(performance.timeOrigin + e.timeStamp); }, { capture: true, passive: true });
   try { new PerformanceObserver((l) => { for (const x of l.getEntries()) if (E.recording) E.long.push(x.duration); }).observe({ type: "longtask" }); } catch {}
   try { if (window.GPUQueue) { const s = GPUQueue.prototype.submit; GPUQueue.prototype.submit = function () { E.gpuSubmits++; return s.apply(this, arguments); }; } } catch {}
   try {
@@ -38,6 +38,13 @@ export const INIT_SCRIPT = `(() => {
 })();`;
 
 const VIEW = `document.getElementById("view").contentWindow`;
+
+/**
+ * The `Input.dispatchMouseEvent` parameters of one mouse event. A move with no button down says `button: "none"`, as a mouse
+ * sends it: sent with `button: "left"` it reached the page as a pointermove with `buttons` 1, so the hover before a press and
+ * the pointer's return after a release looked like drag moves.
+ */
+export const mouseParams = (type, x, y, extra = {}) => ({ type, x, y, button: type === "mouseMoved" && !extra.buttons ? "none" : "left", clickCount: 1, ...extra });
 
 /** Everything a scenario can ask for, in the order a run takes them. */
 export const SCENARIOS = ["first-draw", "pan", "zoom", "toggle"];
@@ -126,7 +133,7 @@ export async function runCanvas(options) {
     result.gpu = { ...probe, backendUsed: backend };
     assertPath(pathName, probe, backend);
 
-    const mouse = (type, x, y, extra = {}) => send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1, ...extra });
+    const mouse = (type, x, y, extra = {}) => send("Input.dispatchMouseEvent", mouseParams(type, x, y, extra));
     const cx = Math.round(width / 2);
     const cy = Math.round(height / 2);
     const begin = async () => {
