@@ -399,6 +399,27 @@ fn render_to_png_draws_the_project_off_screen() {
     assert_eq!(refused, "403", "the gateway serves only this launch's token");
 }
 
+/// The command loop sleeps until there is work (Syngle-Ecosystem #634). It polled the pipe every 25 ms, so a request that came
+/// right after a reply (a frame after a pan, which is how the app and the agent ask) waited out the rest of a tick: a median of
+/// about 20 ms for an answer that takes under one. Thirty in a row are asked for here, and the median is held far under a tick.
+#[test]
+fn a_request_after_a_reply_is_answered_without_waiting_for_a_poll_tick() {
+    let engine = Engine::start("no-poll");
+    let hello = json!({"cmd": "bridge", "bridge": "hello", "protocolVersion": 1});
+    engine.post(&hello);
+    let mut took: Vec<Duration> = (0..30)
+        .map(|_| {
+            let t = Instant::now();
+            let (status, lines) = engine.post(&hello);
+            assert_eq!((status, lines.len()), (200, 1), "{lines:?}");
+            t.elapsed()
+        })
+        .collect();
+    took.sort();
+    let median = took.get(took.len() / 2).copied().unwrap_or_default();
+    assert!(median < Duration::from_millis(10), "the median answer took {median:?} (a poll tick would make it about 20 ms): {took:?}");
+}
+
 /// The gateway's `POST /bridge`: a host that does not own the engine's pipe (the agent's map tools,
 /// the headless verification run, a dev browser) drives the same bridge, against the same session
 /// and the same history. One JSON line in the body, the lines the engine would have written in the

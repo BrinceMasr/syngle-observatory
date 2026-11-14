@@ -74,11 +74,11 @@ struct Cfg {
     base: String,
     /// The bridge's `render-to-png`, drawn by the command loop that owns the session: the gateway's
     /// `/render` route asks here and waits for the PNG. `None` in a test that never renders.
-    render: Option<std::sync::mpsc::Sender<RenderJob>>,
+    render: Option<std::sync::mpsc::Sender<Work>>,
     /// Bridge commands that arrive over HTTP (`POST /bridge`) rather than on stdin: the command loop
     /// owns the session, so the gateway asks here and waits for the lines to answer with. `None` in a
     /// test that never posts one.
-    bridge: Option<std::sync::mpsc::Sender<BridgeJob>>,
+    bridge: Option<std::sync::mpsc::Sender<Work>>,
 }
 /// What the gateway served, for the report: how many requests, how many bytes, how many of them
 /// were ranges (a "read in place" source is a long tail of small ranges — that is a cost of the
@@ -111,10 +111,11 @@ pub fn run(args: &[String]) -> i32 {
     let base = format!("http://127.0.0.1:{port}");
     // The bridge's `render-to-png` is drawn by the command loop below, which is the only owner of
     // the session, so the gateway asks through here and waits for the PNG.
-    let (render_tx, render_rx) = std::sync::mpsc::channel::<RenderJob>();
+    let (work_tx, work_rx) = std::sync::mpsc::channel::<Work>();
+    let render_tx = work_tx.clone();
     // Bridge commands posted over HTTP take the same road: the loop that owns the session runs them,
     // so an HTTP peer and the host's pipe can never disagree about the project or the history.
-    let (bridge_tx, bridge_rx) = std::sync::mpsc::channel::<BridgeJob>();
+    let bridge_tx = work_tx.clone();
     // The handshake is one fact per process, whichever transport carried it: a `hello` on the pipe
     // links the HTTP peer too, and a version refusal on either closes both.
     let linked = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -169,32 +170,35 @@ pub fn run(args: &[String]) -> i32 {
         emit(&json!({"event":"preloaded","t":now_ms(),"result":out}));
     }
 
-    // stdin is read on its own thread, so this one loop can answer both the host's lines and the
-    // gateway's `/render`. A closed pipe is how the host says go.
-    let (line_tx, line_rx) = std::sync::mpsc::channel::<String>();
+    // stdin is read on its own thread, so this one loop can answer the host's lines, the gateway's
+    // `/render` and the gateway's `POST /bridge` from one queue, and sleep until one of them comes
+    // (it polled every 25 ms before, so each request waited out the rest of a tick: ~20 ms a frame).
+    // A closed pipe is how the host says go.
     std::thread::spawn(move || {
         let stdin = std::io::stdin();
         for line in stdin.lock().lines() {
             let Ok(line) = line else { break };
-            if line_tx.send(line).is_err() {
-                break;
+            if work_tx.send(Work::Line(line)).is_err() {
+                return;
             }
         }
+        let _ = work_tx.send(Work::Closed);
     });
     loop {
-        while let Ok(job) = bridge_rx.try_recv() {
-            // The answer goes to the peer that asked, and nowhere else: a line on stdout belongs to
-            // the host's own pipe, and a host that did not post this command must not read its reply.
-            let lines = bridge_lines(&mut session, &project, &linked, &job.msg);
-            let _ = job.reply.send(lines);
-        }
-        while let Ok(job) = render_rx.try_recv() {
-            answer_render(&mut session, job);
-        }
-        let line = match line_rx.recv_timeout(std::time::Duration::from_millis(25)) {
-            Ok(line) => line,
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        let line = match work_rx.recv() {
+            Ok(Work::Line(line)) => line,
+            Ok(Work::Bridge(job)) => {
+                // The answer goes to the peer that asked, and nowhere else: a line on stdout belongs to
+                // the host's own pipe, and a host that did not post this command must not read its reply.
+                let lines = bridge_lines(&mut session, &project, &linked, &job.msg);
+                let _ = job.reply.send(lines);
+                continue;
+            }
+            Ok(Work::Render(job)) => {
+                answer_render(&mut session, job);
+                continue;
+            }
+            Ok(Work::Closed) | Err(_) => break,
         };
         let line = line.trim();
         if line.is_empty() {
@@ -336,6 +340,19 @@ fn open(session: &mut Session, target: &str, kind: &str, name: Option<&str>, zoo
 // The working set is the host's to read (`Get-Process -Id <pid>`): the workspace forbids `unsafe`,
 // and `K32GetProcessMemoryInfo` needs it, so the engine keeps no memory code at all. The `stats`
 // reply carries what it does own: the layer count and the dataset's feature count.
+
+/// What the command loop is woken for. Every source of work sends on one channel, so the loop blocks
+/// until there is some and never polls.
+enum Work {
+    /// A line the host wrote to the pipe.
+    Line(String),
+    /// A bridge command posted to the gateway (`POST /bridge`).
+    Bridge(BridgeJob),
+    /// A frame asked for over `/render`.
+    Render(RenderJob),
+    /// The host's pipe closed.
+    Closed,
+}
 
 /// One `render-to-png` asked for over the gateway: the size to draw at, and where the PNG goes.
 struct RenderJob {
@@ -730,7 +747,7 @@ fn route(req: &Request, cfg: &Cfg, project: &parts::Parts) -> (u16, (String, u64
             return (400, (head(400, "application/json", n, None, false), n), body);
         };
         let (reply, answer) = std::sync::mpsc::sync_channel(1);
-        if bridge.send(BridgeJob { msg, reply }).is_err() {
+        if bridge.send(Work::Bridge(BridgeJob { msg, reply })).is_err() {
             let body = b"the engine is stopping".to_vec();
             let n = body.len() as u64;
             return (503, (head(503, "text/plain", n, None, false), n), body);
@@ -775,7 +792,7 @@ fn route(req: &Request, cfg: &Cfg, project: &parts::Parts) -> (u16, (String, u64
             };
             let (reply, answer) = std::sync::mpsc::sync_channel(1);
             let job = RenderJob { width: query_number(&req.target, "width"), height: query_number(&req.target, "height"), reply };
-            if render.send(job).is_err() {
+            if render.send(Work::Render(job)).is_err() {
                 return (503, (head(503, "text/plain", 0, None, false), 0), b"the engine is stopping".to_vec());
             }
             return match answer.recv_timeout(std::time::Duration::from_secs(20)) {
