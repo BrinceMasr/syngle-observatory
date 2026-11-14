@@ -91,8 +91,12 @@ pub struct MapView {
     /// MCP relay that asked for the map alone).
     pub hide_overlays: bool,
     /// How long the last frame drawn mid-motion took (ms), and the share of full resolution it
-    /// was drawn at: the next is spaced out by it, and drawn finer or coarser to take about 16 ms.
+    /// was drawn at: the next is spaced out by it, and drawn finer or coarser to take about
+    /// [`MapView::motion_budget_ms`].
     motion_cost: (f64, f64),
+    /// What a frame drawn mid-motion should take (ms): the 16 ms of a 60 Hz frame, less on a software rasterizer, whose
+    /// own work for each frame (compositing the picture) already takes much of the frame (see [`settle_gpu_default`]).
+    motion_budget_ms: f64,
     labels: Vec<PlacedLabel>,
     /// On the globe, where each label stands on the Earth, so it follows the globe as it turns
     /// and zooms until the next frame places them again.
@@ -199,6 +203,7 @@ impl Default for MapView {
             view_rect: None,
             hide_overlays: false,
             motion_cost: (0.0, 1.0),
+            motion_budget_ms: 16.0,
             labels: Vec::new(),
             label_lonlat: Vec::new(),
             label_camera: Camera::world(),
@@ -273,12 +278,16 @@ impl MapView {
     /// the status bar's GPU switch), so the scene's meshes and marker instances stay on the card across frames and a camera
     /// move only rewrites their uniforms, where the CPU renderer rasterizes the picture again. A software rasterizer (an
     /// adapter that is a CPU: a machine with no GPU) draws that scene far slower than the CPU renderer's picture, so it keeps
-    /// the picture.
+    /// the picture, and draws its frames mid-motion with less to do ([`SOFTWARE_MOTION_BUDGET_MS`]).
     pub(crate) fn settle_gpu_default(&mut self, saved: bool) {
         let Some(rs) = &self.render_state else { return };
         self.gpu_default_settled = true;
+        let software = rs.adapter.get_info().device_type == egui_wgpu::wgpu::DeviceType::Cpu;
         if !saved {
-            self.gpu_enabled |= rs.adapter.get_info().device_type != egui_wgpu::wgpu::DeviceType::Cpu;
+            self.gpu_enabled |= !software;
+        }
+        if software {
+            self.motion_budget_ms = SOFTWARE_MOTION_BUDGET_MS;
         }
     }
 
@@ -730,22 +739,28 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     // The tilted map's drape stands in for both.
     let turning =
         !globe_view && !tilt_draped && (app.map.tex_camera.bearing != cam.bearing || app.map.tex_camera.pitch != cam.pitch || tilted);
+    // On a software rasterizer each frame drawn mid-motion costs a missed frame, so they come further apart: the last
+    // frame stands in stretched up to three times (a third as sharp), and zooming out fills the gap four times over (a
+    // pan keeps twice: a frame over more of the map holds more features, and costs more to draw).
+    let software = app.map.motion_budget_ms < 16.0;
+    let stretch_most = if software { 3.0 } else { 1.3 };
+    let gap = if software && cam.res > app.map.tex_camera.res * 1.05 { 4.0 } else { 2.0 };
     let motion = (stale && interacting && texture_motion && !globe_view && !tilted && !turning && has_picture)
         .then(|| {
             let r = tex_rect(app, cam, rect, false);
             let stretch = r.width() as f64 / app.map.tex_size.0.max(1.0);
             let (ms, k) = app.map.motion_cost;
             let (vw, vh, most, least) = if !r.expand(0.5).contains_rect(rect) {
-                // A gap is filled at once: each such frame covers zooming out twice as far, so
+                // A gap is filled at once: each such frame covers zooming out `gap` times as far, so
                 // they can't come often.
-                (w * 2.0, h * 2.0, 0.5, 0.2)
-            } else if stretch > 1.3 && time - app.map.last_render >= motion_gap(ms) {
+                (w * gap, h * gap, 1.0 / gap, 0.4 / gap)
+            } else if stretch > stretch_most && time - app.map.last_render >= motion_gap(ms) {
                 (w, h, 1.0, 0.4)
             } else {
                 return None;
             };
-            // Aim for a 60 Hz frame budget; start coarse until a measured draw cost is available.
-            let k = if ms > 0.0 { k * (16.0 / ms).sqrt().clamp(0.5, 1.4) } else { 0.65 };
+            // Aim for the frame budget; start coarse until a measured draw cost is available.
+            let k = if ms > 0.0 { k * (app.map.motion_budget_ms / ms).sqrt().clamp(0.5, 1.4) } else { 0.65 };
             Some((vw, vh, ppp * (k * most).clamp(least, most) as f32))
         })
         .flatten();
@@ -817,7 +832,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         app.map.render_ms = app.map.spike_render_ms as u64;
         app.map.spike_renders += 1;
         if let Some((_, _, p)) = motion {
-            let k = (p / ppp) as f64 / if vw > w { 0.5 } else { 1.0 };
+            let k = (p / ppp) as f64 * if vw > w { gap } else { 1.0 };
             app.map.motion_cost = (t0.elapsed().as_secs_f64() * 1000.0, k);
             ui.ctx().request_repaint();
         } else if app.map.camera_moved {
@@ -1019,6 +1034,10 @@ fn show_frame(
     app.map.tex_size = (view.width, view.height);
     app.map.key = Some(key);
 }
+
+/// What a frame drawn mid-motion takes (ms) on a software rasterizer: it already spends about half of a 30 Hz frame on
+/// compositing the picture, so a mid-motion frame that takes more makes the frame miss its slot.
+const SOFTWARE_MOTION_BUDGET_MS: f64 = 8.0;
 
 /// The least time (s) between frames drawn mid-motion, for frames taking `ms` to draw: quick
 /// ones as often as 30 a second, slower ones further apart so the motion between them stays
@@ -2687,6 +2706,7 @@ mod tests {
         app.gpu_on_a_card();
         assert_eq!(app.map.gpu_enabled, was, "no adapter named: the backend is as it was");
         assert!(!app.map.gpu_default_settled, "and it is asked again once there is one");
+        assert_eq!(app.map.motion_budget_ms, 16.0, "a frame mid-motion keeps the 60 Hz budget until an adapter says it is software");
     }
 
     /// The GPU fast path moves the last frame's meshes only while they cover the view: zooming
