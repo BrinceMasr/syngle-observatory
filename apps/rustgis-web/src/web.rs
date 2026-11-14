@@ -474,6 +474,11 @@ impl eframe::App for WebShell {
         self.spike_sample();
     }
 
+    #[cfg(feature = "canvas-only")]
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        rustgis_ui_egui::RustGisApp::canvas_clear_color(visuals)
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         // The canvas-only build (ADR 0010) ships the map alone; SyngleCode's React UI is the
         // chrome. Everything else in this shell (the embed contract, the file drops, the spike

@@ -854,7 +854,12 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         app.map.drape.paint_space(ui.ctx(), &painter, rect, app.session.map(), ppp);
     } else if tilt_draped {
         app.map.tilt_drape.paint(&painter, rect, app.session.map());
-    } else {
+    } else if !(app.map.gpu_frame.is_none()
+        && app.map.texture.is_some()
+        && background.a() == 255
+        && tex_rect(app, cam, rect, globe_view).expand(0.01).contains_rect(rect))
+    {
+        // (A picture that covers the view paints over it: on a software rasterizer, filling the view twice is a third of the frame.)
         painter.rect_filled(rect, 0.0, c32(background));
     }
     let old = app.map.tex_camera;

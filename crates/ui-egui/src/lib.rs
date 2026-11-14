@@ -3185,6 +3185,12 @@ impl RustGisApp {
             self.sent_title = title;
         }
     }
+    /// What the canvas-only view's surface is cleared to before it draws: the canvas colour of the theme `visuals` belong to,
+    /// opaque, in the gamma space the clear takes. The host's `clear_color` returns it.
+    pub fn canvas_clear_color(visuals: &egui::Visuals) -> [f32; 4] {
+        (if visuals.dark_mode { theme::Tokens::dark() } else { theme::Tokens::light() }).canvas.to_normalized_gamma_f32()
+    }
+
     /// Draws the canvas-only view (ADR 0010): the map and direct manipulation, and nothing else.
     /// No header, ribbon, tabs, panes, status bar, dialogs, command search or window title — the
     /// React host (SyngleCode) owns that chrome and drives the view through the bridge. The
@@ -3198,8 +3204,10 @@ impl RustGisApp {
             return;
         }
         i18n::set_current(self.lang());
-        let t = theme::Tokens::get(&ctx);
-        egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.canvas)).show(ui, |ui| {
+        // No fill of its own: the map view paints its picture or its background over the whole panel, and what an early
+        // return leaves unpainted shows the host's clear colour, [`RustGisApp::canvas_clear_color`] (a fill here is a third
+        // full-view draw per frame, which a software rasterizer takes a frame of its time for).
+        egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| {
             mapview::show_canvas(self, ui);
         });
         // The map view asks for these (a copied feature, an exported image, a link in a label):
@@ -3288,6 +3296,25 @@ mod service_text_tests {
         }
         let valid = "{\"title\":\"Café\"}";
         assert!(super::service_text(valid.as_bytes().to_vec()).is_ok_and(|text| text == valid));
+    }
+}
+
+#[cfg(test)]
+mod canvas_clear_tests {
+    use super::*;
+
+    /// The canvas build has no panel fill, so the surface's clear is what shows wherever the map paints nothing: the
+    /// canvas colour of the theme, opaque, in both themes.
+    #[test]
+    fn the_canvas_clears_to_its_own_colour_in_both_themes() {
+        for dark in [false, true] {
+            let mut visuals = if dark { egui::Visuals::dark() } else { egui::Visuals::light() };
+            visuals.dark_mode = dark;
+            let tokens = if dark { theme::Tokens::dark() } else { theme::Tokens::light() };
+            let clear = RustGisApp::canvas_clear_color(&visuals);
+            assert_eq!(clear, tokens.canvas.to_normalized_gamma_f32());
+            assert_eq!(clear[3], 1.0, "an opaque clear (dark: {dark})");
+        }
     }
 }
 
