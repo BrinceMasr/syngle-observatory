@@ -123,7 +123,15 @@ impl FgbSource {
         let limit = clamp_limit(req.limit);
         let reader = FgbReader::open(open()?).map_err(err)?;
         let native = req.extent.map(|e| self.reproject.extent_from_lonlat(&e));
-        let indexed = native.filter(|_| self.info.indexed && !scan);
+        // A request that covers the file's whole extent (a view zoomed out past the data) meets every feature, so the index has
+        // nothing to say: searching it walks every node twice (this search, then the crate's own), 40 bytes a feature, which for a
+        // million points was a third of the read. The features are then read in file order, as for no extent, with the same
+        // counts and ids; each is still tested against the request below.
+        let covers = req.extent.is_some_and(|e| {
+            let x = self.info.extent;
+            !x.is_empty() && e.min_x <= x.min_x && e.min_y <= x.min_y && e.max_x >= x.max_x && e.max_y >= x.max_y
+        });
+        let indexed = native.filter(|_| self.info.indexed && !scan && !covers);
         // Feature numbers in the file, for ids that stay put between reads: the index search's
         // results, in the order the selection visits them.
         let numbers: Option<Vec<u64>> = match indexed {
@@ -142,7 +150,7 @@ impl FgbSource {
             return self.read_with(open, req, true);
         }
         // Without an index, an extent is tested on each feature: sample the matches as they come.
-        let late = native.is_some() && indexed.is_none();
+        let late = native.is_some() && indexed.is_none() && !covers;
         let matched = iter.features_count().map(|n| n as u64).or(self.info.count).unwrap_or(0);
         let mut sample = if late || matched == 0 { Sampler::new(limit) } else { Sampler::with_total(limit, matched) };
         let mut out = Batch::default();

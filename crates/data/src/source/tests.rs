@@ -203,6 +203,34 @@ fn flatgeobuf() {
     check(open_bytes("grid.fgb", std::fs::read(&p).unwrap(), None).unwrap().as_ref(), true);
 }
 
+/// A request covering the file's whole extent skips the index (Syngle-Ecosystem #634) and must still answer as the index would:
+/// the same features with the same ids, counts and completeness, whole or sampled.
+#[test]
+fn a_request_that_covers_the_whole_file_answers_as_the_index_would() {
+    let p = dir().join("covers.fgb");
+    write_fgb(&p);
+    let src = open_path(&p, None).unwrap();
+    let x = src.info().extent;
+    let wide = Extent::new(x.min_x - 1.0, x.min_y - 1.0, x.max_x + 1.0, x.max_y + 1.0);
+    let all = src.read(&Request::all()).unwrap();
+    for covering in [wide, x] {
+        let whole = src.read(&Request { extent: Some(covering), limit: 10_000 }).unwrap();
+        assert_eq!((whole.matched, whole.complete, whole.features.len()), (600, true, 600));
+        assert_eq!(whole.features, all.features);
+        let sample = src.read(&Request { extent: Some(covering), limit: 100 }).unwrap();
+        assert_eq!((sample.matched, sample.complete), (600, false));
+        assert!(!sample.features.is_empty() && sample.features.len() <= 100, "{}", sample.features.len());
+        for f in &sample.features {
+            assert_eq!(all.features.iter().find(|a| a.id == f.id), Some(f), "id {}", f.id);
+        }
+    }
+    // One short of covering on a side still goes through the index and gives exactly the points inside.
+    let part = Extent::new(x.min_x + 1.0, x.min_y - 1.0, x.max_x + 1.0, x.max_y + 1.0);
+    let got = src.read(&Request { extent: Some(part), limit: 10_000 }).unwrap();
+    assert_eq!(got.features.len(), in_box(&part));
+    assert!(got.features.len() < 600 && got.complete);
+}
+
 #[test]
 fn geopackage_reprojects_and_uses_its_rtree() {
     let d = dir();
