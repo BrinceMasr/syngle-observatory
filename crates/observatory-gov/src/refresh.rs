@@ -16,7 +16,7 @@ use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 
 /// The sources this build reads. Others in a manifest are left out of the snapshot.
-const BUILT: [&str; 3] = ["abr", "asic", "asicBn"];
+const BUILT: [&str; 6] = ["abr", "asic", "asicBn", "gnaf", "abs", "asgs"];
 const MAX_MANIFEST: u64 = 1 << 20;
 
 #[derive(Debug, Deserialize)]
@@ -127,13 +127,13 @@ pub fn apply(store: &Store, base: &Path, manifest: &Manifest, run_bytes: usize) 
         if !valid_date(&ms.as_of) || ms.files.is_empty() || ms.files.len() > 64 {
             return Err(GovError::bad_source(format!("{}: needs an asOf date (yyyy-mm-dd) and from 1 to 64 files", source.name)));
         }
-        let mut files = Vec::new();
         let mut hashed = Vec::new();
         for rel in &ms.files {
             let full = inside(base, rel)?;
             expand(rel, &full, 0, &mut hashed).map_err(GovError::bad_source)?;
-            files.push(full);
         }
+        // A folder in the manifest stands for the files in it.
+        let files: Vec<PathBuf> = hashed.iter().map(|(_, path)| path.clone()).collect();
         let version = format!("{}-{}-{}", source.name, ms.as_of, hash_files(&hashed).map_err(GovError::bad_source)?);
         metas.insert(
             source.name.to_string(),
@@ -150,7 +150,7 @@ pub fn apply(store: &Store, base: &Path, manifest: &Manifest, run_bytes: usize) 
         plan.push(SourcePlan { name: source.name, files });
     }
     if plan.is_empty() {
-        return Err(GovError::bad_source("the manifest names no source this build reads (abr, asic, asicBn)"));
+        return Err(GovError::bad_source("the manifest names no source this build reads (abr, asic, asicBn, gnaf, abs, asgs)"));
     }
     let versions: Vec<&str> = metas.values().map(|m| m.version.as_str()).collect();
     let id = data_version(&versions);

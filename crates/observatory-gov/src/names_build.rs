@@ -18,7 +18,6 @@ use std::io::{self, BufWriter, Write};
 use std::path::Path;
 
 pub const ENTRY: usize = 32;
-pub const TOKEN: usize = 24;
 pub const SRC_ABR: u8 = 0;
 pub const SRC_ASIC: u8 = 1;
 pub const SRC_BN: u8 = 2;
@@ -110,49 +109,7 @@ impl NameSink {
         })?;
         ent.flush()?;
         strs.flush()?;
-        write_tokens(tokens, dir)?;
+        crate::tokens::write(tokens, dir, "tok")?;
         Ok(id)
     }
-}
-
-fn put_token(key: &mut BufWriter<File>, word: &[u8], start: u64, count: u32, str_off: u64) -> io::Result<()> {
-    let mut e = [0u8; TOKEN];
-    e[0..8].copy_from_slice(&str_off.to_le_bytes());
-    e[8..16].copy_from_slice(&start.to_le_bytes());
-    e[16..20].copy_from_slice(&count.to_le_bytes());
-    e[20..24].copy_from_slice(&(word.len() as u32).to_le_bytes());
-    key.write_all(&e)
-}
-
-fn write_tokens(tokens: Sorter, dir: &Path) -> io::Result<()> {
-    let mut key = BufWriter::with_capacity(1 << 20, File::create(dir.join("tok.key"))?);
-    let mut strs = BufWriter::with_capacity(1 << 20, File::create(dir.join("tok.str"))?);
-    let mut post = BufWriter::with_capacity(1 << 20, File::create(dir.join("tok.post"))?);
-    let (mut str_off, mut post_off) = (0u64, 0u64);
-    let mut current: Option<(Vec<u8>, u64, u32)> = None;
-    tokens.for_each(|r| {
-        let nul = r.iter().position(|&b| b == 0).ok_or_else(|| invalid("a word record without its end"))?;
-        let (word, id) = (&r[..nul], r.get(nul + 1..nul + 5).ok_or_else(|| invalid("a word record of the wrong size"))?);
-        match current.as_mut() {
-            Some((w, _, count)) if w.as_slice() == word => *count += 1,
-            _ => {
-                if let Some((w, start, count)) = current.take() {
-                    put_token(&mut key, &w, start, count, str_off - w.len() as u64)?;
-                }
-                strs.write_all(word)?;
-                str_off += word.len() as u64;
-                current = Some((word.to_vec(), post_off, 1));
-            }
-        }
-        let le = u32::from_be_bytes(id.try_into().map_err(|_| invalid("id"))?).to_le_bytes();
-        post.write_all(&le)?;
-        post_off += 1;
-        Ok(())
-    })?;
-    if let Some((w, start, count)) = current.take() {
-        put_token(&mut key, &w, start, count, str_off - w.len() as u64)?;
-    }
-    key.flush()?;
-    strs.flush()?;
-    post.flush()
 }

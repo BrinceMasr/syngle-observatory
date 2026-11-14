@@ -6,10 +6,10 @@
 
 use crate::codec::{BusinessName, Company};
 use crate::error::{GovError, OrDamaged, Res};
-use crate::names_build::{ENTRY, FLAG_ACTIVE, FLAG_IN_ABR, MAX_NAME, SRC_ABR, SRC_ASIC, SRC_BN, TOKEN};
+use crate::names_build::{ENTRY, FLAG_ACTIVE, FLAG_IN_ABR, MAX_NAME, SRC_ABR, SRC_ASIC, SRC_BN};
 use crate::norm::normalise;
 use crate::snap::Snap;
-use crate::table::{Blob, Fixed, le32, le64};
+use crate::table::{Blob, Fixed, le64};
 use std::collections::HashMap;
 use std::io;
 
@@ -111,27 +111,10 @@ fn keep_better(map: &mut HashMap<(bool, u64), Hit>, hit: Hit) {
 
 /// The ids of the entries whose name has this word.
 fn postings(snap: &Snap, word: &[u8]) -> Res<Vec<u32>> {
-    let (tok, strs, post) = (snap.fixed("tok.key", TOKEN as u64)?, snap.blob("tok.str")?, snap.blob("tok.post")?);
-    let mut buf = Vec::new();
-    let at = tok
-        .partition_point(0, |e| {
-            buf.resize(le32(e, 20) as usize, 0);
-            strs.read_exact_at(le64(e, 0), &mut buf)?;
-            Ok(buf.as_slice() < word)
-        })
-        .damaged()?;
-    if at >= tok.count {
-        return Ok(Vec::new());
+    match crate::tokens::find(snap, "tok", word)? {
+        Some((start, count)) => crate::tokens::read(&snap.blob("tok.post")?, start, count),
+        None => Ok(Vec::new()),
     }
-    let e = tok.entry(at).damaged()?;
-    buf.resize(le32(&e, 20) as usize, 0);
-    strs.read_exact_at(le64(&e, 0), &mut buf).damaged()?;
-    if buf.as_slice() != word {
-        return Ok(Vec::new());
-    }
-    let (start, count) = (le64(&e, 8), le32(&e, 16) as usize);
-    let raw = post.read_vec(start * 4, count * 4).damaged()?;
-    Ok(raw.chunks_exact(4).map(|c| le32(c, 0)).collect())
 }
 
 fn intersect(a: &[u32], b: &[u32]) -> Vec<u32> {

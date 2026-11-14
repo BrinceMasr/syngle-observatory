@@ -38,6 +38,14 @@ impl<'a> Cur<'a> {
         Some(v)
     }
 
+    /// The next `n` bytes, as they are.
+    pub fn take(&mut self, n: usize) -> Option<&'a [u8]> {
+        let end = self.p.checked_add(n)?;
+        let s = self.b.get(self.p..end)?;
+        self.p = end;
+        Some(s)
+    }
+
     pub fn varint(&mut self) -> Option<u64> {
         let (mut v, mut shift) = (0u64, 0u32);
         loop {
@@ -70,6 +78,9 @@ pub struct Dicts {
     pub entity: Vec<String>,
     #[serde(default)]
     pub name_type: Vec<String>,
+    /// The state names of the addresses, by the number a record holds.
+    #[serde(default)]
+    pub states: Vec<String>,
 }
 
 impl Dicts {
@@ -261,7 +272,7 @@ mod tests {
         };
         let mut b = Vec::new();
         r.encode(&mut b, &mut et, &mut nt);
-        let dicts = Dicts { entity: et.items, name_type: nt.items };
+        let dicts = Dicts { entity: et.items, name_type: nt.items, ..Dicts::default() };
         assert_eq!(AbrRecord::decode(r.abn, &b, &dicts), Some(r));
         assert_eq!(AbrRecord::decode(1, &b[..b.len() - 3], &dicts), None);
         assert_eq!(AbrRecord::decode(1, &[0xff; 20], &dicts), None);

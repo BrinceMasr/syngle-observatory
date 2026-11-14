@@ -5,7 +5,7 @@ use observatory_gov::{Env, run};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
-const BUILT: &[&str] = &["abn", "name", "company"];
+const BUILT: &[&str] = &["abn", "name", "company", "address", "stats", "area"];
 
 fn evals() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../evals/gov-data/fixtures")

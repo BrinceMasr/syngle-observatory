@@ -72,6 +72,11 @@ impl Parsed {
         self.options.iter().any(|(k, _)| k == name)
     }
 
+    /// Every value of a flag given more than once (a flag with no value counts as an empty one).
+    fn values(&self, name: &str) -> Vec<&str> {
+        self.options.iter().filter(|(k, _)| k == name).map(|(_, v)| v.as_deref().unwrap_or("")).collect()
+    }
+
     fn value(&self, name: &str) -> Option<&str> {
         self.options.iter().find(|(k, _)| k == name).and_then(|(_, v)| v.as_deref())
     }
@@ -148,6 +153,35 @@ fn query_verb(verb: &str, p: &Parsed, env: &Env) -> Res<String> {
             };
             query::name(&snap, &rest.join(" "), state, p.present("--active"), limit(p)?)?
         }
+        "address" => {
+            let (id, text) = (p.value("--id"), rest.join(" "));
+            if p.present("--id") && id.is_none() {
+                return Err(GovError::new("empty-query", "--id needs a G-NAF address PID")
+                    .with_query("{\"verb\":\"address\",\"id\":\"\"}".to_string()));
+            }
+            crate::address::address(&snap, &text, id, limit(p)?)?
+        }
+        "stats" => match rest.first().map(String::as_str) {
+            Some("find") => crate::stats::find(&snap, &rest.get(1..).unwrap_or_default().join(" "))?,
+            Some("get") => crate::stats::get(
+                &snap,
+                &crate::stats::Get {
+                    flow: rest.get(1).map_or("", String::as_str),
+                    filters: p.values("--filter"),
+                    from: p.value("--from"),
+                    to: p.value("--to"),
+                    last: p.present("--last").then(|| p.value("--last").unwrap_or("")),
+                },
+            )?,
+            _ => {
+                return Err(GovError::new(
+                    "unknown-verb",
+                    "stats find <words> | stats get <dataflow> [--filter D=V] [--from P] [--to P] [--last N]",
+                )
+                .with_query("{\"verb\":\"stats\"}".to_string()));
+            }
+        },
+        "area" => crate::area::area(&snap, p.value("--lat"), p.value("--lon"))?,
         other => return Err(GovError::new("no-data", format!("gov {other} needs a source this snapshot does not hold"))),
     };
     Ok(envelope::success(&snap.meta, &answer))

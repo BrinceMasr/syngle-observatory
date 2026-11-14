@@ -9,12 +9,18 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 mod abr;
+mod abs;
+mod address;
+mod area;
+mod asgs;
 mod asic;
 mod build;
 mod cli;
 mod codec;
 mod envelope;
 mod error;
+mod geoms;
+mod gnaf;
 mod json;
 mod names;
 mod names_build;
@@ -25,8 +31,10 @@ mod refresh;
 mod snap;
 mod sort;
 mod sources;
+mod stats;
 mod store;
 mod table;
+mod tokens;
 mod xml;
 
 pub use cli::{Env, Outcome, run};

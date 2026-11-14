@@ -24,5 +24,10 @@ sha2 = { workspace = true }
 memchr = "2"
 # The official downloads are ZIP files (the ABN extract, the ASIC datasets, G-NAF).
 zip = { version = "2", default-features = false, features = ["deflate"] }
+# ABS observations are SDMX-CSV (quoted cells), and the ASGS boundaries come as Shapefile or GeoPackage; the crates are the
+# ones the data crate already reads those formats with. The ABS's .dbf files are CP1252, which needs the `yore` feature.
+csv = { workspace = true }
+shapefile = { workspace = true, features = ["yore"] }
+rusqlite = { workspace = true }
 
 [dev-dependencies]

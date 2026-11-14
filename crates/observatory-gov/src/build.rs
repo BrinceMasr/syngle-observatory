@@ -53,12 +53,16 @@ fn zip_error(e: zip::result::ZipError) -> io::Error {
     invalid(format!("the ZIP file cannot be read: {e}"))
 }
 
-/// Calls `f` with each text stream a file holds: the file itself, or each file of a ZIP in name order.
-pub fn each_stream(path: &Path, f: &mut dyn FnMut(&mut dyn BufRead) -> io::Result<()>) -> io::Result<()> {
+/// Calls `f` with each text stream a file holds: the file itself, or each wanted file of a ZIP in name order, with its name.
+pub fn each_named(path: &Path, want: &dyn Fn(&str) -> bool, f: &mut dyn FnMut(&str, &mut dyn BufRead) -> io::Result<()>) -> io::Result<()> {
     let is_zip = path.extension().is_some_and(|e| e.eq_ignore_ascii_case("zip"));
     if !is_zip {
+        let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        if !want(&name) {
+            return Ok(());
+        }
         let mut r = BufReader::with_capacity(1 << 20, File::open(path)?);
-        return f(&mut r);
+        return f(&name, &mut r);
     }
     let mut archive = zip::ZipArchive::new(BufReader::new(File::open(path)?)).map_err(zip_error)?;
     let mut names: Vec<(String, usize)> = Vec::new();
@@ -72,12 +76,20 @@ pub fn each_stream(path: &Path, f: &mut dyn FnMut(&mut dyn BufRead) -> io::Resul
     if names.is_empty() {
         return Err(invalid("the ZIP file holds no files"));
     }
-    for (_, i) in names {
+    for (name, i) in names {
+        if !want(&name) {
+            continue;
+        }
         let entry = archive.by_index(i).map_err(zip_error)?;
         let mut r = BufReader::with_capacity(1 << 20, entry);
-        f(&mut r)?;
+        f(&name, &mut r)?;
     }
     Ok(())
+}
+
+/// Calls `f` with each text stream a file holds: the file itself, or each file of a ZIP in name order.
+pub fn each_stream(path: &Path, f: &mut dyn FnMut(&mut dyn BufRead) -> io::Result<()>) -> io::Result<()> {
+    each_named(path, &|_| true, &mut |_, r| f(r))
 }
 
 fn pair(a: u64, b: u64) -> [u8; 16] {
@@ -177,7 +189,7 @@ pub fn build(plan: &[SourcePlan], tmp: &Path, run_bytes: usize) -> io::Result<Bu
         write_pairs(by_abn, &tmp.join("abn.idx"))?;
         write_pairs(by_acn, &tmp.join("acn.idx"))?;
         records.insert("abr", count);
-        let dicts = Dicts { entity: entity_types.items.clone(), name_type: name_types.items.clone() };
+        let dicts = Dicts { entity: entity_types.items.clone(), name_type: name_types.items.clone(), ..Dicts::default() };
         abr_lookup = AbrLookup { idx: std::fs::read(tmp.join("abn.idx"))?, rec: Some(Blob::open(&tmp.join("abn.rec"))?), dicts };
     }
 
@@ -240,7 +252,19 @@ pub fn build(plan: &[SourcePlan], tmp: &Path, run_bytes: usize) -> io::Result<Bu
         records.insert("asicBn", count);
     }
 
-    names.finish(tmp, &sort_dir, run_bytes)?;
+    if records.contains_key("abr") || records.contains_key("asic") || records.contains_key("asicBn") {
+        names.finish(tmp, &sort_dir, run_bytes)?;
+    }
+    let mut states = Interner::default();
+    if let Some(files) = files_of("gnaf") {
+        records.insert("gnaf", crate::gnaf::build(files, tmp, &sort_dir, run_bytes, &mut states)?);
+    }
+    if let Some(files) = files_of("abs") {
+        records.insert("abs", crate::abs::build(files, tmp)?);
+    }
+    if let Some(files) = files_of("asgs") {
+        records.insert("asgs", crate::asgs::build(files, tmp, &sort_dir, run_bytes)?);
+    }
     std::fs::remove_dir_all(&sort_dir)?;
-    Ok(Built { records, dicts: Dicts { entity: entity_types.items, name_type: name_types.items } })
+    Ok(Built { records, dicts: Dicts { entity: entity_types.items, name_type: name_types.items, states: states.items } })
 }

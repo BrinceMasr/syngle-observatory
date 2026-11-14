@@ -1,6 +1,6 @@
 # Australian government data lookup (`syngle-map gov`)
 
-Look up Australian companies and businesses from the official registers, on your own machine, in milliseconds. Nothing is
+Look up Australian companies, businesses, addresses, statistics and statistical areas from the official sources, on your own machine, in milliseconds. Nothing is
 preloaded: a source is downloaded only when you ask for it (`gov refresh`), and every answer says which data it came from.
 
 The code is the library `crates/observatory-gov` and the verb group in `apps/rustgis-cli/src/gov.rs`. The spec is
@@ -14,6 +14,10 @@ The code is the library `crates/observatory-gov` and the verb group in `apps/rus
 | `gov name <text> [--state S] [--active] [--limit N]` | entities by name over the ABN extract's legal, business and trading names, the ASIC company names (current and former) and the ASIC business names |
 | `gov company <ACN>` | `acn, name, status, registered, deregistered, abn, formerNames[]` |
 | `gov business-names <ABN>` | the ASIC business names of an ABN |
+| `gov address <text> [--limit N]` or `gov address --id <G-NAF PID>` | `addressId, address, lat, lon, locality, state, postcode`. Abbreviations (`St`, `Rd`, `Unit 3/12`) are understood; the closest match comes first |
+| `gov stats find <words>` | the ABS dataflows whose id or name has every word (as the start of a word): `id, version, name` |
+| `gov stats get <dataflow> [--filter DIM=VAL]... [--from P] [--to P] [--last N]` | observations of a dataflow from the snapshot: `period, value, unit, dims` |
+| `gov area --lat Y --lon X` | the ASGS areas that contain a point: `layer, code, name, state` |
 | `gov status` | the snapshot id and, for each source, `dataVersion`, `asOf`, `licence`, `publisher`, `records`, and the snapshots kept |
 | `gov refresh --from <folder>` | builds a snapshot from official files and a `manifest.json` (below) |
 
@@ -25,6 +29,18 @@ Ranking of `gov name` is total and fixed, with no fuzzy matching: class (the nor
 with it, or has every query word as a word in any order), then active before cancelled, then the matched name's length, then
 the matched name, then the ABN. A name is normalised by upper-casing, reading `&` as `AND`, turning every other character
 that is not A to Z or 0 to 9 into a space and collapsing spaces. `--limit` defaults to 5 and is at most 50.
+
+Address matching: a query's words (a `unit`, `flat`, `apt`, `suite` or `shop` word dropped, `/` read as a space) must each be a
+word of the address or its long form (`ST` for `STREET`, `RD`, `AVE`, `DR`, `CT`, `PDE`, `HWY`, `LN`, `PL`, `CL`, `CRES`, `TCE`,
+`BLVD`, `SQ`). The address with the fewest words beyond the query's comes first and the G-NAF PID breaks ties. The street suffix
+(`N`, `S`, `EAST`) is part of the address and of the match, so `10 main rd n` finds `10 MAIN ROAD N`.
+
+`stats get` returns every observation that passes the filters, in period order (equal periods in the file's order): use
+`--filter` or `--last` for a series, because a whole dataflow is thousands of rows. A blank observation is `value:null`, never 0.
+`--from` and `--to` compare periods as text (`2025-Q4`, `2026-03`, `2024`).
+
+`gov area` needs the ASGS layers you indexed (an SA2 file gives SA2 areas; the main structure GeoPackage gives every level). A
+point on a boundary is in whichever side the even-odd test puts it; holes are respected.
 
 ## The answer
 
@@ -69,6 +85,10 @@ system's page cache is the cache. A call is one process that opens only the tabl
 | `bn.rec`, `bn.idx` | the ASIC business names; ABN to record |
 | `nm.ent`, `nm.str` | every name, normalised and sorted: an exact or prefix match is one range of the table |
 | `tok.key`, `tok.str`, `tok.post` | for each word, the entries whose name has it: "every word, any order" is a list intersection |
+| `addr.rec`, `addr.ent`, `gn.street.*`, `gn.loc.*` | the addresses (with their coordinates), each one's word count, and the streets and localities they point at |
+| `atok.key`, `atok.str`, `atok.post` | the address word lists: the shortest lists are read and the long ones (`STREET`, `NSW`) are only probed |
+| `abs.flows`, `abs.dat`, `abs.cat` | the dataflow catalogue, and one block per dataflow: dictionary-coded columns, rows in period order |
+| `area.rec`, `area.idx`, `area.cell` | the ASGS areas with their rings, and a 0.1 degree grid of bounding boxes: a point reads one cell and tests only the areas whose box holds it |
 
 Building streams: the XML is a pull tokenizer over a `BufRead` (a ZIP is read entry by entry), and every table that has to be
 sorted goes through an external sort that writes runs to disk past 256 MB, so memory does not grow with the 18 million entities
@@ -82,19 +102,41 @@ of the real ABN extract. The ASIC files are held in memory while they are groupe
 {"format":1,"sources":{"abr":{"asOf":"2026-11-05","files":["abn/public_split_1_10.xml"],"licence":"CC BY 3.0 AU","publisher":"Australian Business Register"}}}
 ```
 
-`asOf` is `yyyy-mm-dd`; `files` are paths inside the folder (a `.zip` is read, each file in it in name order); the source names are
-`abr`, `asic`, `asicBn` (and the sources of the later tickets). It prints the new `dataVersion`, `built` (false when the same files
-were already indexed) and each source's version, as-of date and record count. The ABN extract states its `RecordCount`: a file
-with another number of `ABR` records, or with no closing `Transfer`, is refused.
+`asOf` is `yyyy-mm-dd`; `files` are paths inside the folder (a folder stands for the files in it; a `.zip` is read, each file in it
+in name order). The source names, and what their files are:
+
+| Source | Files |
+|---|---|
+| `abr` | the ABN Bulk Extract XML, or its ZIPs |
+| `asic`, `asicBn` | the ASIC company and business names datasets (tab separated, `.csv`), or their ZIPs |
+| `gnaf` | the G-NAF release ZIP, or its `Standard` folder: `<STATE>_ADDRESS_DETAIL_psv.psv`, `STREET_LOCALITY`, `LOCALITY`, `ADDRESS_DEFAULT_GEOCODE` for each state. Retired addresses and alias rows (`ALIAS_PRINCIPAL` = `A`) are left out, so the count is the principal addresses |
+| `abs` | `dataflows.json` (the SDMX-JSON list from `data.api.abs.gov.au/rest/dataflow/all`) and one SDMX-CSV file per dataflow fetched, named `<DATAFLOW>.csv` |
+| `asgs` | boundary files, any mix of GeoJSON, Shapefile (`.shp` with its `.dbf`, CP1252 or UTF-8) and GeoPackage, or ZIPs of them. A file's layer is the first word of its name (`SA2_2021_AUST_GDA2020` is `SA2`); the code and name are the layer's own `<LAYER>_CODE` and `<LAYER>_NAME` attributes (`STATE_` for `STE`) |
+
+It prints the new `dataVersion`, `built` (false when the same files were already indexed) and each source's version, as-of date and
+record count. The ABN extract states its `RecordCount`: a file with another number of `ABR` records, or with no closing `Transfer`, is
+refused, and so is a G-NAF table without its columns, an observation file without `TIME_PERIOD` or `OBS_VALUE`, and a boundary file
+that is not valid.
 
 ## Measured
 
-On a boat box (4 vCPU), over 500,000 ABNs, 200,000 companies and 150,000 business names (`evals/gov-data/gen-scale.mjs`), process
-start included: `abn` p95 4 ms, `name` p95 5 ms, the first call 4 ms, a build of 850,000 records 3 s. The bars are 100, 150, 400 ms
-and 120 s per million records.
+On a boat box (8 vCPU), over 500,000 ABNs, 200,000 companies, 150,000 business names, 500,000 addresses, 1,228 dataflows and 2,400
+areas (`evals/gov-data/gen-scale.mjs`), process start included, p95 of five runs: `abn` 6 ms, `name` 6 ms, `address` 6 ms, `stats` 8 ms,
+`area` 6 ms, the first call 3 ms, a build 4 s per million records. The bars are 100, 150, 150, 100, 100, 400 ms and 120 s.
+
+On the real files (boat box, 8 vCPU, 15 GB):
+
+| Source | File | Build | Memory | Index | Calls |
+|---|---|---|---|---|---|
+| ABN extract and ASIC | generated at 6 million ABNs, 2.4 million companies (the real ABN file is about 18 million) | 34 s | 1.2 GB | 1.7 GB | `abn` 0.1 to 1 ms, `name` 3 to 5 ms, `name pty` (a word in most names) 80 ms |
+| G-NAF August 2026, GDA2020 ZIP (1.85 GB) | 16,091,511 principal addresses | 66 s | 0.7 GB | 1.5 GB | a street address 0.3 to 15 ms, a lone `street` or `nsw` 60 to 100 ms |
+| ASGS SA2 and state Shapefiles (72 MB) | 2,483 areas | 0.4 s | 45 MB | 100 MB | 2 to 4 ms |
+| ASGS main structure GeoPackage GDA2020 (529 MB) | 433,118 areas in 8 layers | 4.5 s | 118 MB | 736 MB | 20 to 30 ms |
 
 ## Terms
 
 The ABN extract, the ASIC company dataset and the ASIC business names are CC BY 3.0 AU from data.gov.au. ABN records include sole
-traders' names as the ABR publishes them; `gov name` returns them as published and adds nothing. Answers carry the licence and
-attribution of each source they used.
+traders' names as the ABR publishes them; `gov name` returns them as published and adds nothing. G-NAF is CC BY 4.0 and the Open G-NAF
+End User Licence Agreement: it must not be used to generate or compile mailing addresses unless each is verified against a secondary
+source, and every address answer says so in its attribution. ABS statistics and the ASGS boundaries are CC BY 4.0, sourced to the
+Australian Bureau of Statistics. Answers carry the licence and attribution of each source they used.
