@@ -461,7 +461,13 @@ fn bridge_lines(session: &mut Session, project: &parts::Parts, linked: &std::syn
 /// owned (the command loop), so a render never races an open or an edit.
 fn answer_render(session: &mut Session, job: RenderJob) {
     let size = |v: Option<f64>| v.filter(|x| x.is_finite()).map(|x| x.clamp(64.0, 2048.0));
-    let png = rustgis_engine::cmd::share::map_png(session, size(job.width), size(job.height), None);
+    let png = rustgis_engine::cmd::share::map_png_at(
+        session,
+        size(job.width),
+        size(job.height),
+        None,
+        rustgis_engine::render::PngEffort::Fastest,
+    );
     let _ = job.reply.send(png);
 }
 
