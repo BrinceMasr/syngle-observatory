@@ -112,7 +112,7 @@ function run(snap, verb, args) {
       const cls = n === q ? 0 : n.startsWith(`${q} `) || n.startsWith(q) ? 1 : qTokens.every((t) => n.split(" ").includes(t)) ? 2 : 3;
       if (cls === 3) return;
       const best = candidates.get(key);
-      if (!best || [cls, n.length].join() < [best.cls, best.len].join()) candidates.set(key, { cls, len: n.length, matched, matchedType, entity });
+      if (!best || cls < best.cls || (cls === best.cls && n.length < best.len)) candidates.set(key, { cls, len: n.length, matched, matchedType, entity });
     };
     const abnByNumber = new Map(ix.abn.map((r) => [r.abn, r]));
     for (const r of ix.abn) {
