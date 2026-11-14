@@ -172,6 +172,8 @@ pub struct MapView {
     /// The split map's offscreen MSAA target (its own slot — main and split differ in size).
     pub(crate) gpu_target_split: std::sync::Arc<std::sync::Mutex<Option<crate::mapgpu::SceneTarget>>>,
     pub(crate) render_state: Option<egui_wgpu::RenderState>,
+    /// Whether the GPU backend's default was settled: once egui's render state names the adapter (see [`MapView::settle_gpu_default`]).
+    gpu_default_settled: bool,
     /// The GPU map backend, for now gated on the RUSTGIS_GPU environment variable.
     pub gpu_enabled: bool,
     /// Spike A (#43) instrumentation: real map re-renders, GPU uniform-only repaints, the last
@@ -239,6 +241,7 @@ impl Default for MapView {
             gpu_turn_declined: None,
             gpu_target_split: std::sync::Arc::new(std::sync::Mutex::new(None)),
             render_state: None,
+            gpu_default_settled: false,
             gpu_enabled: std::env::var_os("RUSTGIS_GPU").is_some(),
             spike_renders: 0,
             spike_fast: 0,
@@ -259,6 +262,24 @@ impl MapView {
     /// backend. Cheap to call every frame: the state is Arc-backed and pipelines build lazily.
     pub fn set_render_state(&mut self, rs: Option<egui_wgpu::RenderState>) {
         self.render_state = rs;
+    }
+
+    /// Whether the GPU backend's default is still to settle: egui's render state is here and nothing settled it yet.
+    pub(crate) fn gpu_default_pending(&self) -> bool {
+        !self.gpu_default_settled && self.render_state.is_some()
+    }
+
+    /// Settles the GPU backend's default, once: on when egui draws on a graphics card and the person saved no choice (`saved`:
+    /// the status bar's GPU switch), so the scene's meshes and marker instances stay on the card across frames and a camera
+    /// move only rewrites their uniforms, where the CPU renderer rasterizes the picture again. A software rasterizer (an
+    /// adapter that is a CPU: a machine with no GPU) draws that scene far slower than the CPU renderer's picture, so it keeps
+    /// the picture.
+    pub(crate) fn settle_gpu_default(&mut self, saved: bool) {
+        let Some(rs) = &self.render_state else { return };
+        self.gpu_default_settled = true;
+        if !saved {
+            self.gpu_enabled |= rs.adapter.get_info().device_type != egui_wgpu::wgpu::DeviceType::Cpu;
+        }
     }
 
     /// Records one drawn map frame (the status bar's FPS readout reads the rolling window).
@@ -2654,6 +2675,18 @@ mod tests {
         h.state_mut().run("layer.visibility", json!({"layer": "Countries", "visible": false})).expect("hide countries");
         h.step();
         assert!(h.state().map.labels.is_empty(), "the preview kept labels from the old visibility state");
+    }
+
+    /// The GPU backend's default waits for egui's render state, which names the adapter (a software one keeps the picture),
+    /// and a saved choice is never overridden.
+    #[test]
+    fn the_gpu_default_waits_for_the_adapter() {
+        let mut app = RustGisApp::with_sample();
+        let was = app.map.gpu_enabled;
+        assert!(!app.map.gpu_default_pending(), "no render state, nothing to settle");
+        app.gpu_on_a_card();
+        assert_eq!(app.map.gpu_enabled, was, "no adapter named: the backend is as it was");
+        assert!(!app.map.gpu_default_settled, "and it is asked again once there is one");
     }
 
     /// The GPU fast path moves the last frame's meshes only while they cover the view: zooming

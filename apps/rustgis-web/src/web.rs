@@ -439,6 +439,11 @@ impl eframe::App for WebShell {
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // The GPU map backend draws inside egui's wgpu pass; hand over the render state.
         self.app.set_render_state(frame.wgpu_render_state().cloned());
+        // SyngleCode's map keeps its layers on the graphics card when there is one.
+        #[cfg(feature = "canvas-only")]
+        if self.embed.is_some() {
+            self.app.gpu_on_a_card();
+        }
         let dropped = ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
         let files: Vec<web_sys::File> = dropped
             .iter()

@@ -720,6 +720,15 @@ impl RustGisApp {
         self.map.set_render_state(rs);
     }
 
+    /// The map draws on the GPU by default when egui is on a graphics card, unless the person saved a choice with the status
+    /// bar's GPU switch (see [`mapview::MapView::settle_gpu_default`]). Cheap to call every frame: it settles once.
+    pub fn gpu_on_a_card(&mut self) {
+        if self.map.gpu_default_pending() {
+            let saved = self.services.load_pref.as_ref().and_then(|load| load("ui.map.gpu")).is_some();
+            self.map.settle_gpu_default(saved);
+        }
+    }
+
     pub fn new(session: Session) -> Self {
         let mut s = session;
         if s.active_layer.is_none() {
