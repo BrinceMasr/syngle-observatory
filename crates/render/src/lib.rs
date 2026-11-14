@@ -341,11 +341,64 @@ struct Ctx<'a> {
     /// Set when drawing the globe; coordinates are then longitude/latitude, not Web Mercator.
     globe: Option<Globe>,
     /// Point marker sprites drawn so far, by symbol and quarter-pixel offset.
-    sprites: std::cell::RefCell<std::collections::HashMap<SpriteKey, Option<Pixmap>>>,
+    sprites: std::cell::RefCell<std::collections::HashMap<SpriteKey, Option<Sprite>, std::hash::BuildHasherDefault<KeyHasher>>>,
 }
 
 /// A marker sprite's symbol and quarter-pixel offset.
 type SpriteKey = (Rgba, Rgba, u32, u32, Marker, u8, u8);
+
+/// A marker drawn once, with the box of pixels that have ink: the rest of the picture (the margin that holds the outline's
+/// anti-aliasing and the quarter-pixel offset) is blank and is not blended, which is most of a small marker's square.
+struct Sprite {
+    pm: Pixmap,
+    /// Left, top, right and bottom (exclusive) of the pixels with any opacity; never empty (a blank sprite is `None`).
+    ink: (u32, u32, u32, u32),
+}
+
+impl Sprite {
+    /// `None` when nothing was drawn.
+    fn of(pm: Pixmap) -> Option<Sprite> {
+        let w = pm.width() as usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0usize, 0usize);
+        for (i, p) in pm.pixels().iter().enumerate() {
+            if p.alpha() != 0 {
+                let (x, y) = (i % w, i / w);
+                (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1));
+            }
+        }
+        let ink = (u32::try_from(x0).ok()?, u32::try_from(y0).ok()?, u32::try_from(x1).ok()?, u32::try_from(y1).ok()?);
+        (x0 < x1 && y0 < y1).then_some(Sprite { pm, ink })
+    }
+}
+
+/// A hasher for the sprite cache's keys (a few small fields, at most [`MAX_SPRITES`] of them, looked up once per point): the
+/// default hasher costs more than the blend it finds a sprite for. The keys are the map's own symbols, so nothing here needs to
+/// resist an attacker, and a clash costs one more comparison in a table of a thousand.
+#[derive(Default)]
+struct KeyHasher(u64);
+
+impl std::hash::Hasher for KeyHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.write_u64(u64::from(b));
+        }
+    }
+    fn write_u8(&mut self, v: u8) {
+        self.write_u64(u64::from(v));
+    }
+    fn write_u32(&mut self, v: u32) {
+        self.write_u64(u64::from(v));
+    }
+    fn write_isize(&mut self, v: isize) {
+        self.write_u64(v as u64);
+    }
+    fn write_u64(&mut self, v: u64) {
+        self.0 = (self.0.rotate_left(5) ^ v).wrapping_mul(0x517c_c1b7_2722_0a95);
+    }
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
 
 impl Ctx<'_> {
     /// Logical screen position of a coordinate, `None` when it is behind the globe.
@@ -625,24 +678,23 @@ impl Ctx<'_> {
         }
         let key = (s.fill, s.stroke, s.stroke_width.to_bits(), s.size.to_bits(), s.marker, qx, qy);
         let mut sprites = self.sprites.borrow_mut();
-        if !sprites.contains_key(&key) {
-            // Many symbols (sizes by value, say) would each make a sprite used once: draw directly.
-            if sprites.len() >= MAX_SPRITES || reach > MAX_SPRITE_REACH {
-                drop(sprites);
-                draw_marker(pm, x, y, s, 1.0, None, self.ppp);
-                return;
-            }
+        // Many symbols (sizes by value, say) would each make a sprite used once: draw directly.
+        if (sprites.len() >= MAX_SPRITES || reach > MAX_SPRITE_REACH) && !sprites.contains_key(&key) {
+            drop(sprites);
+            draw_marker(pm, x, y, s, 1.0, None, self.ppp);
+            return;
+        }
+        let sprite = sprites.entry(key).or_insert_with(|| {
             let side = (2 * reach + 1) as u32;
-            let sprite = Pixmap::new(side, side).map(|mut sp| {
+            Pixmap::new(side, side).and_then(|mut sp| {
                 let c = reach as f32 + qx as f32 / 4.0;
                 let d = reach as f32 + qy as f32 / 4.0;
                 draw_marker(&mut sp, c, d, s, 1.0, None, self.ppp);
-                sp
-            });
-            sprites.insert(key, sprite);
-        }
-        if let Some(Some(sp)) = sprites.get(&key) {
-            blend_over(pm, sp, ix - reach, iy - reach);
+                Sprite::of(sp)
+            })
+        });
+        if let Some(sp) = sprite {
+            blend_ink(pm, sp, ix - reach, iy - reach);
         }
     }
 
@@ -1027,6 +1079,34 @@ fn blend_over(dst: &mut Pixmap, src: &Pixmap, x: i64, y: i64) {
             let inv = 255 - sa as u16;
             for (dc, sc) in dp.iter_mut().zip(sp) {
                 *dc = (*sc as u16 + (*dc as u16 * inv + 127) / 255).min(255) as u8;
+            }
+        }
+    }
+}
+
+/// Composites a marker sprite's inked box over `dst`, with the sprite's top left corner at (`x`, `y`). The same pixels as
+/// [`blend_over`] of the whole picture (the rest of it is transparent, which blends to nothing), without a branch per pixel:
+/// a sprite's pixels are premultiplied, so an opaque one (`inv` 0) copies and a transparent one (`inv` 255) leaves the
+/// destination as it was, and the rows are plain arithmetic that the compiler turns into vector code.
+fn blend_ink(dst: &mut Pixmap, sprite: &Sprite, x: i64, y: i64) {
+    let (dw, dh) = (i64::from(dst.width()), i64::from(dst.height()));
+    let sw = i64::from(sprite.pm.width());
+    let (ix0, iy0, ix1, iy1) = sprite.ink;
+    let (x0, x1) = ((x + i64::from(ix0)).max(0), (x + i64::from(ix1)).min(dw));
+    let (y0, y1) = ((y + i64::from(iy0)).max(0), (y + i64::from(iy1)).min(dh));
+    if x0 >= x1 || y0 >= y1 {
+        return;
+    }
+    let (s, d) = (sprite.pm.data(), dst.data_mut());
+    let n = ((x1 - x0) * 4) as usize;
+    for row in y0..y1 {
+        let si = (((row - y) * sw + (x0 - x)) * 4) as usize;
+        let di = ((row * dw + x0) * 4) as usize;
+        let (Some(sr), Some(dr)) = (s.get(si..si + n), d.get_mut(di..di + n)) else { continue };
+        for (sp, dp) in sr.as_chunks::<4>().0.iter().zip(dr.as_chunks_mut::<4>().0.iter_mut()) {
+            let inv = 255 - u16::from(sp[3]);
+            for (dc, sc) in dp.iter_mut().zip(sp) {
+                *dc = (u16::from(*sc) + (u16::from(*dc) * inv + 127) / 255).min(255) as u8;
             }
         }
     }
@@ -3712,6 +3792,47 @@ mod tests {
         let parts = clip_line(&[(-5.0, 2.0), (5.0, 2.0), (5.0, 20.0), (8.0, 20.0), (8.0, 5.0), (15.0, 5.0)], &b);
         assert_eq!(parts, vec![vec![(0.0, 2.0), (5.0, 2.0), (5.0, 10.0)], vec![(8.0, 10.0), (8.0, 5.0), (10.0, 5.0)]]);
         assert!(clip_line(&[(-5.0, -5.0), (-1.0, 20.0)], &b).is_empty());
+    }
+
+    /// The inked-box blend gives, byte for byte, what blending the whole sprite picture gives (Syngle-Ecosystem #634).
+    #[test]
+    fn blending_the_inked_box_is_blending_the_whole_sprite() {
+        let mut base = Pixmap::new(40, 30).unwrap();
+        for (i, b) in base.data_mut().iter_mut().enumerate() {
+            *b = (i * 37 % 251) as u8;
+        }
+        // Premultiplied pixels only (a colour channel never above its alpha), like every sprite the renderer draws.
+        for p in base.data_mut().chunks_exact_mut(4) {
+            let a = p[3];
+            p[..3].iter_mut().for_each(|c| *c = (*c).min(a));
+        }
+        for marker in Marker::ALL {
+            for (fill_a, stroke_w) in [(255u8, 1.0f32), (140, 0.0), (30, 2.0)] {
+                let s = Symbol {
+                    fill: Rgba::new(210, 80, 20, fill_a),
+                    stroke: Rgba::rgb(10, 10, 10),
+                    stroke_width: stroke_w,
+                    size: 8.0,
+                    marker,
+                };
+                let mut pic = Pixmap::new(21, 21).unwrap();
+                draw_marker(&mut pic, 10.25, 10.5, &s, 1.0, None, 1.0);
+                let whole = pic.clone();
+                let sprite = Sprite::of(pic).unwrap();
+                assert!(
+                    sprite.ink.2 - sprite.ink.0 < 21 && sprite.ink.3 - sprite.ink.1 < 21,
+                    "{marker:?}: the box is smaller than the picture"
+                );
+                // Inside, partly over each edge, and wholly outside the destination.
+                for (x, y) in [(5, 4), (-3, 2), (30, 20), (-30, -30), (38, 28), (0, -4)] {
+                    let (mut a, mut b) = (base.clone(), base.clone());
+                    blend_over(&mut a, &whole, x, y);
+                    blend_ink(&mut b, &sprite, x, y);
+                    assert_eq!(a.data(), b.data(), "{marker:?} alpha {fill_a} at ({x}, {y})");
+                }
+            }
+        }
+        assert!(Sprite::of(Pixmap::new(9, 9).unwrap()).is_none(), "a blank picture has no ink to blend");
     }
 
     #[test]
