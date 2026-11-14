@@ -1104,12 +1104,31 @@ fn blend_ink(dst: &mut Pixmap, sprite: &Sprite, x: i64, y: i64) {
         let di = ((row * dw + x0) * 4) as usize;
         let (Some(sr), Some(dr)) = (s.get(si..si + n), d.get_mut(di..di + n)) else { continue };
         for (sp, dp) in sr.as_chunks::<4>().0.iter().zip(dr.as_chunks_mut::<4>().0.iter_mut()) {
-            let inv = 255 - u16::from(sp[3]);
-            for (dc, sc) in dp.iter_mut().zip(sp) {
-                *dc = (u16::from(*sc) + (u16::from(*dc) * inv + 127) / 255).min(255) as u8;
-            }
+            *dp = over_pixel(u32::from_le_bytes(*sp), u32::from_le_bytes(*dp)).to_le_bytes();
         }
     }
+}
+
+/// One premultiplied pixel `src` over `dst` (both as the four bytes r, g, b, a of a little-endian word), every channel
+/// `src + round(dst * (255 - src.a) / 255)` capped at 255: the two channel pairs (r and b, g and a) are worked in the 16-bit
+/// halves of a word, so a row of pixels is plain integer arithmetic with no branch, which the compiler turns into vector code.
+fn over_pixel(src: u32, dst: u32) -> u32 {
+    const PAIRS: u32 = 0x00FF_00FF;
+    let inv = 255 - (src >> 24);
+    // `x * inv` is at most 255 * 255, so a half never carries into its neighbour; `(x + 128 + (x + 128) / 256) / 256` is
+    // `round(x / 255)` for every x up to 255 * 255.
+    let scaled = |pair: u32| {
+        let x = pair * inv + 0x0080_0080;
+        ((x + ((x >> 8) & PAIRS)) >> 8) & PAIRS
+    };
+    // A sum of two bytes is under 512, so the carry is bit 8 of its half: a set bit turns the byte to 255.
+    let capped = |a: u32, b: u32| {
+        let sum = a + b;
+        (sum | (((sum >> 8) & 0x0001_0001) * 0xFF)) & PAIRS
+    };
+    let rb = capped(scaled(dst & PAIRS), src & PAIRS);
+    let ag = capped(scaled((dst >> 8) & PAIRS), (src >> 8) & PAIRS);
+    rb | (ag << 8)
 }
 
 /// The longitude/latitude extent a view shows (the whole world on the globe, or when the
@@ -3833,6 +3852,42 @@ mod tests {
             }
         }
         assert!(Sprite::of(Pixmap::new(9, 9).unwrap()).is_none(), "a blank picture has no ink to blend");
+    }
+
+    /// The word arithmetic of `over_pixel` is the per-channel formula it replaced, for every alpha and a spread of channels
+    /// (premultiplied or not: the cap holds either way).
+    #[test]
+    fn over_pixel_is_the_per_channel_formula() {
+        let scalar = |s: [u8; 4], d: [u8; 4]| -> [u8; 4] {
+            let inv = 255 - u16::from(s[3]);
+            let mut out = [0u8; 4];
+            for ((o, sc), dc) in out.iter_mut().zip(s).zip(d) {
+                *o = (u16::from(sc) + (u16::from(dc) * inv + 127) / 255).min(255) as u8;
+            }
+            out
+        };
+        let values = [0u8, 1, 2, 37, 127, 128, 129, 200, 254, 255];
+        for sa in 0..=255u8 {
+            for &sr in &values {
+                for &dr in &values {
+                    for &dg in &values {
+                        let (s, d) = ([sr, sr / 2, sa / 3, sa], [dr, dg, dr / 3, dg]);
+                        assert_eq!(
+                            over_pixel(u32::from_le_bytes(s), u32::from_le_bytes(d)).to_le_bytes(),
+                            scalar(s, d),
+                            "{s:?} over {d:?}"
+                        );
+                    }
+                }
+            }
+        }
+        // Every product the division sees: dst channel 0..=255 against every inverse alpha.
+        for sa in 0..=255u8 {
+            for dc in 0..=255u8 {
+                let (s, d) = ([0, 0, 0, sa], [dc, dc, dc, dc]);
+                assert_eq!(over_pixel(u32::from_le_bytes(s), u32::from_le_bytes(d)).to_le_bytes(), scalar(s, d));
+            }
+        }
     }
 
     #[test]
