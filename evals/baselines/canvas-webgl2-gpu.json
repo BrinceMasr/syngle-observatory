@@ -1,8 +1,9 @@
 {
   "group": "canvas:webgl2-gpu",
   "label": "baseline",
-  "at": "2026-11-14T05:21:52.362Z",
-  "commit": "8a905f3",
+  "at": "2026-11-14T06:48:44.609Z",
+  "commit": "aedcc4b",
+  "note": "Re-measured 14 Nov 2026 after the input-to-frame latency fix (the first frame of a window was skipped, so event 0 was scored against event 1). Product code of 7168620; evaluator at the commit named here. The earlier file read toggle.latencyP95Ms 556 to 585 ms on every path.",
   "machine": {
     "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
     "cores": 16,
@@ -12,16 +13,16 @@
   "scores": {
     "canvas.webgl2-gpu.pan.frameP95Ms": {
       "runs": 5,
-      "median": 5.8,
-      "min": 5.8,
-      "max": 5.8,
-      "spread": 0,
+      "median": 7.5,
+      "min": 7.5,
+      "max": 7.6,
+      "spread": 0.09999999999999964,
       "values": [
-        5.8,
-        5.8,
-        5.8,
-        5.8,
-        5.8
+        7.5,
+        7.6,
+        7.6,
+        7.5,
+        7.5
       ],
       "direction": "lower",
       "unit": "ms",
@@ -30,16 +31,16 @@
     },
     "canvas.webgl2-gpu.pan.over60Pct": {
       "runs": 5,
-      "median": 0.8,
-      "min": 0.7,
-      "max": 0.8,
-      "spread": 0.10000000000000009,
+      "median": 1,
+      "min": 0.5,
+      "max": 1,
+      "spread": 0.5,
       "values": [
-        0.8,
-        0.8,
-        0.7,
-        0.8,
-        0.8
+        0.5,
+        1,
+        1,
+        1,
+        1
       ],
       "direction": "lower",
       "unit": "%",
@@ -48,16 +49,16 @@
     },
     "canvas.webgl2-gpu.pan.latencyP95Ms": {
       "runs": 5,
-      "median": 46.4,
-      "min": 41,
-      "max": 48.6,
-      "spread": 7.600000000000001,
+      "median": 46.5,
+      "min": 37.7,
+      "max": 48.1,
+      "spread": 10.399999999999999,
       "values": [
-        46.7,
-        41,
-        43.6,
-        46.4,
-        48.6
+        37.7,
+        44.8,
+        47.3,
+        46.5,
+        48.1
       ],
       "direction": "lower",
       "unit": "ms",
@@ -66,16 +67,16 @@
     },
     "canvas.webgl2-gpu.zoom.frameP95Ms": {
       "runs": 5,
-      "median": 11.4,
-      "min": 11.4,
-      "max": 11.4,
-      "spread": 0,
+      "median": 13.3,
+      "min": 12.7,
+      "max": 13.7,
+      "spread": 1,
       "values": [
-        11.4,
-        11.4,
-        11.4,
-        11.4,
-        11.4
+        12.7,
+        13.3,
+        13.5,
+        13.7,
+        13.2
       ],
       "direction": "lower",
       "unit": "ms",
@@ -84,16 +85,16 @@
     },
     "canvas.webgl2-gpu.zoom.latencyP95Ms": {
       "runs": 5,
-      "median": 15.3,
-      "min": 13.6,
-      "max": 15.9,
-      "spread": 2.3000000000000007,
+      "median": 14.4,
+      "min": 12.9,
+      "max": 21.1,
+      "spread": 8.200000000000001,
       "values": [
-        15.3,
-        15.3,
-        15.6,
-        13.6,
-        15.9
+        13,
+        12.9,
+        21.1,
+        14.4,
+        18.5
       ],
       "direction": "lower",
       "unit": "ms",
@@ -102,34 +103,34 @@
     },
     "canvas.webgl2-gpu.toggle.latencyP95Ms": {
       "runs": 5,
-      "median": 581,
-      "min": 569.3,
-      "max": 584.1,
-      "spread": 14.800000000000068,
+      "median": 78,
+      "min": 74.9,
+      "max": 79.4,
+      "spread": 4.5,
       "values": [
-        569.3,
-        584.1,
-        583.1,
-        581,
-        579.2
+        74.9,
+        76.6,
+        78,
+        78.7,
+        79.4
       ],
       "direction": "lower",
       "unit": "ms",
       "bar": 100,
-      "meetsBar": false
+      "meetsBar": true
     },
     "canvas.webgl2-gpu.toggle.frameMaxMs": {
       "runs": 5,
-      "median": 68.6,
-      "min": 68.6,
-      "max": 68.7,
-      "spread": 0.10000000000000853,
+      "median": 73.9,
+      "min": 71.8,
+      "max": 75.5,
+      "spread": 3.700000000000003,
       "values": [
-        68.6,
-        68.6,
-        68.7,
-        68.7,
-        68.6
+        71.8,
+        74.3,
+        72.4,
+        75.5,
+        73.9
       ],
       "direction": "lower",
       "unit": "ms",
@@ -138,16 +139,16 @@
     },
     "canvas.webgl2-gpu.firstDataMs": {
       "runs": 5,
-      "median": 679,
-      "min": 636,
-      "max": 843,
-      "spread": 207,
+      "median": 576,
+      "min": 528,
+      "max": 811,
+      "spread": 283,
       "values": [
-        843,
-        636,
-        669,
-        704,
-        679
+        528,
+        744,
+        811,
+        576,
+        567
       ],
       "direction": "lower",
       "unit": "ms",
