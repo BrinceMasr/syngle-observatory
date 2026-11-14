@@ -1,13 +1,15 @@
-//! `cargo xtask ci | layers | rebrand | web-pwa <dir>`
+//! `cargo xtask ci | layers | rebrand | data-sources [--check] | web-pwa <dir>`
 //!
 //! - `layers`: enforces the crate layering (nothing below L6 may depend on egui/eframe/rfd).
 //! - `rebrand`: fails on upstream branding in the fork (see `rebrand.rs`).
-//! - `ci`: fmt check, clippy -D warnings, tests, the layer check and the rebrand gate.
+//! - `data-sources`: writes `docs/data-sources.md` from `evals/data-sources/catalogue.json` (`--check` fails when the page differs).
+//! - `ci`: fmt check, clippy -D warnings, tests, the layer check, the rebrand gate and the data-sources page check.
 //! - `web-pwa <dir>`: writes the web app's service worker into a `trunk build` output directory
 //!   (`dist/canvas`) from the template `apps/rustgis-web/sw.js`, listing the built files to cache.
 
 use std::process::{Command, ExitCode};
 
+mod datasources;
 mod rebrand;
 
 const LAYERS: &[(&str, u8)] = &[
@@ -147,13 +149,15 @@ fn main() -> ExitCode {
     let r = match task.as_str() {
         "layers" => layers(),
         "rebrand" => rebrand::run(&root()),
+        "data-sources" => datasources::run(&root(), std::env::args().nth(2).as_deref() == Some("--check")),
         "ci" => cargo(&["fmt", "--all", "--check"])
             .and_then(|_| cargo(&["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]))
             .and_then(|_| cargo(&["test", "--workspace", "-q"]))
             .and_then(|_| layers())
-            .and_then(|_| rebrand::run(&root())),
+            .and_then(|_| rebrand::run(&root()))
+            .and_then(|_| datasources::run(&root(), true)),
         "web-pwa" => web_pwa(std::env::args().nth(2)),
-        _ => Err("usage: cargo xtask ci | layers | rebrand | web-pwa <dir>".into()),
+        _ => Err("usage: cargo xtask ci | layers | rebrand | data-sources [--check] | web-pwa <dir>".into()),
     };
     match r {
         Ok(()) => ExitCode::SUCCESS,

@@ -33,6 +33,7 @@ nav = [
   ] },
   { "Command Line" = "cli.md" },
   { "Government Data" = "gov.md" },
+  { "Data Sources" = "data-sources.md" },
   { "Python" = "python.md" },
   { "MCP Server" = "mcp.md" },
   { "Plugins" = "plugins.md" },

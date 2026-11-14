@@ -1004,6 +1004,19 @@ fn mcp_serves_the_docs() {
     assert!(r["contents"][0]["text"].as_str().unwrap().starts_with("# "));
 }
 
+/// The agent finds the data-sources page for the two questions the page exists to answer (Syngle-Ecosystem #635).
+#[test]
+fn the_docs_search_finds_data_sources_for_elevation_and_for_addresses() {
+    for (query, section) in
+        [("elevation for a bounding box", "Elevation for a bounding box"), ("Australian address", "Australian addresses")]
+    {
+        let found = docs::search(query, 3).unwrap();
+        let top = &found["results"][0];
+        assert_eq!(top["page"], "data-sources.md", "{query}: {found}");
+        assert!(found["results"].as_array().unwrap().iter().any(|r| r["section"] == section), "{query}: {found}");
+    }
+}
+
 #[test]
 fn docs_pages_and_addresses() {
     // Every page in docs/ is built in (add new pages to `docs::PAGES`).
