@@ -8,6 +8,7 @@
 
 mod effects;
 pub mod fonts;
+mod frame_png;
 pub mod gpu_scene;
 pub mod layout;
 pub mod logo;
@@ -102,11 +103,12 @@ pub mod sample_data {
 
 use std::sync::OnceLock;
 
+/// The image type pages and maps are drawn into.
+pub use frame_png::PngEffort;
 use rustgis_data::{Dataset, Geometry, GeometryType};
 use rustgis_geom::{Coord, Extent, extent_to_merc, lonlat_to_merc};
 use rustgis_map::globe::{V3, densify};
 use rustgis_map::{Camera, Globe, LineStroke, Map, Marker, Rgba, Symbol};
-/// The image type pages and maps are drawn into.
 pub use tiny_skia::Pixmap;
 use tiny_skia::{
     FillRule, GradientStop, LineCap, LineJoin, Paint, PathBuilder, PixmapPaint, Point, RadialGradient, SpreadMode, Stroke, Transform,
@@ -3150,13 +3152,18 @@ pub(crate) fn render_complete(map: &mut Map, view: &View) -> Option<Rendered> {
 
 /// Renders a map with its labels, a scale bar and a north arrow to PNG bytes.
 pub fn render_png(map: &mut Map, view: &View) -> Result<Vec<u8>, String> {
+    render_png_at(map, view, PngEffort::Smallest)
+}
+
+/// [`render_png`] at an `effort`: [`PngEffort::Fastest`] for a frame the engine serves again and again, which is not kept.
+pub fn render_png_at(map: &mut Map, view: &View, effort: PngEffort) -> Result<Vec<u8>, String> {
     let mut r = render_complete(map, view).ok_or("could not allocate the image")?;
     for l in r.unplaced.iter().chain(&r.labels) {
         text::draw(&mut r.pixmap, l, view.pixels_per_point as f32);
     }
     text::scale_bar(&mut r.pixmap, view, map.ground_res_at(&view.camera));
     draw_attribution(&mut r.pixmap, &r.attribution, view.pixels_per_point as f32);
-    r.pixmap.encode_png().map_err(|e| e.to_string())
+    frame_png::encode(&r.pixmap, effort)
 }
 
 /// The tile layers' credits, small, in the bottom-right corner.
