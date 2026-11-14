@@ -264,6 +264,79 @@ fn append_geometry(
     Ok(())
 }
 
+/// A layer with more point markers than this in view draws one marker per symbol and physical pixel (see [`Cells`]).
+const LOD_ABOVE: usize = 10_000;
+/// The most distinct symbols [`Cells`] tells apart: a layer with more draws the rest marker by marker.
+const LOD_SYMBOLS: usize = 16;
+/// The most pixels of the view [`Cells`] keeps a mark for, per symbol (a bit each: 1 MB): a larger view is drawn in full.
+const LOD_PIXELS: u64 = 1 << 23;
+
+/// The level of detail of a dense point layer: a marker whose centre falls in a physical pixel that already holds a marker
+/// of the same opaque symbol adds no ink (it covers the same pixels to within a pixel), so it is not sent to the card.
+/// Every feature stays in the layer, for identify, tables and the next frame at another scale; only the submission is
+/// thinned. A see-through marker is never thinned (the overlap is the picture), and a marker the grid cannot place is drawn.
+struct Cells {
+    /// The grid's top left corner (map units), and the size of a cell: one physical pixel.
+    x0: f64,
+    y0: f64,
+    cell: f64,
+    /// Cells across and down, and the words of bits that mark them.
+    cols: u64,
+    rows: u64,
+    words: usize,
+    /// The symbols seen so far, in order, and for each the cells that hold a marker of it (a bit each).
+    symbols: Vec<(Symbol, Vec<u64>)>,
+}
+
+impl Cells {
+    /// A grid over `ext` of cells `map_per_px` across, or `None` when there is no such grid (a view too large to mark).
+    fn new(ext: &Extent, map_per_px: f64) -> Option<Cells> {
+        let size = |lo: f64, hi: f64| ((hi - lo) / map_per_px).ceil() + 1.0;
+        let (cols, rows) = (size(ext.min_x, ext.max_x), size(ext.min_y, ext.max_y));
+        // Written so that a NaN fails.
+        let fits = map_per_px.is_finite() && map_per_px > 0.0 && cols >= 1.0 && rows >= 1.0 && cols * rows <= LOD_PIXELS as f64;
+        fits.then(|| {
+            let (cols, rows) = (cols as u64, rows as u64);
+            Cells {
+                x0: ext.min_x,
+                y0: ext.max_y,
+                cell: map_per_px,
+                cols,
+                rows,
+                words: usize::try_from((cols * rows).div_ceil(64)).unwrap_or(0),
+                symbols: Vec::new(),
+            }
+        })
+    }
+
+    /// Whether the marker for `c` in symbol `s` adds nothing to what is drawn, noting its cell when it is the first there.
+    fn covered(&mut self, c: Coord, s: &Symbol) -> bool {
+        let opaque = s.fill.a() == 255 && (s.stroke_width <= 0.0 || s.stroke.a() == 255 || s.stroke.a() == 0);
+        if !opaque {
+            return false;
+        }
+        let (fx, fy) = (((c.x - self.x0) / self.cell).floor(), ((self.y0 - c.y) / self.cell).floor());
+        // (Written so that a NaN fails.)
+        if !(fx >= 0.0 && fy >= 0.0 && fx < self.cols as f64 && fy < self.rows as f64) {
+            return false;
+        }
+        let at = fy as u64 * self.cols + fx as u64;
+        let class = match self.symbols.iter().position(|(k, _)| k == s) {
+            Some(i) => i,
+            None if self.symbols.len() < LOD_SYMBOLS => {
+                self.symbols.push((*s, vec![0; self.words]));
+                self.symbols.len() - 1
+            }
+            None => return false,
+        };
+        let Some(word) = self.symbols.get_mut(class).and_then(|(_, bits)| bits.get_mut((at / 64) as usize)) else { return false };
+        let bit = 1u64 << (at % 64);
+        let seen = *word & bit != 0;
+        *word |= bit;
+        seen
+    }
+}
+
 /// Collects one GPU-eligible layer into Mesh/Points commands. `geoms`, `rows` and `visible`
 /// are the render loop's own (projected geometries, row filter, extent cull), so the GPU
 /// draws exactly the features the CPU would. `Ok(None)` when nothing visible was collected;
@@ -282,24 +355,33 @@ pub(crate) fn collect_layer(
     // Stable origin: the centre of the drawn features' extent. Two passes cost one extra
     // extent fold — the same order of work as the culling pass the CPU render already does.
     let mut ext = Extent::EMPTY;
+    let mut markers = 0usize;
     for (row, g) in geoms.iter().enumerate() {
         let Some(g) = g else { continue };
         if rows.get(row) != Some(&true) || !visible(&g.extent()) {
             continue;
         }
         ext = ext.union(&g.extent());
+        markers += usize::from(matches!(g, Geometry::Point(_)));
     }
     if ext.is_empty() {
         return Ok(None);
     }
     let origin = [ext.center().x, ext.center().y];
     let (mut v, mut i, mut pts) = (Vec::new(), Vec::new(), Vec::new());
+    let mut cells = if markers > LOD_ABOVE { Cells::new(&ext, map_per_px) } else { None };
     for (row, g) in geoms.iter().enumerate() {
         let Some(g) = g else { continue };
         if rows.get(row) != Some(&true) || !visible(&g.extent()) {
             continue;
         }
-        append_geometry(&mut v, &mut i, &mut pts, g, &layer.symbol(row), origin, wireframe, ppp, map_per_px)?;
+        let symbol = layer.symbol(row);
+        if let (Some(cells), Geometry::Point(c)) = (cells.as_mut(), g)
+            && cells.covered(*c, &symbol)
+        {
+            continue;
+        }
+        append_geometry(&mut v, &mut i, &mut pts, g, &symbol, origin, wireframe, ppp, map_per_px)?;
     }
     if !i.is_empty() {
         cmds.push(DrawCmd::Mesh { origin, vertices: v, indices: i });
@@ -395,6 +477,71 @@ mod tests {
             let (da, db, dc) = (d(a, b, c), d([x, y], b, c), d([x, y], c, a));
             da != 0.0 && db.signum() == da.signum() && dc.signum() == da.signum() && d([x, y], a, b).signum() == da.signum()
         })
+    }
+
+    /// A point layer of `n` points on a 100 x 100 grid ten map units apart: the second ten thousand sit 0.3 units east of the
+    /// first, so with one unit cells they share a cell with a twin.
+    fn dense_points(n: usize, symbol: rustgis_map::Symbol) -> Layer {
+        use rustgis_data::{Dataset, Feature, GeometryType};
+        let mut ds = Dataset::new("dense", GeometryType::Point, Vec::new());
+        ds.features = (0..n)
+            .map(|i| {
+                let (gx, gy) = ((i % 100) as f64, ((i / 100) % 100) as f64);
+                let jitter = if i >= 10_000 { 0.3 } else { 0.0 };
+                Feature { id: i as u64 + 1, geometry: Some(Geometry::Point(Coord::new(gx * 10.0 + jitter, gy * 10.0))), attrs: Vec::new() }
+            })
+            .collect();
+        let mut layer = Layer::new(1, ds);
+        layer.renderer = rustgis_map::Renderer::Single(symbol);
+        layer
+    }
+
+    /// The marker instances `collect_layer` sends for `layer` at one map unit per physical pixel.
+    fn sent(layer: &Layer) -> usize {
+        let geoms: Vec<Option<&Geometry>> = layer.dataset.features.iter().map(|f| f.geometry.as_ref()).collect();
+        let rows = vec![true; geoms.len()];
+        let mut cmds = Vec::new();
+        collect_layer(&mut cmds, layer, &geoms, &rows, &|_: &Extent| true, false, 1.0, 1.0).expect("tessellate");
+        cmds.iter().map(|c| if let DrawCmd::Points { instances, .. } = c { instances.len() } else { 0 }).sum()
+    }
+
+    #[test]
+    fn a_dense_point_layer_sends_one_marker_per_pixel() {
+        let s = Symbol::default_for(rustgis_data::GeometryType::Point, 1);
+        let layer = dense_points(20_000, s);
+        // 10,000 cells, each with a stroke and a fill instance: the 10,000 twins add no ink.
+        assert_eq!(sent(&layer), 20_000);
+        assert_eq!(layer.dataset.features.len(), 20_000, "every feature is still in the layer");
+    }
+
+    #[test]
+    fn a_layer_below_the_threshold_sends_every_marker() {
+        let s = Symbol::default_for(rustgis_data::GeometryType::Point, 1);
+        assert_eq!(sent(&dense_points(LOD_ABOVE, s)), 2 * LOD_ABOVE);
+    }
+
+    #[test]
+    fn a_see_through_marker_is_never_thinned() {
+        let s = Symbol { fill: Rgba::rgb(200, 30, 30).with_alpha(128), ..Symbol::default_for(rustgis_data::GeometryType::Point, 1) };
+        assert_eq!(sent(&dense_points(20_000, s)), 40_000, "the overlap of see-through markers is the picture");
+    }
+
+    #[test]
+    fn cells_tell_symbols_apart_and_draw_what_they_cannot_place() {
+        let a = Symbol::default_for(rustgis_data::GeometryType::Point, 1);
+        let b = Symbol { size: 9.0, ..a };
+        let ext = Extent { min_x: 0.0, min_y: 0.0, max_x: 100.0, max_y: 100.0 };
+        let mut cells = Cells::new(&ext, 1.0).expect("a grid");
+        let c = Coord::new(10.2, 50.4);
+        assert!(!cells.covered(c, &a) && cells.covered(Coord::new(10.7, 50.1), &a), "the second of one symbol in a cell is covered");
+        assert!(!cells.covered(c, &b), "another symbol is its own marker");
+        assert!(!cells.covered(Coord::new(11.2, 50.4), &a), "the next cell is free");
+        for off in [Coord::new(f64::NAN, 1.0), Coord::new(1e300, 1.0), Coord::new(-1e12, 1.0)] {
+            assert!(!cells.covered(off, &a) && !cells.covered(off, &a), "a marker off the grid is drawn each time: {off:?}");
+        }
+        for per_px in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert!(Cells::new(&ext, per_px).is_none(), "{per_px}");
+        }
     }
 
     #[test]
