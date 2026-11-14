@@ -34,6 +34,17 @@ pub fn commands() -> Vec<C> {
 
 /// Renders the active map at the current view (or a requested size) to PNG bytes.
 pub fn map_png(s: &mut Session, width: Option<f64>, height: Option<f64>, dpi: Option<f64>) -> Result<Vec<u8>, String> {
+    map_png_at(s, width, height, dpi, rustgis_render::PngEffort::Smallest)
+}
+
+/// [`map_png`] at an `effort` (the sidecar's `/render` asks for the quickest: its frame is shown, not kept).
+pub fn map_png_at(
+    s: &mut Session,
+    width: Option<f64>,
+    height: Option<f64>,
+    dpi: Option<f64>,
+    effort: rustgis_render::PngEffort,
+) -> Result<Vec<u8>, String> {
     let (vw, vh) = s.view_size;
     // NaN would pass through `clamp`; non-finite values fall back to the defaults.
     let fin = |v: Option<f64>| v.filter(|x| x.is_finite());
@@ -48,7 +59,7 @@ pub fn map_png(s: &mut Session, width: Option<f64>, height: Option<f64>, dpi: Op
         camera.clamp();
     }
     let view = View { width: w, height: h, pixels_per_point: ppp, camera, sky: false };
-    rustgis_render::render_png(s.map_mut(), &view)
+    rustgis_render::render_png_at(s.map_mut(), &view, effort)
 }
 
 /// The map view on one PDF page (for printing): the page is the view's shape at 96 points per
