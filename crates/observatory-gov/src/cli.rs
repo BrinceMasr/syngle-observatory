@@ -1,9 +1,10 @@
 //! `syngle-map gov <verb> ...` as a function: arguments in, one line of JSON and an exit code out. The binary prints the
 //! line; tests call this directly. Exit 0 for an answer, 2 for a refusal (`ok:false` and a fixed code), never a panic.
 
+use crate::abnlive;
 use crate::envelope::{self, Answer};
 use crate::error::{GovError, Res};
-use crate::json::{key, quote};
+use crate::net::Net;
 use crate::query;
 use crate::refresh;
 use crate::snap::Snap;
@@ -17,6 +18,28 @@ pub struct Env {
     pub local_data: Option<PathBuf>,
     /// How much a sort holds in memory before it writes a run to disk.
     pub sort_run_bytes: usize,
+}
+
+/// What the network verbs use besides the data folder: the ABN Lookup GUID, for `gov abn --live` only (never printed, stored or put
+/// in an answer), and the hosts to fetch from (the official ones when `None`; tests point it at a local server). It is apart from
+/// `Env` so that code building an `Env` by its fields keeps compiling.
+#[derive(Default)]
+pub struct Online {
+    pub abn_guid: Option<String>,
+    pub net: Option<Net>,
+}
+
+impl Online {
+    pub fn from_process() -> Online {
+        Online { abn_guid: std::env::var("SYNGLE_ABN_LOOKUP_GUID").ok(), net: None }
+    }
+
+    fn net(&self) -> std::borrow::Cow<'_, Net> {
+        match &self.net {
+            Some(n) => std::borrow::Cow::Borrowed(n),
+            None => std::borrow::Cow::Owned(Net::official()),
+        }
+    }
 }
 
 impl Env {
@@ -38,8 +61,21 @@ pub struct Outcome {
     pub exit: u8,
 }
 
-const VALUE_FLAGS: [&str; 12] =
-    ["--data-dir", "--data-version", "--from", "--source", "--state", "--limit", "--lat", "--lon", "--filter", "--id", "--last", "--to"];
+const VALUE_FLAGS: [&str; 13] = [
+    "--data-dir",
+    "--data-version",
+    "--from",
+    "--source",
+    "--flow",
+    "--state",
+    "--limit",
+    "--lat",
+    "--lon",
+    "--filter",
+    "--id",
+    "--last",
+    "--to",
+];
 
 struct Parsed {
     positional: Vec<String>,
@@ -109,33 +145,43 @@ fn open(p: &Parsed, store: &Store) -> Res<Snap> {
     Snap::open(store.snap_dir(&id))
 }
 
-fn refresh_verb(p: &Parsed, env: &Env) -> Res<String> {
-    let store = store(p, env)?;
-    let Some(from) = p.value("--from") else {
-        return Err(GovError::refresh("refresh needs --from <folder with manifest.json> in this build"));
-    };
-    let done = refresh::from_dir(&store, std::path::Path::new(from), env.sort_run_bytes)?;
-    let mut out = String::from("{\"ok\":true,\"dataVersion\":");
-    quote(&mut out, &done.id);
-    out.push_str(&format!(",\"built\":{},\"sources\":[", done.built));
-    for (i, s) in done.sources.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-        out.push('{');
-        let mut f = true;
-        key(&mut out, &mut f, "source");
-        quote(&mut out, &s.source);
-        key(&mut out, &mut f, "dataVersion");
-        quote(&mut out, &s.version);
-        key(&mut out, &mut f, "asOf");
-        quote(&mut out, &s.as_of);
-        key(&mut out, &mut f, "records");
-        out.push_str(&s.records.to_string());
-        out.push('}');
+/// The names a flag lists (`--source asic,gnaf`), without repeats; a flag with no names is refused.
+fn names(p: &Parsed, flag: &str) -> Res<Vec<String>> {
+    if !p.present(flag) {
+        return Ok(Vec::new());
     }
-    out.push_str("]}");
+    let mut out: Vec<String> = Vec::new();
+    for n in p.value(flag).unwrap_or_default().split(',').map(str::trim).filter(|n| !n.is_empty()) {
+        if !out.iter().any(|o| o == n) {
+            out.push(n.to_string());
+        }
+    }
+    if out.is_empty() {
+        return Err(GovError::bad_source(format!("{flag} needs at least one name")));
+    }
     Ok(out)
+}
+
+/// `gov refresh --from <folder>` builds from files you hold; `--source`, `--flow` and `--check` (or nothing at all, for what is
+/// already turned on) fetch from the official hosts. Exit 10 is `--check` finding something newer.
+fn refresh_verb(p: &Parsed, env: &Env, online: &Online) -> Res<(String, u8)> {
+    let store = store(p, env)?;
+    let network = p.present("--source") || p.present("--check") || p.present("--flow");
+    if let Some(from) = p.value("--from") {
+        if network {
+            return Err(GovError::bad_source(
+                "--from builds from files you hold; --source, --flow and --check use the network: give one or the other",
+            ));
+        }
+        let done = refresh::from_dir(&store, std::path::Path::new(from), env.sort_run_bytes)?;
+        return Ok((refresh::report_json(&done, ""), 0));
+    }
+    if p.present("--from") {
+        return Err(GovError::refresh("--from needs a folder with a manifest.json"));
+    }
+    let net = online.net();
+    let opts = crate::online::Opts { sources: names(p, "--source")?, flows: names(p, "--flow")?, check: p.present("--check") };
+    if opts.check { crate::online::check(&store, &net, &opts) } else { crate::online::refresh(&store, &net, &opts, env.sort_run_bytes) }
 }
 
 fn query_verb(verb: &str, p: &Parsed, env: &Env) -> Res<String> {
@@ -187,16 +233,21 @@ fn query_verb(verb: &str, p: &Parsed, env: &Env) -> Res<String> {
     Ok(envelope::success(&snap.meta, &answer))
 }
 
-fn dispatch(args: &[String], env: &Env) -> Res<String> {
+fn dispatch(args: &[String], env: &Env, online: &Online) -> Res<(String, u8)> {
     let p = Parsed::new(args);
     match p.positional.first().map(String::as_str) {
-        Some("refresh") => refresh_verb(&p, env),
+        Some("refresh") => refresh_verb(&p, env, online),
         Some("status") => {
             let store = store(&p, env)?;
             let snap = open(&p, &store)?;
-            Ok(envelope::status(&snap.meta, &store.retained()))
+            Ok((envelope::status(&snap.meta, &store.retained()), 0))
         }
-        Some(verb @ ("abn" | "company" | "business-names" | "name" | "address" | "stats" | "area")) => query_verb(verb, &p, env),
+        Some("abn") if p.present("--live") => {
+            abnlive::lookup(&online.net(), online.abn_guid.as_deref(), p.positional.get(1..).unwrap_or_default()).map(|line| (line, 0))
+        }
+        Some(verb @ ("abn" | "company" | "business-names" | "name" | "address" | "stats" | "area")) => {
+            query_verb(verb, &p, env).map(|line| (line, 0))
+        }
         Some(other) => Err(GovError::new(
             "unknown-verb",
             format!("no verb {}; refresh, status, abn, name, company, business-names, address, stats, area", crate::json::echo(other)),
@@ -208,8 +259,13 @@ fn dispatch(args: &[String], env: &Env) -> Res<String> {
 }
 
 pub fn run(args: &[String], env: &Env) -> Outcome {
-    match dispatch(args, env) {
-        Ok(line) => Outcome { stdout: format!("{line}\n"), exit: 0 },
+    run_with(args, env, &Online::from_process())
+}
+
+/// `run` with the GUID and hosts given instead of read from the process (the tests' way in).
+pub fn run_with(args: &[String], env: &Env, online: &Online) -> Outcome {
+    match dispatch(args, env, online) {
+        Ok((line, exit)) => Outcome { stdout: format!("{line}\n"), exit },
         Err(e) => Outcome { stdout: format!("{}\n", envelope::refusal(&e)), exit: 2 },
     }
 }

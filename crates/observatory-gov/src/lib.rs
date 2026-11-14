@@ -8,15 +8,20 @@
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+mod abnlive;
 mod abr;
 mod abs;
+mod absfetch;
 mod address;
 mod area;
 mod asgs;
 mod asic;
 mod build;
+mod ckan;
 mod cli;
 mod codec;
+mod dates;
+mod download;
 mod envelope;
 mod error;
 mod geoms;
@@ -24,7 +29,9 @@ mod gnaf;
 mod json;
 mod names;
 mod names_build;
+mod net;
 mod norm;
+mod online;
 mod query;
 mod rd;
 mod refresh;
@@ -37,5 +44,6 @@ mod table;
 mod tokens;
 mod xml;
 
-pub use cli::{Env, Outcome, run};
+pub use cli::{Env, Online, Outcome, run, run_with};
 pub use error::GovError;
+pub use net::Net;

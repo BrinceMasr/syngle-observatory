@@ -33,6 +33,10 @@ pub struct ManifestSource {
     pub publisher: Option<String>,
     #[serde(rename = "asOfKind")]
     pub as_of_kind: Option<String>,
+    /// Where this source's files are, when not in the manifest's own folder (the network refresh keeps each release in a folder
+    /// of its own). Never read from a manifest file.
+    #[serde(skip)]
+    pub dir: Option<PathBuf>,
 }
 
 pub struct RefreshedSource {
@@ -48,7 +52,7 @@ pub struct Refreshed {
     pub sources: Vec<RefreshedSource>,
 }
 
-fn valid_date(s: &str) -> bool {
+pub(crate) fn valid_date(s: &str) -> bool {
     let b = s.as_bytes();
     b.len() == 10 && b.iter().enumerate().all(|(i, c)| if i == 4 || i == 7 { *c == b'-' } else { c.is_ascii_digit() })
 }
@@ -129,7 +133,7 @@ pub fn apply(store: &Store, base: &Path, manifest: &Manifest, run_bytes: usize) 
         }
         let mut hashed = Vec::new();
         for rel in &ms.files {
-            let full = inside(base, rel)?;
+            let full = inside(ms.dir.as_deref().unwrap_or(base), rel)?;
             expand(rel, &full, 0, &mut hashed).map_err(GovError::bad_source)?;
         }
         // A folder in the manifest stands for the files in it.
@@ -194,7 +198,7 @@ pub fn apply(store: &Store, base: &Path, manifest: &Manifest, run_bytes: usize) 
     Ok(report(&meta, true))
 }
 
-fn report(meta: &Meta, built: bool) -> Refreshed {
+pub(crate) fn report(meta: &Meta, built: bool) -> Refreshed {
     let sources = SOURCES
         .iter()
         .filter_map(|i| {
@@ -207,4 +211,31 @@ fn report(meta: &Meta, built: bool) -> Refreshed {
         })
         .collect();
     Refreshed { id: meta.id.clone(), built, sources }
+}
+
+/// The answer of a refresh: the data version, whether an index was built, `extra` (a JSON fragment such as
+/// `,"downloaded":["asic"]`, or nothing) and each source's version, as-of date and record count.
+pub fn report_json(done: &Refreshed, extra: &str) -> String {
+    use crate::json::{key, quote};
+    let mut out = String::from("{\"ok\":true,\"dataVersion\":");
+    quote(&mut out, &done.id);
+    out.push_str(&format!(",\"built\":{}{extra},\"sources\":[", done.built));
+    for (i, s) in done.sources.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push('{');
+        let mut f = true;
+        key(&mut out, &mut f, "source");
+        quote(&mut out, &s.source);
+        key(&mut out, &mut f, "dataVersion");
+        quote(&mut out, &s.version);
+        key(&mut out, &mut f, "asOf");
+        quote(&mut out, &s.as_of);
+        key(&mut out, &mut f, "records");
+        out.push_str(&s.records.to_string());
+        out.push('}');
+    }
+    out.push_str("]}");
+    out
 }

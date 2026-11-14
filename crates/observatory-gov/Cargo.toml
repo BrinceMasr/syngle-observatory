@@ -29,5 +29,10 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 csv = { workspace = true }
 shapefile = { workspace = true, features = ["yore"] }
 rusqlite = { workspace = true }
+# The network refresh and the live lookup: the same client, with the same TLS, as the other crates that fetch (ureq with
+# rustls). `md-5` checks a download against the hash CKAN publishes, `fs4` reads the free space of the data disk.
+ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
+md-5 = "0.11"
+fs4 = { version = "1", default-features = false, features = ["sync"] }
 
 [dev-dependencies]
