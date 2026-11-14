@@ -20,6 +20,10 @@ export async function startEngine({ buildDir, canvasDir = path.join(buildDir, "c
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
   });
+  const closed = new Promise((resolve) => {
+    child.once("close", resolve);
+    child.once("error", resolve);
+  });
   const events = [];
   const waiters = [];
   let buffer = "";
@@ -42,8 +46,9 @@ export async function startEngine({ buildDir, canvasDir = path.join(buildDir, "c
   });
   child.stderr.on("data", () => {});
   let stopped = false;
+  /** Asks the sidecar to quit (and kills it after 1.5 s); answers when the process has exited and its pipes are closed. */
   const stop = () => {
-    if (stopped) return;
+    if (stopped) return closed;
     stopped = true;
     process.removeListener("exit", stop);
     try {
@@ -59,6 +64,7 @@ export async function startEngine({ buildDir, canvasDir = path.join(buildDir, "c
         // Gone.
       }
     }, 1500).unref();
+    return closed;
   };
   process.once("exit", stop);
 

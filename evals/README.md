@@ -5,7 +5,7 @@ Spec: `agents/docs/specs/map-hill-climb-and-gov-data.md` in the Syngle-Ecosystem
 | Folder | What |
 |---|---|
 | `build/` | `boat.sh` builds what the evaluators run (canvas, sidecar, `syngle-map.exe`, the point files) on a boat box and brings it back; `on-box.sh` is what runs on the box |
-| `lib/` | CDP client, Chrome launcher and path probe, sidecar launcher, statistics and the keep rule |
+| `lib/` | CDP client, Chrome launcher and path probe, sidecar launcher (`stop()` answers when the process has exited; `engine.test.mjs`), `each-process.mjs` (one node process per dataset; `each-process.test.mjs`), statistics and the keep rule |
 | `map-perf/` | `canvas.mjs`, `max-points.mjs`, `engine.mjs`, `features.mjs` (the gate); `frames.test.mjs` tests the frame and latency maths on synthetic frame series and `session.test.mjs` what the page-side recorder counts as an input (`node --test evals/map-perf/*.test.mjs`) |
 | `data-sources/` | `check.mjs` and `catalogue.json` |
 | `gov-data/` | `lookup.mjs`, its fixtures (`fixtures/`, made by `make.mjs`), `gen-scale.mjs`, `reference/` (a naive implementation that passes it) and `FROZEN.sha256` |

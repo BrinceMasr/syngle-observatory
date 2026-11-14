@@ -7,10 +7,18 @@
 // file) and by address (the canvas's route: the engine reads what its own gateway serves), then the engine's frame, which is
 // a `/render` of the project (the fork's tiny-skia renderer, PNG out): a still view, 30 pan steps, 20 zoom steps and 20 layer
 // toggles, each step being the bridge command plus the render, wall clock. Also the engine's working set after the work.
+//
+// Each dataset is measured in a node process of its own (`runEach`, lib/each-process.mjs), with a fresh sidecar, and the process
+// ends only when its sidecars have exited. In one process the second dataset's first seconds were three to four times slower
+// than the same dataset alone: the 1M "still" read 260 to 640 ms for two or three frames of an otherwise 60 to 130 ms series
+// (a p95 of 300 ms), in four runs of five. A pause before it did not remove it in the engine climber's runs. The result has the
+// same shape either way, and a baseline and a candidate are measured the same way.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "../lib/args.mjs";
+import { runEach } from "../lib/each-process.mjs";
 import { startEngine } from "../lib/engine.mjs";
 import { summarize } from "../lib/stats.mjs";
 
@@ -89,7 +97,7 @@ async function measure(dataset) {
         await second.open({ url: `${second.base}/data/${dataset}`, name: "Points", zoom: true });
         return Math.round(now() - t2);
       } finally {
-        second.stop();
+        await second.stop();
       }
     })();
     return {
@@ -106,20 +114,23 @@ async function measure(dataset) {
       openedResult: { ok: byPath.ok },
     };
   } finally {
-    engine.stop();
+    await engine.stop();
   }
 }
 
-const results = [];
+const datasets = String(args.datasets).split(",");
+let record;
 try {
-  for (const dataset of String(args.datasets).split(",")) {
-    process.stderr.write(`[engine] ${dataset}\n`);
-    results.push(await measure(dataset));
+  if (datasets.length > 1) {
+    record = runEach({ script: fileURLToPath(import.meta.url), datasets, args: ["--build", args.build, "--size", args.size, "--steps", String(args.steps)] });
+  } else {
+    process.stderr.write(`[engine] ${datasets[0]}\n`);
+    record = { build: args.build, results: [await measure(datasets[0])] };
   }
 } catch (error) {
   console.error(`[engine] ${error.message}`);
   process.exit(1);
 }
-const text = JSON.stringify({ build: args.build, results }, null, 2);
+const text = JSON.stringify(record, null, 2);
 if (args.out) fs.writeFileSync(args.out, text);
 else console.log(text);
