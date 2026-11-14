@@ -1,9 +1,8 @@
 {
   "group": "canvas:webgl2-gpu",
   "label": "baseline",
-  "at": "2026-11-14T06:48:44.609Z",
-  "commit": "aedcc4b",
-  "note": "Re-measured 14 Nov 2026 after the input-to-frame latency fix (the first frame of a window was skipped, so event 0 was scored against event 1). Product code of 7168620; evaluator at the commit named here. The earlier file read toggle.latencyP95Ms 556 to 585 ms on every path.",
+  "at": "2026-11-14T11:51:55.077Z",
+  "commit": "6f4628b",
   "machine": {
     "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
     "cores": 16,
@@ -19,10 +18,10 @@
       "spread": 0.09999999999999964,
       "values": [
         7.5,
-        7.6,
-        7.6,
         7.5,
-        7.5
+        7.5,
+        7.6,
+        7.6
       ],
       "direction": "lower",
       "unit": "ms",
@@ -31,15 +30,15 @@
     },
     "canvas.webgl2-gpu.pan.over60Pct": {
       "runs": 5,
-      "median": 1,
-      "min": 0.5,
+      "median": 0.9,
+      "min": 0.7,
       "max": 1,
-      "spread": 0.5,
+      "spread": 0.30000000000000004,
       "values": [
-        0.5,
+        0.9,
+        0.8,
         1,
-        1,
-        1,
+        0.7,
         1
       ],
       "direction": "lower",
@@ -49,16 +48,16 @@
     },
     "canvas.webgl2-gpu.pan.latencyP95Ms": {
       "runs": 5,
-      "median": 46.5,
-      "min": 37.7,
-      "max": 48.1,
-      "spread": 10.399999999999999,
+      "median": 19.9,
+      "min": 18.9,
+      "max": 20,
+      "spread": 1.1000000000000014,
       "values": [
-        37.7,
-        44.8,
-        47.3,
-        46.5,
-        48.1
+        19.9,
+        19.5,
+        20,
+        20,
+        18.9
       ],
       "direction": "lower",
       "unit": "ms",
@@ -67,16 +66,16 @@
     },
     "canvas.webgl2-gpu.zoom.frameP95Ms": {
       "runs": 5,
-      "median": 13.3,
-      "min": 12.7,
-      "max": 13.7,
-      "spread": 1,
+      "median": 13,
+      "min": 7.6,
+      "max": 13.5,
+      "spread": 5.9,
       "values": [
-        12.7,
-        13.3,
+        7.6,
         13.5,
-        13.7,
-        13.2
+        8,
+        13,
+        13.5
       ],
       "direction": "lower",
       "unit": "ms",
@@ -85,16 +84,16 @@
     },
     "canvas.webgl2-gpu.zoom.latencyP95Ms": {
       "runs": 5,
-      "median": 14.4,
-      "min": 12.9,
-      "max": 21.1,
-      "spread": 8.200000000000001,
+      "median": 13.7,
+      "min": 12.2,
+      "max": 17.6,
+      "spread": 5.400000000000002,
       "values": [
-        13,
-        12.9,
-        21.1,
-        14.4,
-        18.5
+        13.7,
+        13.1,
+        16.4,
+        17.6,
+        12.2
       ],
       "direction": "lower",
       "unit": "ms",
@@ -103,16 +102,16 @@
     },
     "canvas.webgl2-gpu.toggle.latencyP95Ms": {
       "runs": 5,
-      "median": 78,
-      "min": 74.9,
-      "max": 79.4,
-      "spread": 4.5,
+      "median": 76.2,
+      "min": 65.7,
+      "max": 79.1,
+      "spread": 13.399999999999991,
       "values": [
-        74.9,
-        76.6,
-        78,
-        78.7,
-        79.4
+        73.3,
+        65.7,
+        79.1,
+        76.2,
+        76.3
       ],
       "direction": "lower",
       "unit": "ms",
@@ -121,16 +120,16 @@
     },
     "canvas.webgl2-gpu.toggle.frameMaxMs": {
       "runs": 5,
-      "median": 73.9,
-      "min": 71.8,
-      "max": 75.5,
-      "spread": 3.700000000000003,
+      "median": 73.3,
+      "min": 64.1,
+      "max": 76.2,
+      "spread": 12.100000000000009,
       "values": [
-        71.8,
-        74.3,
-        72.4,
-        75.5,
-        73.9
+        69.1,
+        64.1,
+        73.3,
+        75.9,
+        76.2
       ],
       "direction": "lower",
       "unit": "ms",
@@ -139,16 +138,16 @@
     },
     "canvas.webgl2-gpu.firstDataMs": {
       "runs": 5,
-      "median": 576,
-      "min": 528,
-      "max": 811,
-      "spread": 283,
+      "median": 660,
+      "min": 609,
+      "max": 698,
+      "spread": 89,
       "values": [
-        528,
-        744,
-        811,
-        576,
-        567
+        640,
+        698,
+        609,
+        660,
+        695
       ],
       "direction": "lower",
       "unit": "ms",

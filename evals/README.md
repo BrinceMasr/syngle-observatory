@@ -25,7 +25,7 @@ node evals/climb/run.mjs --list                    # the groups and their scores
 node evals/climb/report.mjs                        # the baselines as tables
 ```
 
-Groups: `canvas:<path>`, `maxpoints:<path>` for the four paths `webgpu-gpu`, `webgl2-gpu`, `webgl2-cpu`, `webgpu-cpu`; `engine`; `datasources`; `gov`. A run whose path is not the path asked for (a software run that landed on the GPU) is refused with exit 3.
+Groups: `canvas:<path>`, `maxpoints:<path>` for the four paths `webgpu-gpu`, `webgl2-gpu`, `webgl2-cpu`, `webgpu-cpu`; `engine`; `datasources`; `gov`. The `engine` evaluator measures each dataset in a node process of its own (a dataset measured after another in one process read slow for its first seconds). A run whose path is not the path asked for (a software run that landed on the GPU) is refused with exit 3.
 
 `run.mjs` exit codes: 0 ran (and, with `--baseline`, the step is kept), 1 a run failed, 2 usage, 3 path mismatch, 4 not kept (the median gain does not beat the larger spread, or a gate failed under `--gates-pass`).
 
