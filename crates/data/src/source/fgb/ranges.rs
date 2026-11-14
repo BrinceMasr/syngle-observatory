@@ -12,11 +12,11 @@ use std::sync::Arc;
 /// A packed R-tree node's size in bytes.
 pub(super) const NODE: u64 = 40;
 /// The most index bytes one level of a search fetches (past it, branches are thinned).
-const INDEX_BUDGET: u64 = if cfg!(target_arch = "wasm32") { 4 << 20 } else { 8 << 20 };
+const INDEX_BUDGET: u64 = if cfg!(target_arch = "wasm32") { 48 << 20 } else { 8 << 20 };
 /// Neighbouring branches followed together when a search thins the tree.
 const BRANCH_RUN: usize = 32;
 /// The most bytes of features one read fetches (past it, a sample of runs of them).
-const FEATURE_BUDGET: u64 = if cfg!(target_arch = "wasm32") { 12 << 20 } else { 24 << 20 };
+const FEATURE_BUDGET: u64 = if cfg!(target_arch = "wasm32") { 192 << 20 } else { 24 << 20 };
 /// Consecutive features taken together when a read samples (runs of them, evenly spread: their
 /// bytes are fetched together, where single features spread out would mean the whole file).
 const RUN: usize = 512;

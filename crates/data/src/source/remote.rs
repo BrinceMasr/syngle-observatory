@@ -25,9 +25,9 @@ const GAP: u64 = 16 << 10;
 /// The largest single request.
 const MAX_PIECE: u64 = 16 << 20;
 /// The most bytes one read may plan to fetch.
-pub const READ_BUDGET: u64 = if cfg!(target_arch = "wasm32") { 96 << 20 } else { 256 << 20 };
+pub const READ_BUDGET: u64 = if cfg!(target_arch = "wasm32") { 128 << 20 } else { 256 << 20 };
 /// The most bytes a file keeps (least recently used parts are dropped past it).
-const KEEP: usize = if cfg!(target_arch = "wasm32") { 192 << 20 } else { 640 << 20 };
+const KEEP: usize = if cfg!(target_arch = "wasm32") { 384 << 20 } else { 640 << 20 };
 /// The most rounds of fetching one read may take.
 pub const MAX_ROUNDS: usize = 48;
 /// The most bytes one round of a read may ask for (readers plan within [`READ_BUDGET`]).

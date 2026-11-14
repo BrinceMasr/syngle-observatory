@@ -23,30 +23,16 @@ pub const STREAM_ABOVE: u64 = 100_000;
 
 /// The most features a view reads.
 ///
-/// The shipped window is 100,000 in the browser and 250,000 on the desktop.
-///
-/// The `spike` feature raises it to 1,000,000, so the "pan with 1M points" target (spike A, #43) can
-/// be measured with all of them drawn rather than sampled. Off by default: the shipped build keeps
-/// the window above, and #77 revisits it.
-pub const VIEW_LIMIT: usize = if cfg!(feature = "spike") {
-    1_000_000
-} else if cfg!(target_arch = "wasm32") {
-    100_000
-} else {
-    250_000
-};
+/// The shipped window is 1,000,000 in the browser (every point of the canvas's biggest file, held and drawn: the budgets
+/// that bound what one read fetches and keeps are raised to hold them, see `rustgis_data::source::remote`) and 250,000 on
+/// the desktop. The `spike` feature lifts the desktop's too, for the headroom runs.
+pub const VIEW_LIMIT: usize = if cfg!(feature = "spike") || cfg!(target_arch = "wasm32") { 1_000_000 } else { 250_000 };
 
 /// The most features a view reads from a file by its web address (each one is fetched).
 ///
-/// The shipped window is 30,000 in the browser and 60,000 on the desktop; the `spike` feature raises
-/// it like [`VIEW_LIMIT`]'s.
-pub const REMOTE_VIEW_LIMIT: usize = if cfg!(feature = "spike") {
-    1_000_000
-} else if cfg!(target_arch = "wasm32") {
-    30_000
-} else {
-    60_000
-};
+/// The shipped window is 1,000,000 in the browser (what [`VIEW_LIMIT`] says) and 60,000 on the desktop; the `spike` feature
+/// lifts the desktop's like [`VIEW_LIMIT`]'s.
+pub const REMOTE_VIEW_LIMIT: usize = if cfg!(feature = "spike") || cfg!(target_arch = "wasm32") { 1_000_000 } else { 60_000 };
 
 /// A streamed layer's source.
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -696,3 +682,7 @@ pub fn set_waker(f: impl Fn() + Send + Sync + 'static) {
 pub fn generation() -> u64 {
     GENERATION.load(Ordering::Relaxed)
 }
+
+// A view never asks for more features than one read returns, and a file by address never more than a local one: a
+// build that raises one limit without the others stops here.
+const _: () = assert!(VIEW_LIMIT <= rustgis_data::source::MAX_LIMIT && REMOTE_VIEW_LIMIT <= VIEW_LIMIT);
