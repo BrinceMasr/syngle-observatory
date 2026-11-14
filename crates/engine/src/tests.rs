@@ -5463,6 +5463,45 @@ fn blank_project_starts_in_a_projected_crs() {
     assert!(crate::cmd::share::map_png(&mut s, Some(400.0), Some(300.0), None).unwrap().len() > 1000);
 }
 
+/// An embedded engine has no view of its own, so it is told the view's size (Syngle-Ecosystem #667): the extent it reports and a
+/// picture drawn with no size asked then follow the real view, not the 1200 x 720 a session starts with.
+#[test]
+fn the_view_size_command_sets_the_view_the_extent_and_the_picture_follow() {
+    isolate_plugins();
+    let mut s = Session::new(Project::default());
+    s.run("map.zoomToExtent", &json!({"extent": [150.5, -34.2, 151.5, -33.6]})).unwrap();
+    let width = |s: &mut Session| {
+        let e = s.run("map.extent", &Value::Null).unwrap()["extent"].clone();
+        let n: Vec<f64> = e.as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+        n[2] - n[0]
+    };
+    let started = width(&mut s);
+    assert_eq!(s.view_size, (1200.0, 720.0), "a session starts with a view of its own");
+
+    let r = s.run("map.viewSize", &json!({"width": 2400, "height": 1440})).unwrap();
+    assert_eq!((r["width"].as_f64(), r["height"].as_f64()), (Some(2400.0), Some(1440.0)));
+    assert!(!s.dirty && !s.can_undo(), "telling the size is neither an edit nor a step to undo");
+    let wide = width(&mut s);
+    assert!(wide > started * 1.9, "a view twice as wide shows twice the ground: {started} then {wide}");
+
+    // A picture with no size asked is the view's size, so what the model is shown is what the user sees.
+    let png = crate::cmd::share::map_png(&mut s, None, None, None).unwrap();
+    let pm = crate::render::decode_png(&png).unwrap();
+    assert_eq!((pm.width(), pm.height()), (2400, 1440));
+    // Asked at another size, it keeps the ground the view shows (the same extent in a smaller picture).
+    let small = crate::cmd::share::map_png(&mut s, Some(1200.0), Some(720.0), None).unwrap();
+    let pm = crate::render::decode_png(&small).unwrap();
+    assert_eq!((pm.width(), pm.height()), (1200, 720));
+
+    // Hostile sizes are refused or clamped, never a panic and never a zero or huge picture.
+    for bad in [json!(null), json!({}), json!({"width": 100}), json!({"width": "x", "height": 5}), json!({"width": f64::NAN, "height": 5})]
+    {
+        assert!(s.run("map.viewSize", &bad).is_err(), "{bad}");
+    }
+    s.run("map.viewSize", &json!({"width": -5, "height": 1e12})).unwrap();
+    assert_eq!(s.view_size, (16.0, 8000.0));
+}
+
 #[test]
 fn layers_export_to_geopackage_geoparquet_shapefile_and_kmz() {
     let dir = std::env::temp_dir().join(format!("rustgis-engine-export-{}", std::process::id()));

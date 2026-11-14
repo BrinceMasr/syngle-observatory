@@ -40,6 +40,9 @@ pub fn commands() -> Vec<C> {
         C::new("map.zoomToExtent", "Zoom To Extent", "Home › Navigate", zoom_to_extent)
             .view()
             .params(r#"{"extent": [minLon, minLat, maxLon, maxLat]}"#),
+        C::new("map.viewSize", "View Size", "Home › Navigate", view_size)
+            .view()
+            .params(r#"{"width": pixels, "height": pixels}"#),
         C::new("map.goToXY", "Go To XY", "Home › Navigate", go_to_xy)
             .view()
             .params(r#"{"lon" | "x": number, "lat" | "y": number, "scale"?: number, "bearing"?: degrees clockwise from north, "pitch"?: degrees of tilt (0 to 85)}"#),
@@ -341,6 +344,23 @@ fn zoom(s: &mut Session, factor: f64) -> CmdResult {
     s.map_mut().camera.zoom_at(factor, w / 2.0, h / 2.0, w, h);
     s.record_extent();
     Ok(Value::Null)
+}
+
+/// The smallest and the largest view the session is told it has (a picture of the map is clamped to the same).
+const VIEW_MIN: f64 = 16.0;
+const VIEW_MAX: f64 = 8000.0;
+
+/// Tells the session how big the view the user looks at is. The desktop app sets it every frame from its own map view; an
+/// embedded engine has no view of its own (the page that shows the map is elsewhere), so whoever holds the page says it here,
+/// and the extent the session reports, a zoom that fits, and a picture of the map with no size asked all follow the real view.
+fn view_size(s: &mut Session, p: &Value) -> CmdResult {
+    let pixels = |v: Option<f64>, what: &str| match v {
+        Some(v) if v.is_finite() => Ok(v.clamp(VIEW_MIN, VIEW_MAX)),
+        _ => Err(format!("{what} is required: the view's size in pixels")),
+    };
+    let size = (pixels(f(p, "width"), "width")?, pixels(f(p, "height"), "height")?);
+    s.view_size = size;
+    Ok(json!({"width": size.0, "height": size.1}))
 }
 
 pub(crate) fn go_to_xy(s: &mut Session, p: &Value) -> CmdResult {
