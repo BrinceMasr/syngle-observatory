@@ -32,6 +32,7 @@ nav = [
     "comparison/qgis.md",
   ] },
   { "Command Line" = "cli.md" },
+  { "Government Data" = "gov.md" },
   { "Python" = "python.md" },
   { "MCP Server" = "mcp.md" },
   { "Plugins" = "plugins.md" },

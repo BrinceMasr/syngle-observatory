@@ -50,9 +50,11 @@ The sidecar serves the view and the datasets from one origin; see the crate head
 |---|---|
 | `crates/geom … ui-egui` | the fork's layered Rust crates (architecture table in [AGENTS.md](AGENTS.md)) |
 | `crates/observatory-engine` | the native engine sidecar (fork crate; supersedes spike A) |
+| `crates/observatory-gov` | the Australian government data lookup behind `syngle-map gov`: official registers indexed on the person's machine and queried in milliseconds ([docs/gov.md](docs/gov.md)) |
 | `apps/rustgis-web` | the WASM view; `--features canvas-only` is the Syngle build |
 | `apps/rustgis`, `apps/rustgis-cli`, `apps/rustgis-python` | the stock desktop, CLI and Python apps |
 | `syngle-spike/` | spike A's host, bench and dataset generator (measurement harness) |
+| `evals/` | read-only evaluators for the map hill climb and the government data lookup (see [evals/README.md](evals/README.md)) |
 | `docs/` | the upstream user and developer docs, kept as reference |
 
 ## Provenance and licence
