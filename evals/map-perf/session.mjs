@@ -13,8 +13,10 @@ import { decodePng, inkMask, pointRecall, readXy, RECALL_BAR } from "./fidelity.
 // Installed in every frame before its scripts run. The view's iframe starts as an empty document and is then navigated, and
 // Chrome keeps that window across the navigation but drops the old document's animation callbacks, so the frame ticker is
 // started on demand (`start`) in the document that is there, and every time is `performance.timeOrigin` of that document plus
-// its own timestamp (epoch milliseconds).
-const INIT_SCRIPT = `(() => {
+// its own timestamp (epoch milliseconds). An input is a wheel step or a pointer move with a button down (a drag move): a move
+// with none down (the hover before a press, the pointer's return after a release) moves no camera, and scored it read the press
+// delay or the gap to the next drag.
+export const INIT_SCRIPT = `(() => {
   if (window.__eval) return;
   const E = (window.__eval = { recording: false, loop: 0, raf: [], inputs: [], long: [], gpuSubmits: 0, glDraws: 0 });
   E.start = () => {
@@ -24,7 +26,7 @@ const INIT_SCRIPT = `(() => {
     requestAnimationFrame(tick);
   };
   E.stop = () => { E.recording = false; E.loop++; };
-  for (const type of ["pointermove", "wheel"]) addEventListener(type, (e) => { if (E.recording) E.inputs.push(performance.timeOrigin + e.timeStamp); }, { capture: true, passive: true });
+  for (const type of ["pointermove", "wheel"]) addEventListener(type, (e) => { if (E.recording && (type === "wheel" || e.buttons)) E.inputs.push(performance.timeOrigin + e.timeStamp); }, { capture: true, passive: true });
   try { new PerformanceObserver((l) => { for (const x of l.getEntries()) if (E.recording) E.long.push(x.duration); }).observe({ type: "longtask" }); } catch {}
   try { if (window.GPUQueue) { const s = GPUQueue.prototype.submit; GPUQueue.prototype.submit = function () { E.gpuSubmits++; return s.apply(this, arguments); }; } } catch {}
   try {
@@ -141,7 +143,7 @@ export async function runCanvas(options) {
       const inside = windowRows(rows, before, inWindow);
       return {
         frame: frameStats(frameIntervals(data.raf, windows)),
-        latency: latencies({ inputs, samples: rows, before, ticks: data.raf, changed }),
+        latency: latencies({ inputs, samples: rows, before, ticks: data.raf, changed, windows }),
         app: appStats(inside.rows, inside.before),
         longTasks: { count: data.long.length, max: data.long.length ? Math.round(Math.max(...data.long)) : 0 },
       };

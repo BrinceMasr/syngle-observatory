@@ -39,8 +39,14 @@ const sameCamera = (a, b) => a[ROW.res] === b[ROW.res] && a[ROW.cx] === b[ROW.cx
  * layer toggle, a wheel step, sent a few milliseconds after the window began) scores that frame and not the next
  * event's. It is required, so that leaving it out cannot silently skip the first row. Events that no frame answered
  * are counted as `unanswered`.
+ *
+ * `windows` (`[[from, to], ...]`, epoch ms, the gesture each input belongs to) limits what may answer an event to the
+ * gesture it is in: the carrying frame must lie inside the same window as the event. A pointer move after a drag's release
+ * moves no camera, and without the limit it was scored against the first change of the next drag, about half a second later
+ * (six of 220 pan events). An event with no change inside its own window, or in no window, is `unanswered`. Left out, an
+ * event is answered by the next change wherever it lands (the layer toggle: one event, one change).
  */
-export function latencies({ inputs, samples, before, ticks, changed = (row, previous) => !sameCamera(row, previous) }) {
+export function latencies({ inputs, samples, before, ticks, changed = (row, previous) => !sameCamera(row, previous), windows = null }) {
   if (before === undefined) throw new TypeError("latencies: `before` (the row recorded before the window, or null) is required");
   const out = [];
   let unanswered = 0;
@@ -48,10 +54,15 @@ export function latencies({ inputs, samples, before, ticks, changed = (row, prev
   const previousOf = (k) => (k === 0 ? before : samples[k - 1]);
   for (const input of inputs) {
     while (cursor < samples.length && samples[cursor].at <= input) cursor++;
+    const own = windows ? windows.find(([from, to]) => input >= from && input <= to) : null;
+    if (windows && !own) {
+      unanswered++;
+      continue;
+    }
     let k = cursor;
     // With no row before the window the first row has nothing to differ from, so it cannot be the answer.
     while (k < samples.length && (previousOf(k) === null || !changed(samples[k], previousOf(k)))) k++;
-    if (k >= samples.length) {
+    if (k >= samples.length || (own && samples[k].at > own[1])) {
       unanswered++;
       continue;
     }

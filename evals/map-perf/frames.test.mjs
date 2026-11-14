@@ -1,7 +1,8 @@
 // Tests of the frame and latency maths with synthetic frame series (no browser). Run: `node --test evals/map-perf/frames.test.mjs`.
 // The first test is the regression of the 14 Nov 2026 off-by-one: `latencies` used to start its scan at the second row, so
 // the frame that answered an event inside the first frame of a window was skipped and the event was scored against the
-// next event's frame, half a second later.
+// next event's frame, half a second later. The `windows` tests are the regression of the second scoring error, found on the
+// pan scenario: a pointer move after the release moves nothing, and was scored against the next drag's first change.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { appStats, latencies, ROW, windowRows } from "./frames.mjs";
@@ -110,4 +111,69 @@ test("windowRows keeps the rows inside the windows and the row just before the f
   assert.equal(before.at, 95);
   // No row inside any window: nothing to count, the given row stays the baseline.
   assert.deepEqual(windowRows([row(1)], row(0), () => false), { rows: [], before: row(0) });
+});
+
+/**
+ * The pan scenario in miniature, in the session's own shape: one window per drag. Every move of a drag is carried by the
+ * frame 2 ms after it; the move that follows the release (the pointer going back to the centre) changes no camera. The second
+ * drag starts half a second after the first.
+ */
+function panSeries() {
+  return {
+    inputs: [1010, 1050, 1090, 1100, 1610, 1650],
+    before: row(900, { res: 10, cx: 0, cy: 0 }),
+    samples: [
+      row(1012, { res: 10, cx: 1 }),
+      row(1052, { res: 10, cx: 2 }),
+      row(1092, { res: 10, cx: 3 }),
+      row(1102, { res: 10, cx: 3 }),
+      row(1612, { res: 10, cx: 4 }),
+      row(1652, { res: 10, cx: 5 }),
+    ],
+    ticks: rafs(900, 1800, 2),
+    windows: [
+      [1000, 1130],
+      [1600, 1730],
+    ],
+  };
+}
+
+test("a move after the release, with no camera change in its own drag, is not scored against the next drag", () => {
+  const s = latencies(panSeries());
+  // The move at 1100 changed nothing. The old scan answered it with the camera change at 1612, presented at 1614: 514 ms.
+  assert.equal(s.events, 6);
+  assert.equal(s.unanswered, 1);
+  assert.equal(s.n, 5);
+  assert.equal(s.max, 4);
+});
+
+test("an event is answered by a change inside its own window, as before", () => {
+  const s = latencies(panSeries());
+  // 1010 to 1014, 1050 to 1054, 1090 to 1094, 1610 to 1614, 1650 to 1654.
+  assert.equal(s.min, 4);
+  assert.equal(s.p95, 4);
+});
+
+test("without windows an event is answered by the next change wherever it lands", () => {
+  const { windows, ...open } = panSeries();
+  assert.ok(windows.length);
+  const s = latencies(open);
+  assert.equal(s.unanswered, 0);
+  assert.equal(s.max, 514);
+});
+
+test("an event that lies in no window is unanswered", () => {
+  const s = latencies({ ...panSeries(), inputs: [1400], windows: [[1000, 1130], [1600, 1730]] });
+  assert.deepEqual([s.n, s.unanswered, s.events], [0, 1, 1]);
+});
+
+test("a change after the end of the window does not answer an event inside it", () => {
+  const s = latencies({
+    inputs: [1120],
+    before: row(900, { res: 10, cx: 0, cy: 0 }),
+    samples: [row(1140, { res: 10, cx: 1 })],
+    ticks: rafs(900, 1200, 2),
+    windows: [[1000, 1130]],
+  });
+  assert.deepEqual([s.n, s.unanswered], [0, 1]);
 });
