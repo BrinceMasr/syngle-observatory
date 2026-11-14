@@ -1,0 +1,176 @@
+{
+  "group": "engine",
+  "label": "baseline",
+  "at": "2026-11-14T05:52:53.020Z",
+  "commit": "8a905f3",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
+    "cores": 16,
+    "platform": "win32"
+  },
+  "runs": 5,
+  "scores": {
+    "engine.30k.still.p95Ms": {
+      "runs": 5,
+      "median": 103.5,
+      "min": 99.5,
+      "max": 123.2,
+      "spread": 23.700000000000003,
+      "values": [
+        103.5,
+        117.2,
+        100.2,
+        123.2,
+        99.5
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 50,
+      "meetsBar": false
+    },
+    "engine.30k.pan.p95Ms": {
+      "runs": 5,
+      "median": 142.5,
+      "min": 137.8,
+      "max": 153.3,
+      "spread": 15.5,
+      "values": [
+        142.5,
+        141.7,
+        137.8,
+        153.3,
+        146.4
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 60,
+      "meetsBar": false
+    },
+    "engine.30k.zoom.p95Ms": {
+      "runs": 5,
+      "median": 108.6,
+      "min": 102.5,
+      "max": 113.2,
+      "spread": 10.700000000000003,
+      "values": [
+        113.2,
+        102.5,
+        108.7,
+        108.6,
+        104.8
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 60,
+      "meetsBar": false
+    },
+    "engine.30k.toggle.p95Ms": {
+      "runs": 5,
+      "median": 138.5,
+      "min": 130,
+      "max": 143.1,
+      "spread": 13.099999999999994,
+      "values": [
+        135.8,
+        130,
+        141.1,
+        138.5,
+        143.1
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 60,
+      "meetsBar": false
+    },
+    "engine.1m.still.p95Ms": {
+      "runs": 5,
+      "median": 297,
+      "min": 261.7,
+      "max": 475.5,
+      "spread": 213.8,
+      "values": [
+        286.5,
+        261.7,
+        391.1,
+        475.5,
+        297
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 250,
+      "meetsBar": false
+    },
+    "engine.1m.pan.p95Ms": {
+      "runs": 5,
+      "median": 330.4,
+      "min": 285.9,
+      "max": 341.1,
+      "spread": 55.200000000000045,
+      "values": [
+        330.4,
+        285.9,
+        341.1,
+        332.4,
+        319
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 250,
+      "meetsBar": false
+    },
+    "engine.1m.zoom.p95Ms": {
+      "runs": 5,
+      "median": 1232.4,
+      "min": 989.2,
+      "max": 1392.2,
+      "spread": 403,
+      "values": [
+        1392.2,
+        989.2,
+        1232.4,
+        1232.3,
+        1275.1
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 250,
+      "meetsBar": false
+    },
+    "engine.1m.workingSetMb": {
+      "runs": 5,
+      "median": 97,
+      "min": 96,
+      "max": 97,
+      "spread": 1,
+      "values": [
+        97,
+        97,
+        96,
+        97,
+        97
+      ],
+      "direction": "lower",
+      "unit": "MB",
+      "bar": 1000,
+      "meetsBar": true
+    },
+    "engine.startupMs": {
+      "runs": 5,
+      "median": 24,
+      "min": 20,
+      "max": 56,
+      "spread": 36,
+      "values": [
+        56,
+        38,
+        21,
+        24,
+        20
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 50,
+      "meetsBar": true
+    }
+  }
+}

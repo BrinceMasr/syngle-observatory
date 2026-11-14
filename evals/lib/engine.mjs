@@ -45,6 +45,7 @@ export async function startEngine({ buildDir, canvasDir = path.join(buildDir, "c
   const stop = () => {
     if (stopped) return;
     stopped = true;
+    process.removeListener("exit", stop);
     try {
       child.stdin.write('{"cmd":"quit"}\n');
     } catch {

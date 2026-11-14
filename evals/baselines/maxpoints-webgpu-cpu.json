@@ -1,0 +1,50 @@
+{
+  "group": "maxpoints:webgpu-cpu",
+  "label": "baseline",
+  "at": "2026-11-14T05:49:59.315Z",
+  "commit": "8a905f3",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
+    "cores": 16,
+    "platform": "win32"
+  },
+  "runs": 5,
+  "scores": {
+    "maxpoints60.webgpu-cpu": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "points",
+      "bar": 50000,
+      "meetsBar": false
+    },
+    "maxpoints30.webgpu-cpu": {
+      "runs": 5,
+      "median": 30000,
+      "min": 30000,
+      "max": 30000,
+      "spread": 0,
+      "values": [
+        30000,
+        30000,
+        30000,
+        30000,
+        30000
+      ],
+      "direction": "higher",
+      "unit": "points",
+      "bar": 100000,
+      "meetsBar": false
+    }
+  }
+}

@@ -16,7 +16,7 @@ set -euo pipefail
 
 OUT="${OUT:-/home/user/out/build}"
 STEPS="${STEPS:-canvas engine data}"
-LADDER="${LADDER:-10000 20000 30000 50000 100000 200000 500000 1000000}"
+LADDER="${LADDER:-1000 2000 5000 10000 20000 30000 50000 100000 200000 500000 1000000}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 mkdir -p "$OUT"

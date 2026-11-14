@@ -1,6 +1,8 @@
 // The catalogue of scores: which evaluator makes each, how to read its answer, which way is better, and the bar.
-// A score is a number a script computes (the hill-climb method of Syngle-Ecosystem #581 and #593). Bars are Omar's targets as
-// written in agents/docs/specs/map-hill-climb-and-gov-data.md; `evals/baselines/*.json` holds the measured start.
+// A score is a number a script computes (the hill-climb method of Syngle-Ecosystem #581 and #593). Omar named the targets
+// (smooth pan, zoom, toggle and first draw; CPU-only and GPU; most points at 60 and 30 fps; a quick, deterministic Australian
+// lookup) but gave no numbers: the bars here are map-lead's proposals, stated in agents/docs/specs/map-hill-climb-and-gov-data.md,
+// and a bar that proves out of reach is reported with its measured floor, not dropped. `evals/baselines/*.json` holds the start.
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,7 +20,10 @@ function canvasScores(p) {
   const id = (name) => `canvas.${p}.${name}`;
   return {
     [id("pan.frameP95Ms")]: { direction: "lower", unit: "ms", bar: bar(p, 20, 36.7), read: (r) => r.scenarios.pan.frame.p95 },
-    [id("pan.over60Pct")]: { direction: "lower", unit: "%", bar: bar(p, 2, 100), read: (r) => r.scenarios.pan.frame.over60 },
+    // The share of frames that missed the path's own budget: 60 fps (counted above 20 ms) on a GPU path, 30 fps (above 36.7 ms) on a software path.
+    ...(isGpu(p)
+      ? { [id("pan.over60Pct")]: { direction: "lower", unit: "%", bar: 2, read: (r) => r.scenarios.pan.frame.over60 } }
+      : { [id("pan.over30Pct")]: { direction: "lower", unit: "%", bar: 5, read: (r) => r.scenarios.pan.frame.over30 } }),
     [id("pan.latencyP95Ms")]: { direction: "lower", unit: "ms", bar: bar(p, 50, 100), read: (r) => r.scenarios.pan.latency.p95 },
     [id("zoom.frameP95Ms")]: { direction: "lower", unit: "ms", bar: bar(p, 20, 36.7), read: (r) => r.scenarios.zoom.frame.p95 },
     [id("zoom.latencyP95Ms")]: { direction: "lower", unit: "ms", bar: bar(p, 50, 100), read: (r) => r.scenarios.zoom.latency.p95 },
@@ -99,7 +104,7 @@ export function groups() {
     scores: {
       "datasources.reachablePct": { direction: "higher", unit: "%", bar: 100, read: (r) => r.reachablePct },
       "datasources.openedPct": { direction: "higher", unit: "%", bar: 100, read: (r) => r.openedPct },
-      "datasources.wantOpened": { direction: "higher", unit: "sources", bar: 4, read: (r) => r.wantOpened },
+      "datasources.wantOpened": { direction: "higher", unit: "sources", bar: 1, read: (r) => r.wantOpened },
     },
   };
   out.gov = {

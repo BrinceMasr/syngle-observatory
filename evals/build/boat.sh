@@ -43,7 +43,10 @@ if ! box list 2>/dev/null | awk '{print $1}' | grep -qx "$BOX"; then
 fi
 box sync "$BOX" "$REPO"
 box exec "$BOX" --cwd /home/user/w/syngle-observatory -- "STEPS='$STEPS' bash evals/build/on-box.sh"
-box exec "$BOX" -- "cd /home/user/out && tar cf build.tar build && ls -l build.tar"
+# The point files are deterministic and 340 MB: they come back only when the data step ran.
+EXCLUDE="--exclude=build/data"
+case " $STEPS " in *" data "*) EXCLUDE="" ;; esac
+box exec "$BOX" -- "cd /home/user/out && tar cf build.tar $EXCLUDE build && ls -l build.tar"
 mkdir -p "$OUT"
 TAR="$(mktemp /tmp/obs-build-XXXXXX.tar)"
 box pull "$BOX" /home/user/out/build.tar "$TAR"

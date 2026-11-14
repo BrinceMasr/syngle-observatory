@@ -1,0 +1,158 @@
+{
+  "group": "canvas:webgpu-gpu",
+  "label": "baseline",
+  "at": "2026-11-14T05:12:35.351Z",
+  "commit": "7168620",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
+    "cores": 16,
+    "platform": "win32"
+  },
+  "runs": 5,
+  "scores": {
+    "canvas.webgpu-gpu.pan.frameP95Ms": {
+      "runs": 5,
+      "median": 5.8,
+      "min": 5.8,
+      "max": 5.8,
+      "spread": 0,
+      "values": [
+        5.8,
+        5.8,
+        5.8,
+        5.8,
+        5.8
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 20,
+      "meetsBar": true
+    },
+    "canvas.webgpu-gpu.pan.over60Pct": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0.2,
+      "spread": 0.2,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0.2
+      ],
+      "direction": "lower",
+      "unit": "%",
+      "bar": 2,
+      "meetsBar": true
+    },
+    "canvas.webgpu-gpu.pan.latencyP95Ms": {
+      "runs": 5,
+      "median": 41.6,
+      "min": 34.1,
+      "max": 42.4,
+      "spread": 8.299999999999997,
+      "values": [
+        34.1,
+        40.3,
+        41.6,
+        42.1,
+        42.4
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 50,
+      "meetsBar": true
+    },
+    "canvas.webgpu-gpu.zoom.frameP95Ms": {
+      "runs": 5,
+      "median": 5.8,
+      "min": 5.8,
+      "max": 11.4,
+      "spread": 5.6000000000000005,
+      "values": [
+        5.8,
+        5.8,
+        5.8,
+        5.8,
+        11.4
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 20,
+      "meetsBar": true
+    },
+    "canvas.webgpu-gpu.zoom.latencyP95Ms": {
+      "runs": 5,
+      "median": 10.7,
+      "min": 10.4,
+      "max": 15.4,
+      "spread": 5,
+      "values": [
+        15.4,
+        10.7,
+        10.4,
+        10.4,
+        14.3
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 50,
+      "meetsBar": true
+    },
+    "canvas.webgpu-gpu.toggle.latencyP95Ms": {
+      "runs": 5,
+      "median": 556.5,
+      "min": 553.2,
+      "max": 577.4,
+      "spread": 24.199999999999932,
+      "values": [
+        556.5,
+        553.2,
+        556.4,
+        573,
+        577.4
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "canvas.webgpu-gpu.toggle.frameMaxMs": {
+      "runs": 5,
+      "median": 51.3,
+      "min": 40,
+      "max": 68.6,
+      "spread": 28.599999999999994,
+      "values": [
+        45.7,
+        40,
+        51.3,
+        57.2,
+        68.6
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 100,
+      "meetsBar": true
+    },
+    "canvas.webgpu-gpu.firstDataMs": {
+      "runs": 5,
+      "median": 522,
+      "min": 468,
+      "max": 557,
+      "spread": 89,
+      "values": [
+        522,
+        535,
+        468,
+        557,
+        476
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 1000,
+      "meetsBar": true
+    }
+  }
+}

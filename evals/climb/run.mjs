@@ -8,8 +8,10 @@
 // The method (Syngle-Ecosystem #581 and #593): score by script, a bar, a measured baseline; one logged step at a time; a
 // step is kept only when the median of the runs beats the noise AND every gate passes. `--baseline` compares each score of
 // the group with its baseline entry by `decide()`; `--gates-pass` asserts the gates (cargo xtask ci, the bridge contract
-// tests, evals/map-perf/features.mjs) passed on this same tree, since this script cannot see them. Exit 0 measured and
-// (when asked) kept; 1 a run failed; 4 measured but not kept; 2 usage.
+// tests, evals/map-perf/features.mjs) passed on this same tree, since this script cannot see them. `--rescore <saved.json>` scores runs
+// saved earlier (--save) instead of running. Exit 0 measured and
+// (when asked) kept; 1 a run failed; 4 measured but no score kept; 5 a score is worse than its baseline by more than the noise;
+// 2 usage; 3 path mismatch.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -25,25 +27,34 @@ if (args.list) {
   process.exit(0);
 }
 const group = all[args.group];
-if (!group || (!args.build && !args.group?.startsWith("gov"))) {
+if (!group || (!args.build && !args.rescore && !args.group?.startsWith("gov"))) {
   console.error("usage: node evals/climb/run.mjs --group <name> --build <dir> [--runs 5] [--save f] [--scores-out f] [--cli "<syngle-map>" --scale <dir> --kinds a,b (gov)] [--baseline f] [--gates-pass] [--label s] [--log f]\n       --list shows the groups");
   process.exit(2);
 }
 
 const perRun = [];
 const raw = [];
+const saved = args.rescore ? JSON.parse(fs.readFileSync(args.rescore, "utf8")) : null;
+if (saved) args.runs = saved.raw.length;
 for (let i = 1; i <= args.runs; i++) {
-  const tmp = path.join(os.tmpdir(), `obs-eval-run-${process.pid}-${i}.json`);
-  process.stderr.write(`[run ${i}/${args.runs}] ${args.group}\n`);
-  const started = Date.now();
-  const child = spawnSync(process.execPath, [group.script, ...group.args({ build: args.build, cli: args.cli, scale: args.scale, kinds: args.kinds }), "--out", tmp], { stdio: ["ignore", "inherit", "inherit"] });
-  if (child.status !== 0 || !fs.existsSync(tmp)) {
-    console.error(`run ${i} failed (exit ${child.status})`);
-    process.exit(child.status === 3 ? 3 : 1);
+  let result;
+  if (saved) {
+    // Scoring runs that were measured earlier (a score was added or its reading changed): nothing is run.
+    result = saved.raw[i - 1].result;
+    raw.push(saved.raw[i - 1]);
+  } else {
+    const tmp = path.join(os.tmpdir(), `obs-eval-run-${process.pid}-${i}.json`);
+    process.stderr.write(`[run ${i}/${args.runs}] ${args.group}\n`);
+    const started = Date.now();
+    const child = spawnSync(process.execPath, [group.script, ...group.args({ build: args.build, cli: args.cli, scale: args.scale, kinds: args.kinds }), "--out", tmp], { stdio: ["ignore", "inherit", "inherit"] });
+    if (child.status !== 0 || !fs.existsSync(tmp)) {
+      console.error(`run ${i} failed (exit ${child.status})`);
+      process.exit(child.status === 3 ? 3 : 1);
+    }
+    result = JSON.parse(fs.readFileSync(tmp, "utf8"));
+    fs.rmSync(tmp, { force: true });
+    raw.push({ seconds: Math.round((Date.now() - started) / 1000), result });
   }
-  const result = JSON.parse(fs.readFileSync(tmp, "utf8"));
-  fs.rmSync(tmp, { force: true });
-  raw.push({ seconds: Math.round((Date.now() - started) / 1000), result });
   const values = {};
   for (const [id, spec] of Object.entries(group.scores)) {
     try {
@@ -78,12 +89,22 @@ if (args.baseline) {
   const decisions = {};
   for (const [id, s] of Object.entries(scores)) {
     if (!base.scores?.[id]) continue;
-    decisions[id] = decide({ baseline: base.scores[id], candidate: s, direction: s.direction, gatesPass: Boolean(args["gates-pass"]) });
+    const b = base.scores[id];
+    const noise = Math.max(b.spread ?? 0, s.spread ?? 0);
+    if (b.median === null || b.median === undefined) {
+      // The baseline could not measure this score (a verb that did not exist): the first value has nothing to beat.
+      decisions[id] = { keep: Boolean(args["gates-pass"]) && s.median !== null && s.runs >= 3, delta: null, noise, regressed: false, reason: "first measurement: the baseline had no value" };
+      continue;
+    }
+    const d = decide({ baseline: b, candidate: s, direction: s.direction, gatesPass: Boolean(args["gates-pass"]) });
+    // Worse than the baseline by more than the noise: a step that improves one score and does this to another is not kept.
+    decisions[id] = { ...d, regressed: s.median !== null && d.delta < -noise };
   }
-  console.log("\nkeep rule vs baseline (median must beat the noise, every gate must pass):");
-  for (const [id, d] of Object.entries(decisions)) console.log(`  ${pad(id, 38)}${d.keep ? "KEEP  " : "revert"} gain ${Math.round(d.delta * 100) / 100} noise ${Math.round(d.noise * 100) / 100}: ${d.reason}`);
+  console.log("\nkeep rule vs baseline (median must beat the noise, every gate must pass, no score may get worse than the noise):");
+  for (const [id, d] of Object.entries(decisions)) console.log(`  ${pad(id, 38)}${d.regressed ? "WORSE " : d.keep ? "KEEP  " : "revert"} gain ${d.delta === null ? "n/a" : Math.round(d.delta * 100) / 100} noise ${Math.round(d.noise * 100) / 100}: ${d.regressed ? "worse than the baseline by more than the noise" : d.reason}`);
   const headline = Object.values(decisions);
-  if (headline.length && !headline.some((d) => d.keep)) exit = 4;
+  if (headline.some((d) => d.regressed)) exit = 5;
+  else if (headline.length && !headline.some((d) => d.keep)) exit = 4;
   record.decisions = decisions;
 }
 if (args.log) {

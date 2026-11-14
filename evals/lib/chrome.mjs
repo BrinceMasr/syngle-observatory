@@ -105,9 +105,13 @@ export async function launchChrome({ pathName, width = 1280, height = 800, dpr =
   const child = spawn(exe, args, { stdio: "ignore", detached: process.platform !== "win32", windowsHide: true });
   let closed = false;
   let cdp = null;
+  const onSignal = () => (close(), process.exit(130));
   const close = () => {
     if (closed) return;
     closed = true;
+    // One launch per rung of a ladder: leave no listener behind (Node warns at 11 and the ladder has 11 rungs).
+    process.removeListener("exit", close);
+    for (const signal of ["SIGINT", "SIGTERM"]) process.removeListener(signal, onSignal);
     try {
       cdp?.close();
     } catch {
@@ -124,7 +128,7 @@ export async function launchChrome({ pathName, width = 1280, height = 800, dpr =
     }
   };
   process.once("exit", close);
-  for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => (close(), process.exit(130)));
+  for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, onSignal);
 
   try {
     const portFile = path.join(profile, "DevToolsActivePort");

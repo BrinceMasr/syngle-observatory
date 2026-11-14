@@ -1,0 +1,158 @@
+{
+  "group": "canvas:webgpu-cpu",
+  "label": "baseline",
+  "at": "2026-11-14T06:01:57.528Z",
+  "commit": "8a905f3",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
+    "cores": 16,
+    "platform": "win32"
+  },
+  "runs": 5,
+  "scores": {
+    "canvas.webgpu-cpu.pan.frameP95Ms": {
+      "runs": 5,
+      "median": 28,
+      "min": 27.4,
+      "max": 28.9,
+      "spread": 1.5,
+      "values": [
+        27.6,
+        27.4,
+        28,
+        28.9,
+        28.3
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 36.7,
+      "meetsBar": true
+    },
+    "canvas.webgpu-cpu.pan.over30Pct": {
+      "runs": 5,
+      "median": 2,
+      "min": 1.7,
+      "max": 2.7,
+      "spread": 1.0000000000000002,
+      "values": [
+        1.7,
+        2,
+        1.7,
+        2.7,
+        2.3
+      ],
+      "direction": "lower",
+      "unit": "%",
+      "bar": 5,
+      "meetsBar": true
+    },
+    "canvas.webgpu-cpu.pan.latencyP95Ms": {
+      "runs": 5,
+      "median": 94.2,
+      "min": 79.4,
+      "max": 120.3,
+      "spread": 40.89999999999999,
+      "values": [
+        85.3,
+        79.4,
+        94.2,
+        120.3,
+        98.2
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 100,
+      "meetsBar": true
+    },
+    "canvas.webgpu-cpu.zoom.frameP95Ms": {
+      "runs": 5,
+      "median": 28,
+      "min": 27.7,
+      "max": 28.2,
+      "spread": 0.5,
+      "values": [
+        28,
+        28,
+        28.1,
+        27.7,
+        28.2
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 36.7,
+      "meetsBar": true
+    },
+    "canvas.webgpu-cpu.zoom.latencyP95Ms": {
+      "runs": 5,
+      "median": 38.7,
+      "min": 36.2,
+      "max": 40.3,
+      "spread": 4.099999999999994,
+      "values": [
+        38.7,
+        40.3,
+        39.9,
+        36.7,
+        36.2
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 100,
+      "meetsBar": true
+    },
+    "canvas.webgpu-cpu.toggle.latencyP95Ms": {
+      "runs": 5,
+      "median": 568.1,
+      "min": 559.7,
+      "max": 580.4,
+      "spread": 20.699999999999932,
+      "values": [
+        580.4,
+        568.1,
+        562.9,
+        559.7,
+        574.7
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 200,
+      "meetsBar": false
+    },
+    "canvas.webgpu-cpu.toggle.frameMaxMs": {
+      "runs": 5,
+      "median": 66.4,
+      "min": 54.7,
+      "max": 69,
+      "spread": 14.299999999999997,
+      "values": [
+        69,
+        66.4,
+        54.7,
+        58.5,
+        67.8
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 250,
+      "meetsBar": true
+    },
+    "canvas.webgpu-cpu.firstDataMs": {
+      "runs": 5,
+      "median": 481,
+      "min": 397,
+      "max": 527,
+      "spread": 130,
+      "values": [
+        397,
+        504,
+        481,
+        435,
+        527
+      ],
+      "direction": "lower",
+      "unit": "ms",
+      "bar": 3000,
+      "meetsBar": true
+    }
+  }
+}

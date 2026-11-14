@@ -1,0 +1,68 @@
+{
+  "group": "datasources",
+  "label": "baseline",
+  "at": "2026-11-14T05:54:03.753Z",
+  "commit": "8a905f3",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12600K",
+    "cores": 16,
+    "platform": "win32"
+  },
+  "runs": 5,
+  "scores": {
+    "datasources.reachablePct": {
+      "runs": 5,
+      "median": 100,
+      "min": 100,
+      "max": 100,
+      "spread": 0,
+      "values": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": true
+    },
+    "datasources.openedPct": {
+      "runs": 5,
+      "median": 90.9,
+      "min": 90.9,
+      "max": 90.9,
+      "spread": 0,
+      "values": [
+        90.9,
+        90.9,
+        90.9,
+        90.9,
+        90.9
+      ],
+      "direction": "higher",
+      "unit": "%",
+      "bar": 100,
+      "meetsBar": false
+    },
+    "datasources.wantOpened": {
+      "runs": 5,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "spread": 0,
+      "values": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "direction": "higher",
+      "unit": "sources",
+      "bar": 1,
+      "meetsBar": false
+    }
+  }
+}
