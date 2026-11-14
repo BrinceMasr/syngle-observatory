@@ -38,7 +38,9 @@ not just the handshake, so a stale page or a stale sidecar is refused the moment
 
 * **View half** — `window.postMessage` between SyngleCode's renderer and the engine's canvas page
   (`/canvas/`, served from this binary). The page relays down the fork's own embed contract
-  (`{"rustgis": …}`): a project document pushed whole, or one of the app's `ui.*` commands run.
+  (`{"rustgis": …}`): a project document pushed whole, or one of the app's `ui.*` commands run. A change to
+  which layers are shown, or their order, goes down as `ui.layers` (the layers by name, each a name or `{name, visible}`),
+  not as the whole project: reopening a project drops every streamed layer's window, which `ui.layers` does not.
 * **Engine half** — JSON lines on the sidecar's stdin and stdout. SyngleCode's desktop process owns
   the pipe and forwards lines for the renderer. A host that does **not** own the pipe — the agent's
   map tools in a dev or headless run, a browser talking to a gateway directly — posts the same line
