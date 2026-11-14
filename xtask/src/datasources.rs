@@ -86,7 +86,7 @@ Licences were read on the publishers' own pages on the date above, and each sour
 Every command is an id with JSON parameters (`syngle-map commands` lists them all). From a shell or an agent:
 
 ```sh
-syngle-map run --cmd 'id={"param":"value"}' --cmd 'share.exportMap={"path":"map.png"}'
+syngle-map run --cmd 'layer.addUrl={"url":"https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"}' --cmd 'share.exportMap={"path":"map.png"}'
 ```
 
 Each command answers with one line of JSON that says what it added or why it could not. The same ids and parameters are what the app's bridge takes (see [The Observatory bridge](bridge.md)).
@@ -140,8 +140,8 @@ fn source(out: &mut String, s: &Value, built: bool) -> Result<(), String> {
     if command == "stac.addAsset"
         && let Some((api, collection)) = params.get("url").and_then(Value::as_str).and_then(stac_search)
     {
-        let search = serde_json::json!({"url": api, "collections": collection, "bbox": [150.9, -34.0, 151.3, -33.7]});
-        out.push_str("# 1. the items over a box (west, south, east, north); each answer names the item's address\n");
+        let search = serde_json::json!({"url": api, "collections": collection, "bbox": [151.1, -33.95, 151.3, -33.8]});
+        out.push_str("# 1. the items over a box (west, south, east, north); an item's address is its `self` link\n");
         out.push_str(&command_line("stac.search", &search)?);
         out.push_str("\n# 2. add the tile of an item (the example is the one over Sydney)\n");
     }
@@ -222,7 +222,7 @@ mod tests {
         let page = page(catalogue).unwrap_or_default();
         assert!(page.contains("last checked 2026-01-02"));
         assert!(page.contains("syngle-map run --cmd 'map.addTiles={\"kind\":\"pmtiles\",\"url\":\"https://x.test/t.pmtiles\"}'"));
-        assert!(page.contains("stac.search={\"bbox\":[150.9,-34.0,151.3,-33.7],\"collections\":\"dem\",\"url\":\"https://api.test/v1\"}"));
+        assert!(page.contains("stac.search={\"bbox\":[151.1,-33.95,151.3,-33.8],\"collections\":\"dem\",\"url\":\"https://api.test/v1\"}"));
         assert!(page.contains("- **Pages read:** <https://x.test/a>"));
         // A source the map cannot open yet is not given a command that fails.
         assert!(page.contains("Not built yet") && !page.contains("map.findPlace="));

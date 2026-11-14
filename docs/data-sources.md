@@ -9,7 +9,7 @@ Licences were read on the publishers' own pages on the date above, and each sour
 Every command is an id with JSON parameters (`syngle-map commands` lists them all). From a shell or an agent:
 
 ```sh
-syngle-map run --cmd 'id={"param":"value"}' --cmd 'share.exportMap={"path":"map.png"}'
+syngle-map run --cmd 'layer.addUrl={"url":"https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"}' --cmd 'share.exportMap={"path":"map.png"}'
 ```
 
 Each command answers with one line of JSON that says what it added or why it could not. The same ids and parameters are what the app's bridge takes (see [The Observatory bridge](bridge.md)).
@@ -119,8 +119,8 @@ GLO-30 Public has no tiles over the ocean (read the height as zero there) and le
 - **Pages read:** <https://registry.opendata.aws/copernicus-dem/>, <https://earth-search.aws.element84.com/v1>
 
 ```sh
-# 1. the items over a box (west, south, east, north); each answer names the item's address
-syngle-map run --cmd 'stac.search={"bbox":[150.9,-34.0,151.3,-33.7],"collections":"cop-dem-glo-30","url":"https://earth-search.aws.element84.com/v1"}'
+# 1. the items over a box (west, south, east, north); an item's address is its `self` link
+syngle-map run --cmd 'stac.search={"bbox":[151.1,-33.95,151.3,-33.8],"collections":"cop-dem-glo-30","url":"https://earth-search.aws.element84.com/v1"}'
 # 2. add the tile of an item (the example is the one over Sydney)
 syngle-map run --cmd 'stac.addAsset={"asset":"data","name":"GLO-30 Sydney (STAC)","url":"https://earth-search.aws.element84.com/v1/collections/cop-dem-glo-30/items/Copernicus_DSM_COG_10_S34_00_E151_00_DEM"}'
 ```
