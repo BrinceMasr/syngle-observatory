@@ -7,7 +7,7 @@ import path from "node:path";
 import { startEngine } from "../lib/engine.mjs";
 import { assertPath, launchChrome, PROBE_EXPRESSION } from "../lib/chrome.mjs";
 import { sleep } from "../lib/args.mjs";
-import { appStats, frameIntervals, frameStats, latencies, ROW } from "./frames.mjs";
+import { appStats, frameIntervals, frameStats, latencies, ROW, windowRows } from "./frames.mjs";
 import { decodePng, inkMask, pointRecall, readXy, RECALL_BAR } from "./fidelity.mjs";
 
 // Installed in every frame before its scripts run. The view's iframe starts as an empty document and is then navigated, and
@@ -88,6 +88,12 @@ export async function runCanvas(options) {
       const data = await ev(`(() => { const w = ${VIEW}; return { origin: w.performance.timeOrigin, rows: w.__spikeApp.frames.slice(${from}) }; })()`);
       return data.rows.map((row) => Object.assign(row, { at: data.origin + row[ROW.now] }));
     };
+    // The rows recorded since `from`, and the one recorded just before them: the first row is compared with it, so a
+    // change carried by the first frame after the window began is seen (see `latencies`).
+    const windowFrom = async (from) => {
+      const all = await rowsFrom(Math.max(0, from - 1));
+      return from > 0 ? { before: all[0], rows: all.slice(1) } : { before: null, rows: all };
+    };
     const deadline = Date.now() + 120000;
     let firstRow = null;
     let firstAny = null;
@@ -129,13 +135,14 @@ export async function runCanvas(options) {
     const finish = async (from, windows, changed) => {
       await sleep(400);
       const data = await ev(`(() => { const e = ${VIEW}.__eval; e.stop(); return { raf: e.raf, inputs: e.inputs, long: e.long }; })()`);
-      const rows = await rowsFrom(from);
+      const { before, rows } = await windowFrom(from);
       const inWindow = (t) => windows.some(([a, b]) => t >= a && t <= b);
       const inputs = data.inputs.filter(inWindow);
+      const inside = windowRows(rows, before, inWindow);
       return {
         frame: frameStats(frameIntervals(data.raf, windows)),
-        latency: latencies({ inputs, samples: rows, ticks: data.raf, changed }),
-        app: appStats(rows.filter((r) => inWindow(r.at))),
+        latency: latencies({ inputs, samples: rows, before, ticks: data.raf, changed }),
+        app: appStats(inside.rows, inside.before),
         longTasks: { count: data.long.length, max: data.long.length ? Math.round(Math.max(...data.long)) : 0 },
       };
     };
@@ -214,12 +221,12 @@ export async function runCanvas(options) {
       }
       await sleep(300);
       const data = await ev(`(() => { const e = ${VIEW}.__eval; e.stop(); return { raf: e.raf, long: e.long }; })()`);
-      const rows = await rowsFrom(from);
+      const { before, rows } = await windowFrom(from);
       const changed = (row, previous) => row[ROW.visible] !== previous[ROW.visible];
       result.scenarios.toggle = {
         frame: frameStats(frameIntervals(data.raf, windows)),
-        latency: latencies({ inputs: sent, samples: rows, ticks: data.raf, changed }),
-        app: appStats(rows),
+        latency: latencies({ inputs: sent, samples: rows, before, ticks: data.raf, changed }),
+        app: appStats(rows, before),
         longTasks: { count: data.long.length, max: data.long.length ? Math.round(Math.max(...data.long)) : 0 },
       };
       await bridge({ name: "layers", layers: [{ name: pointsLayer, visible: true }] });
