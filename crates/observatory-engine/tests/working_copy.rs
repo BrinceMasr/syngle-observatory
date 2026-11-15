@@ -111,16 +111,20 @@ impl Engine {
         (info["path"].as_str().map(str::to_string), info["unsaved"].as_bool().unwrap_or(false))
     }
 
-    /// The names of the maps the engine holds now.
-    fn maps(&mut self) -> Vec<String> {
+    /// The project the engine holds now, as the host reads it.
+    fn project(&mut self) -> Value {
         self.send(&json!({"cmd": "project", "id": 7}));
         loop {
             let line = self.next();
             if line["event"] == "project" {
-                let project: Value = serde_json::from_str(line["text"].as_str().expect("the project's text")).expect("project json");
-                return names_of(&project);
+                return serde_json::from_str(line["text"].as_str().expect("the project's text")).expect("project json");
             }
         }
+    }
+
+    /// The names of the maps the engine holds now.
+    fn maps(&mut self) -> Vec<String> {
+        names_of(&self.project())
     }
 
     /// A polite quit: the engine writes what is unwritten and exits.
@@ -240,7 +244,7 @@ fn the_file_a_project_was_saved_to_and_its_unsaved_mark_survive_a_quit() {
     first.command("project.saveAs", json!({"path": saved.to_string_lossy()}));
     assert_eq!(first.info(), (Some(saved.display().to_string()), false));
     first.command("map.new", json!({"name": "After the save"}));
-    assert_eq!(first.info().1, true);
+    assert!(first.info().1);
     first.quit();
 
     let mut second = Engine::start(&root, &file);
@@ -249,4 +253,62 @@ fn the_file_a_project_was_saved_to_and_its_unsaved_mark_survive_a_quit() {
     assert_eq!(second.info(), (Some(saved.display().to_string()), true));
     assert_eq!(second.maps(), ["Map", "Sydney data centres", "After the save"]);
     second.quit();
+}
+
+/// What a person sees of a map, and so what has to come back unchanged: its name, basemap and view, and each layer's name,
+/// style, visibility and rows.
+fn what_a_person_sees(project: &Value) -> Value {
+    let maps: Vec<Value> = project["maps"]
+        .as_array()
+        .expect("maps")
+        .iter()
+        .map(|map| {
+            let layers: Vec<Value> = map["layers"]
+                .as_array()
+                .expect("layers")
+                .iter()
+                .map(|l| json!({"name": l["name"], "renderer": l["renderer"], "visible": l["visible"], "dataset": l["dataset"]}))
+                .collect();
+            json!({"id": map["id"], "name": map["name"], "basemap": map["basemap"], "camera": map["camera"], "layers": layers})
+        })
+        .collect();
+    json!({"name": project["name"], "active_map": project["active_map"], "maps": maps})
+}
+
+const SITES: &str = r#"{"type":"FeatureCollection","features":[
+{"type":"Feature","properties":{"name":"SYD1","operator":"AirTrunk"},"geometry":{"type":"Point","coordinates":[151.2093,-33.8688]}},
+{"type":"Feature","properties":{"name":"SYD2","operator":"NEXTDC"},"geometry":{"type":"Point","coordinates":[151.1,-33.9]}},
+{"type":"Feature","properties":{"name":"SYD3","operator":"Equinix"},"geometry":{"type":"Point","coordinates":[151.0,-33.8]}}]}"#;
+
+#[test]
+fn a_map_with_data_a_style_a_basemap_and_a_view_comes_back_exactly() {
+    let root = folder("rich");
+    let sites = root.join("data").join("sites.geojson");
+    std::fs::write(&sites, SITES).expect("a dataset");
+    let file = root.join("maps").join("project.rgis");
+
+    let mut first = Engine::start(&root, &file);
+    first.command("layer.addData", json!({"path": sites.to_string_lossy(), "name": "Sydney data centres"}));
+    first.command("layer.symbology", json!({"layer": "Sydney data centres", "type": "unique", "field": "operator"}));
+    first.command("map.basemap", json!({"name": "midnight"}));
+    first.command("map.goToXY", json!({"lon": 151.0, "lat": -33.9, "scale": 50000.0, "bearing": 0, "pitch": 0}));
+    first.command("map.new", json!({"name": "Second map"}));
+    first.command("map.rename", json!({"name": "Sites, second look"}));
+    let before = what_a_person_sees(&first.project());
+    // The test means something only if there is something there to lose.
+    assert_eq!(before["maps"].as_array().map(Vec::len), Some(2));
+    assert_eq!(before["maps"][0]["layers"][0]["dataset"]["features"].as_array().map(Vec::len), Some(3));
+    assert_eq!(before["maps"][0]["basemap"], "Midnight");
+    assert!(before["maps"][0]["layers"][0]["renderer"].get("Unique").is_some(), "{}", before["maps"][0]["layers"][0]["renderer"]);
+    first.quit();
+
+    let mut second = Engine::start(&root, &file);
+    assert!(second.restored(), "{}", second.ready);
+    assert_eq!(what_a_person_sees(&second.project()), before);
+    second.quit();
+
+    // And again: a restored project that is quit untouched is still the same project, not a thinner copy.
+    let mut third = Engine::start(&root, &file);
+    assert_eq!(what_a_person_sees(&third.project()), before);
+    third.quit();
 }
