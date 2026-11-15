@@ -36,6 +36,7 @@
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+pub mod beat;
 pub mod bridge;
 pub mod emit;
 pub mod parts;
@@ -184,6 +185,8 @@ pub fn run(args: &[String]) -> i32 {
         }
         let _ = work_tx.send(Work::Closed);
     });
+    // A bridge command that takes long says so from this thread while the loop is busy with it (`beat.rs`).
+    let beacon = beat::Beacon::start(beat::EVERY, emit);
     loop {
         let line = match work_rx.recv() {
             Ok(Work::Line(line)) => line,
@@ -246,7 +249,18 @@ pub fn run(args: &[String]) -> i32 {
             Command::Bridge => {
                 // One dispatch for both transports: the pipe answers with the same lines the
                 // gateway's `/bridge` route returns (`bridge_lines`).
-                for line in bridge_lines(&mut session, &project, &linked, &msg) {
+                // Only a command can be long (a hello, a version refusal answer at once). A command that is still
+                // running after a beat says so, and is told to stop before its answer is written.
+                let running = (msg.get("bridge").and_then(Value::as_str) == Some("command"))
+                    .then(|| msg.get("command").and_then(|c| c.get("name")).and_then(Value::as_str).unwrap_or("command").to_string());
+                if let Some(name) = &running {
+                    beacon.running(&id, name);
+                }
+                let lines = bridge_lines(&mut session, &project, &linked, &msg);
+                if running.is_some() {
+                    beacon.done();
+                }
+                for line in lines {
                     emit(&line);
                 }
             }

@@ -50,6 +50,15 @@ not just the handshake, so a stale page or a stale sidecar is refused the moment
   either transport closes both. Even a body that is not JSON is refused in the bridge's own
   `bad-params` shape, never with a bare 400 page.
 
+A **long command says so**. The engine runs one command at a time, so while a geocode of a hundred addresses or a dataset
+read over the network runs, nothing else is answered and the host hears nothing. A command still running after two
+seconds sends a `progress` event with `phase: "running"` (its `id` and `name`) every two seconds, from a thread of its own,
+until its one `result` or `error`; a command that finishes sooner sends none. It is an optional emitter, like `focus-exit`: the
+schema's `progress` already has a free `phase`, a host that does not know it ignores the line, and `protocolVersion` does
+not change. A host reads any such line as proof the engine is working, and gives up on a command only when the engine has
+gone quiet (the app waits 6 seconds of silence), not after a fixed time. A host that never sees one (an older engine) keeps
+its own fixed wait. Commands behind the running one wait their turn on the pipe and are covered by the same beats.
+
 A `command` may name the map it acts on with `map`, an id or a name (ids are in `info.project`'s `mapList`).
 The command runs on that map and the map in view stays as it was. A name that two maps share, or one that
 names no map, is refused as `bad-params` with the list; a command that has a `map` of its own keeps its

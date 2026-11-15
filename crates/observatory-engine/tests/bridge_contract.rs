@@ -656,3 +656,79 @@ fn any_engine_line_may_name_its_map_and_the_map_in_view_stays() {
     let (bad, ..) = engine.command(8, &json!({"name": "dataset.query", "dataset": "Towns", "map": "Nowhere"}));
     assert_eq!(bad["code"].as_str(), Some("bad-params"), "{bad}");
 }
+
+/// A geocoder of one's own that is slow: each request is answered after `delay`, with one place in Paris.
+fn slow_nominatim(delay: Duration) -> String {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a port for the slow geocoder");
+    let port = listener.local_addr().expect("its address").port();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            std::thread::spawn(move || {
+                let mut head = Vec::new();
+                let mut byte = [0u8; 1];
+                while !head.ends_with(b"\r\n\r\n") {
+                    match std::io::Read::read(&mut stream, &mut byte) {
+                        Ok(1) => head.push(byte[0]),
+                        _ => return,
+                    }
+                }
+                std::thread::sleep(delay);
+                let body = br#"[{"lat": "48.8584", "lon": "2.2945", "display_name": "Paris", "boundingbox": ["48.857", "48.859", "2.293", "2.296"]}]"#;
+                let reply = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                let _ = stream.write_all(reply.as_bytes());
+                let _ = stream.write_all(body);
+            });
+        }
+    });
+    format!("http://127.0.0.1:{port}")
+}
+
+/// A command that runs long says so while it runs, and then answers once (Syngle-Ecosystem, the engine's
+/// 30 second wait). The command loop is busy with it, so the beats come from a thread of their own; the host
+/// reads them as "this engine is working", not "this engine is gone". Three addresses a second each take
+/// three seconds, and a beat is two.
+#[test]
+fn a_long_command_says_it_is_still_running_and_then_answers_once() {
+    let base = slow_nominatim(Duration::from_millis(1000));
+    let mut engine = Engine::start("beat");
+    engine.hello(1);
+    let csv = "id,street,city\n1,A St,Paris\n2,B St,Paris\n3,C St,Paris\n";
+    let (value, _, lines) =
+        engine.command(1, &json!({"name": "command", "id": "layer.addDataText", "params": {"fileName": "sites.csv", "text": csv}}));
+    assert!(value.get("code").is_none(), "the table opened: {lines:?}");
+    // A quick command adds no beat to its answer.
+    let phase = |l: &Value| l["payload"]["phase"].as_str().map(str::to_string);
+    assert!(lines.iter().all(|l| phase(l).as_deref() != Some("running")), "a quick command sends no beat: {lines:?}");
+
+    let started = Instant::now();
+    let (value, _, lines) = engine.command(
+        2,
+        &json!({"name": "command", "id": "layer.geocode", "params": {"table": "sites", "address": ["street", "city"], "url": base}}),
+    );
+    assert!(started.elapsed() >= Duration::from_millis(2900), "the geocode really was slow: {:?}", started.elapsed());
+    assert_eq!(value["matched"].as_u64(), Some(3), "the command's own answer: {value}");
+
+    // At least one beat, each the progress of this command, all before its one result.
+    let beats: Vec<usize> = lines.iter().enumerate().filter(|(_, l)| phase(l).as_deref() == Some("running")).map(|(i, _)| i).collect();
+    assert!(!beats.is_empty(), "a command that takes three seconds says it is still running: {lines:?}");
+    for &i in &beats {
+        let payload = &lines[i]["payload"];
+        assert_eq!(lines[i]["event"].as_str(), Some("bridge.event"), "{lines:?}");
+        assert_eq!(payload["type"].as_str(), Some("progress"), "{lines:?}");
+        assert_eq!(payload["id"].as_u64(), Some(2), "a beat names the command that is running: {lines:?}");
+    }
+    let results: Vec<usize> =
+        lines.iter().enumerate().filter(|(_, l)| l["payload"]["type"].as_str() == Some("result")).map(|(i, _)| i).collect();
+    assert_eq!(results.len(), 1, "one result for one command: {lines:?}");
+    assert!(beats.iter().all(|&i| i < results[0]), "every beat comes before the result: {lines:?}");
+
+    // The next command is answered with no beat of its own (one of the last command's may have been in flight).
+    let (_, _, lines) = engine.command(3, &json!({"name": "dataset.query", "dataset": "sites (geocoded)", "limit": 1}));
+    for l in lines.iter().filter(|l| phase(l).as_deref() == Some("running")) {
+        assert_eq!(l["payload"]["id"].as_u64(), Some(2), "only the finished command's last beat can come late: {lines:?}");
+    }
+}
