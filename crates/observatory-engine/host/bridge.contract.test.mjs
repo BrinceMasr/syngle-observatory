@@ -640,6 +640,47 @@ test("a text field of the view keeps its own undo", () => {
   assert.deepEqual(eventsOf(mounted), [{ type: "history", step: "undo" }]);
 });
 
+test("the schema names the save event, optional like the others, with no member required", () => {
+  const save = SCHEMA.view.events.save;
+  assert.equal(save.required, undefined);
+  assert.deepEqual(save.properties.as, { type: "boolean" });
+  assert.equal(SCHEMA.protocolVersion, 1);
+});
+
+test("Ctrl+S is save and Ctrl+Shift+S is save as, once per press, and the key is taken from the view", () => {
+  const mounted = mount();
+  seed(mounted);
+  const save = mounted.press("s", { ctrlKey: true });
+  mounted.press("S", { ctrlKey: true, shiftKey: true });
+  assert.deepEqual(eventsOf(mounted), [
+    { type: "save", as: false },
+    { type: "save", as: true },
+  ]);
+  assert.equal(save.prevented, true, "the browser's own save of the page must not run");
+  mounted.press("s", { ctrlKey: true, repeat: true });
+  mounted.press("s", { ctrlKey: true, isComposing: true });
+  mounted.press("s", { ctrlKey: true, altKey: true });
+  mounted.press("s", { ctrlKey: true, metaKey: true });
+  mounted.press("s", { metaKey: true });
+  assert.deepEqual(eventsOf(mounted), [], "a repeat, a composition, Alt and the other platform's key are not save");
+  const held = mounted.press("s", { ctrlKey: true, repeat: true });
+  assert.equal(held.prevented, true, "a held chord is still the host's, so the page never saves");
+  mounted.press("s");
+  assert.deepEqual(eventsOf(mounted), [{ type: "key", key: "s" }], "a bare S is still only a letter");
+});
+
+test("on a Mac the save chord is Cmd", () => {
+  const mounted = mount({ platform: "MacIntel" });
+  seed(mounted);
+  mounted.press("s", { metaKey: true });
+  mounted.press("s", { metaKey: true, shiftKey: true });
+  mounted.press("s", { ctrlKey: true });
+  assert.deepEqual(eventsOf(mounted), [
+    { type: "save", as: false },
+    { type: "save", as: true },
+  ]);
+});
+
 test("the key events are addressed to the host's origin like every other message", () => {
   const mounted = mount();
   mounted.host({ observatory: "hello" });

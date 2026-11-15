@@ -439,6 +439,14 @@
           }
         }
       },
+      "save": {
+        "summary": "The person pressed the platform's save chord in the map: Ctrl+S or Cmd+S (save), Ctrl+Shift+S or Cmd+Shift+S (`as` is true: save a copy elsewhere). The canvas takes the keyboard and a framed page's keys never reach its host, so without this event Ctrl+S would do nothing wherever the person's focus is after touching the map. The page decides which chord is the platform's (Cmd on a Mac, Ctrl elsewhere), sends one event per press (never a repeat), and takes the key from the view (the canvas-only view has no save of its own, and the browser's would save the page). The host decides what saving means. Optional, like focus-exit.",
+        "properties": {
+          "as": {
+            "type": "boolean"
+          }
+        }
+      },
       "frame-stats": {
         "summary": "What the view's own frames are doing, as the view counts them. A development page adds the raw samples (`frames`, `rows`) that the measurement strip summarises; a shipped page sends the four counts only, where `redraws` is the gateway instrument's GPU draw calls (not the app's re-render count, which only a development page samples) and `renderMs` is null because nothing is sampled.",
         "required": [

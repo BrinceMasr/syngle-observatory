@@ -640,6 +640,13 @@
       if (!event.repeat) bridgeTell("event", { payload: { type: "history", step: step } });
       return;
     }
+    var save = saveOf(event);
+    if (save !== null) {
+      // The canvas has no save of its own, and the browser's would save this page: the host's Save takes the key.
+      if (typeof event.preventDefault === "function") event.preventDefault();
+      if (!event.repeat) bridgeTell("event", { payload: { type: "save", as: save === "saveAs" } });
+      return;
+    }
     if (chord || event.repeat) return;
     if (typeof key === "string" && /^[A-Za-z]$/.test(key)) {
       bridgeTell("event", { payload: { type: "key", key: key } });
@@ -661,6 +668,18 @@
     var target = event.target;
     if (target && (target.isContentEditable === true || /^(input|textarea|select)$/i.test(String(target.tagName || "")))) return null;
     return key === "y" || event.shiftKey ? "redo" : "undo";
+  }
+
+  // The platform's save chords (Syngle-Ecosystem #672): Cmd+S and Cmd+Shift+S on a Mac, Ctrl+S and Ctrl+Shift+S elsewhere.
+  // "save" or "saveAs"; `null` for any other key, for Alt, and for the other platform's modifier.
+  function saveOf(event) {
+    var key = typeof event.key === "string" ? event.key.toLowerCase() : "";
+    if (key !== "s" || event.altKey) return null;
+    var platform = typeof navigator !== "undefined" && navigator && typeof navigator.platform === "string" ? navigator.platform : "";
+    var mac = /mac|iphone|ipad|ipod/i.test(platform);
+    var modifier = mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+    if (!modifier) return null;
+    return event.shiftKey ? "saveAs" : "save";
   }
 
   // The view's document, once per document: the frame navigates (a reload, a restart), so this runs

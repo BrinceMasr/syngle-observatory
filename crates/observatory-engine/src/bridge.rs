@@ -557,7 +557,7 @@ mod tests {
             assert!(view["state"]["required"].as_array().unwrap().contains(&json!(key)), "{key} in the view state");
         }
         for event in
-            ["camera-changed", "selection-changed", "feature-clicked", "tool-result", "frame-stats", "focus-exit", "key", "history"]
+            ["camera-changed", "selection-changed", "feature-clicked", "tool-result", "frame-stats", "focus-exit", "key", "history", "save"]
         {
             assert!(view["events"].get(event).is_some(), "{event} is a view event");
         }
