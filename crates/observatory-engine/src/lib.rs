@@ -29,13 +29,17 @@
 //! Deliberately *not* in the engine: the map view. The engine never renders; the view never reads
 //! the disk. See `agents/docs/research/observatory-engine-spike.md` in the Syngle-Ecosystem repo.
 //!
-//! Usage: `syngle-observatory-engine --root <repo> --data <dir> [--token <secret>] [--preload <url|path>]`
+//! * **A working copy.** With `--autosave <file>` it keeps the project it holds on disk ([`autosave`], Syngle-Ecosystem
+//!   #671): read before `ready` (which then says `"restored": true`), written after each quiet moment and on `quit`.
+//!
+//! Usage: `syngle-observatory-engine --root <repo> --data <dir> [--token <secret>] [--preload <url|path>] [--autosave <file>]`
 //!
 //! stdout: one JSON object a line, `{"event": …}` — the protocol.
 //! stderr: human/log lines — HTTP requests and their byte counts, notices, timings.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+pub mod autosave;
 pub mod beat;
 pub mod bridge;
 pub mod emit;
@@ -156,11 +160,46 @@ pub fn run(args: &[String]) -> i32 {
     });
     let pid = std::process::id();
     let base = cfg.base.clone();
+    // The working copy comes back before `ready`, so the page's first project document is already the work the
+    // person left, and the host (which opens the sample map on a fresh start) is told whether there was any.
+    let mut autosave = opt("--autosave").filter(|p| !p.is_empty()).map(|p| autosave::Autosave::new(PathBuf::from(p)));
+    let mut session = Session::new(Project::default());
+    let mut restored = false;
+    match autosave.as_mut().map(autosave::Autosave::restore) {
+        Some(autosave::Restored::Loaded(copy)) => {
+            // Opened by the session's own command, so rows, history and the view are set up as for any opened project;
+            // what it says about opening (a notice) is not the person's, and the file it was saved to and its unsaved
+            // mark are the ones the copy kept.
+            match session.run("project.openText", &json!({"text": copy.text})) {
+                Ok(_) => {
+                    restored = true;
+                    session.clear_history();
+                    session.notices.clear();
+                    session.path = copy.path;
+                    session.dirty = copy.dirty;
+                    project.publish(&session.project);
+                }
+                Err(why) => {
+                    log(&format!("the working copy could not be opened, starting fresh: {why}"));
+                    if let Some(autosave) = autosave.as_mut() {
+                        autosave.reject(why);
+                    }
+                    session = Session::new(Project::default());
+                }
+            }
+        }
+        Some(autosave::Restored::Unreadable(why)) => {
+            log(&format!("the working copy could not be read, starting fresh: {why}"));
+        }
+        Some(autosave::Restored::Absent) | None => {}
+    }
+    if let Some(autosave) = autosave.as_mut() {
+        autosave.baseline(session.revision);
+    }
     // `auth` tells the host the gateway is token-guarded; the token itself is the host's (it
     // minted it) and never travels back over this channel.
-    emit(&json!({"event":"ready","port":port,"pid":pid,"base":base,"auth":cfg.token.is_some(),"t":now_ms()}));
+    emit(&json!({"event":"ready","port":port,"pid":pid,"base":base,"auth":cfg.token.is_some(),"restored":restored,"t":now_ms()}));
 
-    let mut session = Session::new(Project::default());
     // The bridge's handshake: false until a peer says hello with this protocol's version. A command
     // that arrives before one is refused rather than guessed at. The flag is shared with the
     // gateway's `/bridge` route (`linked` above), so both transports see the same link.
@@ -188,20 +227,36 @@ pub fn run(args: &[String]) -> i32 {
     // A bridge command that takes long says so from this thread while the loop is busy with it (`beat.rs`).
     let beacon = beat::Beacon::start(beat::EVERY, emit);
     loop {
-        let line = match work_rx.recv() {
-            Ok(Work::Line(line)) => line,
-            Ok(Work::Bridge(job)) => {
+        // The working copy: a change waits for a quiet moment, and the loop sleeps no longer than that.
+        if let Some(autosave) = autosave.as_mut() {
+            autosave.observe(session.revision, Instant::now());
+            if autosave.wait(Instant::now()).is_some_and(|wait| wait.is_zero()) {
+                keep_working_copy(autosave, &session);
+            }
+        }
+        let waiting = autosave.as_ref().and_then(|autosave| autosave.wait(Instant::now()));
+        let next = match waiting {
+            None => work_rx.recv().ok(),
+            Some(wait) => match work_rx.recv_timeout(wait) {
+                Ok(work) => Some(work),
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => None,
+            },
+        };
+        let line = match next {
+            Some(Work::Line(line)) => line,
+            Some(Work::Bridge(job)) => {
                 // The answer goes to the peer that asked, and nowhere else: a line on stdout belongs to
                 // the host's own pipe, and a host that did not post this command must not read its reply.
                 let lines = bridge_lines(&mut session, &project, &linked, &job.msg);
                 let _ = job.reply.send(lines);
                 continue;
             }
-            Ok(Work::Render(job)) => {
+            Some(Work::Render(job)) => {
                 answer_render(&mut session, job);
                 continue;
             }
-            Ok(Work::Closed) | Err(_) => break,
+            Some(Work::Closed) | None => break,
         };
         let line = line.trim();
         if line.is_empty() {
@@ -268,7 +323,21 @@ pub fn run(args: &[String]) -> i32 {
             Command::Unknown(other) => emit(&json!({"event":"error","id":id,"error":format!("unknown command {other}")})),
         }
     }
+    // The engine is going (a `quit`, or the host's pipe closed): what was left unwritten is written now.
+    if let Some(autosave) = autosave.as_mut() {
+        autosave.observe(session.revision, Instant::now());
+        if autosave.pending() {
+            keep_working_copy(autosave, &session);
+        }
+    }
     0
+}
+
+/// Writes the working copy; a write that fails says so in the log and is tried again after a quiet moment.
+fn keep_working_copy(autosave: &mut autosave::Autosave, session: &Session) {
+    if let Err(why) = autosave.write(&session.project, session.path.as_deref(), session.dirty, Instant::now()) {
+        log(&format!("the working copy was not written: {why}"));
+    }
 }
 
 /// One line of the control protocol: what the host asks the engine to do.
