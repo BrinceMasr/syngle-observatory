@@ -28,6 +28,10 @@ const MAX_PIECE: u64 = 16 << 20;
 pub const READ_BUDGET: u64 = if cfg!(target_arch = "wasm32") { 128 << 20 } else { 256 << 20 };
 /// The most bytes a file keeps (least recently used parts are dropped past it).
 const KEEP: usize = if cfg!(target_arch = "wasm32") { 384 << 20 } else { 640 << 20 };
+/// The most bytes all files keep together: past it the least recently used parts of any file are dropped. [`KEEP`] bounds one
+/// file, and [`MAX_FILES`] of them at that size would be 12 GiB, more than the 4 GiB a wasm32 page can address at all. In the browser
+/// this leaves most of the page's memory to the map; on the desktop it is a share of what a machine has.
+pub const TOTAL_KEEP: usize = if cfg!(target_arch = "wasm32") { 768 << 20 } else { 2048 << 20 };
 /// The most rounds of fetching one read may take.
 pub const MAX_ROUNDS: usize = 48;
 /// The most bytes one round of a read may ask for (readers plan within [`READ_BUDGET`]).
@@ -95,7 +99,15 @@ pub fn fetch_whole(url: &str, done: Done) {
 
 struct Piece {
     bytes: Arc<Vec<u8>>,
+    /// When it was last read or kept: [`tick`]'s count, the same clock for every file, so the least recently used part of all
+    /// files can be told.
     used: u64,
+}
+
+/// The next moment on the clock every file's parts are stamped with.
+fn tick() -> u64 {
+    static TICK: AtomicU64 = AtomicU64::new(0);
+    TICK.fetch_add(1, Ordering::Relaxed) + 1
 }
 
 #[derive(Default)]
@@ -103,7 +115,6 @@ struct Store {
     /// Parts held, by where they start: never overlapping, merged when they meet.
     pieces: BTreeMap<u64, Piece>,
     held: usize,
-    tick: u64,
     /// The end of the file, once a read ran past it.
     end: Option<u64>,
     /// The file's last bytes, and whether they are the whole file (it was shorter than asked).
@@ -194,8 +205,7 @@ impl Remote {
         if len == 0 {
             return Some(bytes::Bytes::new());
         }
-        s.tick += 1;
-        let tick = s.tick;
+        let tick = tick();
         let found = s.pieces.range_mut(..=at).next_back().and_then(|(start, p)| {
             let from = usize::try_from(at - start).ok()?;
             let to = from.checked_add(usize::try_from(len).ok()?)?;
@@ -217,8 +227,7 @@ impl Remote {
     /// pages), or `None` (noted as missing, `want` bytes from there).
     pub fn from(&self, at: u64, want: u64) -> Option<bytes::Bytes> {
         let mut s = self.lock();
-        s.tick += 1;
-        let tick = s.tick;
+        let tick = tick();
         let found = s.pieces.range_mut(..=at).next_back().and_then(|(start, p)| {
             let from = usize::try_from(at - start).ok()?;
             (from < p.bytes.len()).then(|| {
@@ -306,18 +315,30 @@ impl Remote {
     }
 
     /// Keeps fetched bytes `at..`: merged with the parts they meet. A piece shorter than asked
-    /// for (`asked`) ends the file.
+    /// for (`asked`) ends the file. Past [`KEEP`] this file's least recently used parts go, and past [`TOTAL_KEEP`] the least
+    /// recently used parts of any file do.
     fn insert(&self, at: u64, asked: u64, bytes: Vec<u8>) {
+        self.insert_within(at, asked, bytes, TOTAL_KEEP, &all_files());
+    }
+
+    /// [`insert`](Self::insert) with the budget all files share named, and the files it is shared with.
+    fn insert_within(&self, at: u64, asked: u64, bytes: Vec<u8>, limit: usize, others: &[Arc<Remote>]) {
+        if let Some(start) = self.store(at, asked, bytes) {
+            keep_within(limit, self, start, others);
+        }
+    }
+
+    /// Holds the bytes and keeps this file within [`KEEP`]; where the part that holds them starts, or `None` when nothing was held.
+    fn store(&self, at: u64, asked: u64, bytes: Vec<u8>) -> Option<u64> {
         let mut s = self.lock();
         if (bytes.len() as u64) < asked {
             let end = at.saturating_add(bytes.len() as u64);
             s.end = Some(s.end.map_or(end, |e| e.min(end)));
         }
         if bytes.is_empty() {
-            return;
+            return None;
         }
-        s.tick += 1;
-        let tick = s.tick;
+        let tick = tick();
         let mut start = at;
         let mut end = at.saturating_add(bytes.len() as u64);
         // The pieces this one meets (touching counts), merged into one.
@@ -335,7 +356,7 @@ impl Remote {
         let piece = if parts.is_empty() {
             Arc::new(bytes)
         } else {
-            let Ok(size) = usize::try_from(end - start) else { return };
+            let size = usize::try_from(end - start).ok()?;
             let mut out = vec![0u8; size];
             parts.push((at, Arc::new(bytes)));
             for (a, b) in &parts {
@@ -355,6 +376,7 @@ impl Remote {
                 s.held = s.held.saturating_sub(p.bytes.len());
             }
         }
+        Some(start)
     }
 
     /// Keeps a file's last `asked` bytes: fewer is the whole file.
@@ -377,6 +399,43 @@ impl Remote {
 fn files() -> &'static Mutex<Vec<Arc<Remote>>> {
     static F: OnceLock<Mutex<Vec<Arc<Remote>>>> = OnceLock::new();
     F.get_or_init(Mutex::default)
+}
+
+/// Every file kept now.
+fn all_files() -> Vec<Arc<Remote>> {
+    files().lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// Keeps all the files together within `limit` bytes: while they hold more, the least recently used part of any of them goes, never
+/// the part `keep` just held at `keep_start`. Each file is locked on its own, one after the other, never two at once. A part a read
+/// is using stays alive until the read lets go of it, so this frees it for the next one, not under the reader.
+fn keep_within(limit: usize, keep: &Remote, keep_start: u64, others: &[Arc<Remote>]) {
+    loop {
+        let mut total = 0usize;
+        let mut oldest: Option<(&Remote, u64, u64)> = None;
+        let held = others.iter().map(|r| &**r).filter(|r| !std::ptr::eq(*r, keep)).chain(std::iter::once(keep));
+        for remote in held {
+            let s = remote.lock();
+            total = total.saturating_add(s.held);
+            for (start, piece) in &s.pieces {
+                if std::ptr::eq(remote, keep) && *start == keep_start {
+                    continue;
+                }
+                match oldest {
+                    Some((_, _, used)) if used <= piece.used => {}
+                    _ => oldest = Some((remote, *start, piece.used)),
+                }
+            }
+        }
+        if total <= limit {
+            return;
+        }
+        let Some((remote, start, _)) = oldest else { return };
+        let mut s = remote.lock();
+        if let Some(p) = s.pieces.remove(&start) {
+            s.held = s.held.saturating_sub(p.bytes.len());
+        }
+    }
 }
 
 /// The file at `url`, with whatever was fetched of it already.
@@ -659,6 +718,64 @@ mod tests {
         r.insert_tail(16, vec![7; 4]);
         assert_eq!(r.tail(1_000).map(|(t, whole)| (t.len(), whole)), Some((4, true)));
         assert_eq!(r.bytes(0, 4).map(|b| b.to_vec()), Some(vec![7; 4]));
+    }
+
+    /// A file of its own, as `file` makes them.
+    fn held(url: &str) -> Arc<Remote> {
+        Arc::new(Remote::new(url))
+    }
+
+    const MIB: usize = 1 << 20;
+
+    #[test]
+    fn all_files_together_stay_within_their_budget_and_the_least_recently_used_part_of_any_goes() {
+        let (a, b, c) = (held("test:total-a"), held("test:total-b"), held("test:total-c"));
+        let all = [a.clone(), b.clone(), c.clone()];
+        let limit = 10 * MIB;
+        a.insert_within(0, 4 * MIB as u64, vec![1; 4 * MIB], limit, &all);
+        b.insert_within(0, 4 * MIB as u64, vec![2; 4 * MIB], limit, &all);
+        // Under the budget: all of it is held.
+        assert!(a.bytes(0, 1).is_some() && b.bytes(0, 1).is_some());
+        // The third goes over it, so the least recently used part of all goes: `b`'s was read after `a`'s, `a`'s is older.
+        c.insert_within(0, 4 * MIB as u64, vec![3; 4 * MIB], limit, &all);
+        assert!(a.bytes(0, 1).is_none(), "the oldest part of the three is dropped");
+        assert!(c.bytes(0, 1).is_some() && b.bytes(0, 1).is_some());
+        assert!(a.lock().held + b.lock().held + c.lock().held <= limit);
+        // `b` was read after `c`: the next drop is `c`'s, though `c` was kept after `b`.
+        a.insert_within(0, 4 * MIB as u64, vec![4; 4 * MIB], limit, &all);
+        assert!(c.bytes(0, 1).is_none(), "least recently used goes, not the oldest kept");
+        assert!(a.bytes(0, 1).is_some() && b.bytes(0, 1).is_some());
+        assert!(a.lock().held + b.lock().held + c.lock().held <= limit);
+    }
+
+    #[test]
+    fn a_part_just_kept_stays_even_when_it_alone_is_over_the_budget() {
+        let (a, b) = (held("test:alone-a"), held("test:alone-b"));
+        let all = [a.clone(), b.clone()];
+        b.insert_within(0, 2 * MIB as u64, vec![2; 2 * MIB], MIB, &all);
+        a.insert_within(0, 4 * MIB as u64, vec![1; 4 * MIB], MIB, &all);
+        assert!(a.bytes(0, 4 * MIB as u64).is_some(), "what was just fetched for a read is not dropped under it");
+        assert!(b.bytes(0, 1).is_none(), "everything else went");
+    }
+
+    #[test]
+    fn a_file_listed_among_the_others_is_counted_once() {
+        let a = held("test:once-a");
+        let all = [a.clone(), a.clone()];
+        // Two parts that do not meet, 3 MiB and 1 MiB: 4 MiB, which is the budget. Counted twice it would be 8 MiB, and the first part would go.
+        a.insert_within(0, 3 * MIB as u64, vec![1; 3 * MIB], 4 * MIB, &all);
+        a.insert_within(10 * MIB as u64, MIB as u64, vec![1; MIB], 4 * MIB, &all);
+        assert!(a.bytes(0, 3 * MIB as u64).is_some() && a.bytes(10 * MIB as u64, MIB as u64).is_some());
+    }
+
+    #[test]
+    fn the_budget_of_all_files_is_under_what_a_page_can_address_and_the_per_file_one_is_under_it() {
+        // Checked when the tests compile: both are constants.
+        const { assert!(TOTAL_KEEP >= KEEP, "one file may use what it is allowed") };
+        #[cfg(target_arch = "wasm32")]
+        const {
+            assert!((TOTAL_KEEP as u64) < (4u64 << 30) / 2, "a wasm32 page addresses 4 GiB and holds more than file bytes")
+        };
     }
 
     #[test]
