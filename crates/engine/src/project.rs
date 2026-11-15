@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use rustgis_data::{Dataset, Feature, Field, GeometryType};
+use rustgis_data::{Dataset, Features, Field, GeometryType};
 use rustgis_map::Map;
 use serde::{Deserialize, Serialize};
 
@@ -123,6 +123,9 @@ pub struct Table {
 
 /// A table as a file holds it: the dataset's fields beside the id (absent from files written
 /// before tables had ids). Read field by field, since `flatten` would buffer every row first.
+/// `features` is [`Features`], not a list: a project in parts (#471) names a table's rows by reference
+/// (`without_rows`), and a list here refused every such document, so the view kept the project it had
+/// and a layer made from a table (a geocode, a join) never showed.
 #[derive(Deserialize)]
 struct TableFile {
     #[serde(default)]
@@ -130,7 +133,7 @@ struct TableFile {
     name: String,
     geometry_type: GeometryType,
     fields: Vec<Field>,
-    features: Vec<Feature>,
+    features: Features,
     #[serde(default)]
     source: Option<String>,
 }
@@ -138,7 +141,7 @@ struct TableFile {
 impl From<TableFile> for Table {
     fn from(t: TableFile) -> Self {
         let TableFile { id, name, geometry_type, fields, features, source } = t;
-        Table { id, dataset: Dataset { name, geometry_type, fields, features: features.into(), source, crs: None, windowed: false } }
+        Table { id, dataset: Dataset { name, geometry_type, fields, features, source, crs: None, windowed: false } }
     }
 }
 

@@ -196,4 +196,48 @@ mod tests {
         let mut other = Project::new("other");
         assert_eq!(book.give(&mut other, want, b"anything").unwrap(), 0);
     }
+
+    /// A project with a standalone table beside its layer (a CSV opened as a table, then geocoded into a layer).
+    fn project_with_a_table(layer_rows: usize, table_rows: usize) -> Project {
+        let mut p = project_with_rows(layer_rows);
+        let mut table = Dataset::new("clients", GeometryType::None, vec![Field::new("n", FieldType::Integer)]);
+        table.features = (0..table_rows).map(|i| Feature { id: i as u64 + 1, geometry: None, attrs: vec![Value::Int(i as i64)] }).collect();
+        p.tables.push(crate::project::Table { id: 1, dataset: table });
+        p
+    }
+
+    #[test]
+    fn a_table_in_parts_opens_and_is_filled_like_a_layer() {
+        // The document the sidecar serves names a table's rows by reference too. The view refused it
+        // (`Project::from_json` read a table's `features` as a list), kept the project it had, and posted that back,
+        // so a layer made from a table never showed (15 Nov 2026, live).
+        let source = project_with_a_table(4, 7);
+        let want = source.tables[0].dataset.features.reference();
+        let bytes = {
+            let d = &source.tables[0].dataset;
+            fgb_rows::write_rows(&d.name, d.geometry_type, &d.fields, &d.features).unwrap()
+        };
+        let mut page = in_parts(&source);
+        assert_eq!(page.tables.len(), 1, "the table came with the document");
+        assert_eq!(page.tables[0].id, 1);
+        assert_eq!(page.tables[0].dataset.features.len(), 0, "its rows are named, not held");
+        assert_eq!(page.tables[0].dataset.features.pending(), Some(want));
+        let mut book = RowsBook::default();
+        book.settle(&mut page);
+        assert!(book.take_wanted().contains(&want), "the table's rows are asked for beside the layer's");
+        assert_eq!(book.give(&mut page, want, &bytes).unwrap(), 1);
+        assert_eq!(page.tables[0].dataset.features.len(), 7);
+        assert_eq!(page.tables[0].dataset.features.reference(), want);
+    }
+
+    #[test]
+    fn a_table_saved_with_its_rows_still_opens_whole() {
+        // A project file (and the whole-document route) holds a table's rows inline: that reads as before.
+        let source = project_with_a_table(2, 5);
+        let text = serde_json::to_string(&source).unwrap();
+        let page = Project::from_json(&text).unwrap();
+        assert_eq!(page.tables.len(), 1);
+        assert_eq!(page.tables[0].dataset.features.len(), 5);
+        assert!(page.tables[0].dataset.features.pending().is_none());
+    }
 }
