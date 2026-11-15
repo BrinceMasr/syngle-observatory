@@ -248,7 +248,7 @@ fn lookup(g: &Geocoder, distinct: &[String]) -> Result<Lookup, String> {
         if i > 0 {
             std::thread::sleep(std::time::Duration::from_millis(g.spacing_ms()));
         }
-        match crate::render::rustgis_tiles::geocode::search_blocking(g, a, 1) {
+        match patiently(|| crate::render::rustgis_tiles::geocode::search_blocking(g, a, 1), std::thread::sleep) {
             Ok(places) => {
                 succeeded += 1;
                 in_a_row = 0;
@@ -273,8 +273,91 @@ fn lookup(g: &Geocoder, distinct: &[String]) -> Result<Lookup, String> {
     }
     Ok(out)
 }
+/// The waits before a refused request is asked again, in seconds: a public server's rate limit lifts in moments, and a
+/// run of many addresses meets it (Syngle-Ecosystem #675). A request still refused after the last wait is a failure.
+#[cfg(not(target_arch = "wasm32"))]
+const RETRY_WAITS_SECS: [u64; 3] = [2, 4, 8];
+
+/// Whether a failure is the server asking to be asked later: too many requests (429), or unavailable for the moment (503).
+#[cfg(not(target_arch = "wasm32"))]
+fn asks_to_wait(error: &str) -> bool {
+    matches!(crate::render::rustgis_tiles::cache::http_status(error), Some(429 | 503))
+}
+
+/// Runs `ask`; when the server says to come back later, `wait`s and asks again, as many times as [`RETRY_WAITS_SECS`] has
+/// waits. Any other failure, and the answer after the last wait, are returned as they are.
+#[cfg(not(target_arch = "wasm32"))]
+fn patiently<T>(mut ask: impl FnMut() -> Result<T, String>, mut wait: impl FnMut(std::time::Duration)) -> Result<T, String> {
+    let mut waited = 0;
+    loop {
+        match ask() {
+            Err(e) if asks_to_wait(&e) && waited < RETRY_WAITS_SECS.len() => {
+                wait(std::time::Duration::from_secs(RETRY_WAITS_SECS[waited]));
+                waited += 1;
+            }
+            answer => return answer,
+        }
+    }
+}
 
 #[cfg(target_arch = "wasm32")]
 fn lookup(_: &Geocoder, _: &[String]) -> Result<Lookup, String> {
     Err("in the web app, geocode addresses with Home › Add Data › Geocode Addresses".into())
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+    use std::time::Duration;
+
+    #[test]
+    fn a_server_that_says_wait_is_asked_again_after_two_four_and_eight_seconds() {
+        let answers = RefCell::new(vec!["http status: 429", "http status: 429", "http status: 429"]);
+        let waits = RefCell::new(Vec::new());
+        let got = patiently(
+            || match answers.borrow_mut().pop() {
+                Some(refused) => Err(refused.to_string()),
+                None => Ok("found"),
+            },
+            |d| waits.borrow_mut().push(d),
+        );
+        assert_eq!(got, Ok("found"));
+        assert_eq!(*waits.borrow(), [Duration::from_secs(2), Duration::from_secs(4), Duration::from_secs(8)]);
+    }
+
+    #[test]
+    fn a_server_that_goes_on_refusing_is_a_failure_after_the_last_wait() {
+        let asked = RefCell::new(0);
+        let waits = RefCell::new(0);
+        let got: Result<(), String> = patiently(
+            || {
+                *asked.borrow_mut() += 1;
+                Err("http status: 429".to_string())
+            },
+            |_| *waits.borrow_mut() += 1,
+        );
+        assert_eq!(got, Err("http status: 429".to_string()));
+        assert_eq!((*asked.borrow(), *waits.borrow()), (4, 3));
+    }
+
+    #[test]
+    fn an_unavailable_server_is_waited_for_too_and_any_other_failure_is_not() {
+        assert!(asks_to_wait("http status: 503"));
+        assert!(asks_to_wait("HTTP 429"));
+        for other in ["http status: 404", "http status: 403", "the geocoder's answer isn't JSON", "timed out: 429", ""] {
+            assert!(!asks_to_wait(other), "{other}");
+        }
+        let waits = RefCell::new(0);
+        let got: Result<(), String> = patiently(|| Err("http status: 403".to_string()), |_| *waits.borrow_mut() += 1);
+        assert_eq!(got, Err("http status: 403".to_string()));
+        assert_eq!(*waits.borrow(), 0);
+    }
+
+    #[test]
+    fn an_answer_the_first_time_waits_for_nothing() {
+        let waits = RefCell::new(0);
+        assert_eq!(patiently(|| Ok::<_, String>(7), |_| *waits.borrow_mut() += 1), Ok(7));
+        assert_eq!(*waits.borrow(), 0);
+    }
 }
