@@ -105,6 +105,25 @@ impl Engine {
         }
     }
 
+    /// What the engine's state says about `restored` after a hello: the fact a page reads to know whether the maps it linked to
+    /// files in an earlier run are this engine's. `None` when the state does not carry it.
+    fn state_restored(&mut self) -> Option<bool> {
+        self.send(&json!({"cmd": "bridge", "bridge": "hello", "protocolVersion": 1}));
+        let ready = self.next();
+        assert_eq!(ready["event"], "bridge.ready", "{ready}");
+        self.hello = true;
+        ready["state"]["restored"].as_bool()
+    }
+
+    /// When the engine says it started (the state's `startedAt`); a hello is answered with the state, as many times as it is said.
+    fn started_at(&mut self) -> u64 {
+        self.send(&json!({"cmd": "bridge", "bridge": "hello", "protocolVersion": 1}));
+        let ready = self.next();
+        assert_eq!(ready["event"], "bridge.ready", "{ready}");
+        self.hello = true;
+        ready["state"]["startedAt"].as_u64().unwrap_or(0)
+    }
+
     /// What `info.project` says: the file the project was saved to and whether it has changes that file lacks.
     fn info(&mut self) -> (Option<String>, bool) {
         let info = self.command("info.project", json!({"includeFields": false}));
@@ -311,4 +330,53 @@ fn a_map_with_data_a_style_a_basemap_and_a_view_comes_back_exactly() {
     let mut third = Engine::start(&root, &file);
     assert_eq!(what_a_person_sees(&third.project()), before);
     third.quit();
+}
+
+#[test]
+fn the_state_says_whether_the_engine_started_from_its_working_copy() {
+    let root = folder("restored-state");
+    let file = root.join("maps").join("project.rgis");
+    let mut first = Engine::start(&root, &file);
+    assert_eq!(first.state_restored(), Some(false), "a first start restored nothing");
+    first.command("map.new", json!({"name": "Sydney data centres"}));
+    first.quit();
+
+    let mut second = Engine::start(&root, &file);
+    assert_eq!(second.state_restored(), Some(true), "a start from the copy says so, in the state a page reads");
+    second.quit();
+}
+
+#[test]
+fn a_lost_working_copy_is_a_start_that_restored_nothing() {
+    let root = folder("restored-lost");
+    let file = root.join("maps").join("project.rgis");
+    let mut first = Engine::start(&root, &file);
+    first.command("map.new", json!({"name": "Sydney data centres"}));
+    first.quit();
+    for kept in [file.clone(), file.with_extension("rgis.state")] {
+        let _ = std::fs::remove_file(kept);
+    }
+
+    let mut second = Engine::start(&root, &file);
+    assert!(!second.restored(), "{}", second.ready);
+    assert_eq!(second.maps(), ["Map"], "a fresh project, whatever a page remembers");
+    assert_eq!(second.state_restored(), Some(false));
+    second.quit();
+}
+
+#[test]
+fn every_start_has_its_own_start_time_and_a_page_reload_sees_the_same_one() {
+    let root = folder("restored-started");
+    let file = root.join("maps").join("project.rgis");
+    let mut first = Engine::start(&root, &file);
+    let at = first.started_at();
+    assert!(at > 0, "the state names when the process started");
+    assert_eq!(first.started_at(), at, "the same process says the same time every time it is asked");
+    first.command("map.new", json!({"name": "Sydney data centres"}));
+    first.quit();
+
+    std::thread::sleep(Duration::from_millis(5));
+    let mut second = Engine::start(&root, &file);
+    assert!(second.started_at() > at, "a new process started later");
+    second.quit();
 }

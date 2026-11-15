@@ -688,6 +688,12 @@
         "shellRevision": {
           "type": "number"
         },
+        "restored": {
+          "type": "boolean"
+        },
+        "startedAt": {
+          "type": "number"
+        },
         "mapRevisions": {
           "type": "array",
           "items": {

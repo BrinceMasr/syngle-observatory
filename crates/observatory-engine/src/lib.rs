@@ -173,6 +173,7 @@ pub fn run(args: &[String]) -> i32 {
             match session.run("project.openText", &json!({"text": copy.text})) {
                 Ok(_) => {
                     restored = true;
+                    project.set_restored(true);
                     session.clear_history();
                     session.notices.clear();
                     session.path = copy.path;
@@ -559,6 +560,13 @@ fn state_of(session: &Session, project: &parts::Parts) -> Value {
     let mut state = bridge::state(session);
     if let (Some(state), Value::Object(revisions)) = (state.as_object_mut(), project.current().revisions()) {
         state.extend(revisions);
+    }
+    // Whether this process started from its working copy, and when it started: a page that meets a new process that restored
+    // nothing knows the maps it linked to files in an earlier run are not this engine's, and lets those links go before
+    // anything is saved over a person's file. The same start time again is only the page reloading.
+    if let Some(state) = state.as_object_mut() {
+        state.insert("restored".into(), Value::Bool(project.restored()));
+        state.insert("startedAt".into(), json!(project.started_at()));
     }
     state
 }

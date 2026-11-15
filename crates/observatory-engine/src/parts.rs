@@ -19,6 +19,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use rustgis_engine::Project;
@@ -190,6 +191,14 @@ pub struct Parts {
     current: Mutex<Arc<Published>>,
     revisions: Mutex<Revisions>,
     built: Mutex<Vec<(String, Arc<Vec<u8>>)>>,
+    /// This process started from the project it kept in its working copy (`--autosave`), not from an empty one.
+    restored: AtomicBool,
+    /// When this process started, in milliseconds since 1970: the page tells a new engine from its own reload by it.
+    started_at: u64,
+}
+
+fn started_at_now() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(0))
 }
 
 impl Default for Parts {
@@ -202,7 +211,13 @@ impl Parts {
     pub fn of(project: &Project) -> Parts {
         let mut revisions = Revisions::default();
         let current = Mutex::new(Arc::new(Published::build(project, &mut revisions)));
-        Parts { current, revisions: Mutex::new(revisions), built: Mutex::new(Vec::new()) }
+        Parts {
+            current,
+            revisions: Mutex::new(revisions),
+            built: Mutex::new(Vec::new()),
+            restored: AtomicBool::new(false),
+            started_at: started_at_now(),
+        }
     }
 
     /// Called by the command loop after a command changed the project.
@@ -210,6 +225,21 @@ impl Parts {
         let mut revisions = self.revisions.lock().unwrap_or_else(PoisonError::into_inner);
         let next = Arc::new(Published::build(project, &mut revisions));
         *self.current.lock().unwrap_or_else(PoisonError::into_inner) = next;
+    }
+
+    /// Records that this process started from its working copy: told once, before `ready`.
+    pub fn set_restored(&self, restored: bool) {
+        self.restored.store(restored, Ordering::Relaxed);
+    }
+
+    /// When this process started, in milliseconds since 1970.
+    pub fn started_at(&self) -> u64 {
+        self.started_at
+    }
+
+    /// Whether this process started from its working copy. A page keeps what it links to files only for an engine that did.
+    pub fn restored(&self) -> bool {
+        self.restored.load(Ordering::Relaxed)
     }
 
     pub fn current(&self) -> Arc<Published> {
