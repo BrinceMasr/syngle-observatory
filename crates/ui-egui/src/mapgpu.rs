@@ -342,6 +342,7 @@ impl GpuMapRenderer {
                 wgpu::VertexAttribute { format: wgpu::VertexFormat::Float32x2, offset: 8, shader_location: 1 },
                 wgpu::VertexAttribute { format: wgpu::VertexFormat::Float32x4, offset: 16, shader_location: 2 },
                 wgpu::VertexAttribute { format: wgpu::VertexFormat::Float32, offset: 32, shader_location: 3 },
+                wgpu::VertexAttribute { format: wgpu::VertexFormat::Float32, offset: 36, shader_location: 4 },
             ],
         }];
         let point_buffers = [wgpu::VertexBufferLayout {
@@ -944,7 +945,7 @@ impl CallbackTrait for SceneCallback {
 mod tests {
     use super::*;
     use rustgis_engine::geom::Coord;
-    use rustgis_engine::render::gpu_scene::{MeshVertex, PointInstance};
+    use rustgis_engine::render::gpu_scene::{MeshVertex, NO_REACH, PointInstance};
 
     fn assert_matches_to_screen(cam: Camera, w: f64, h: f64, p: Coord, origin: [f64; 2]) {
         let m = view_proj(&cam, w, h, origin);
@@ -1027,7 +1028,7 @@ mod tests {
         let limits = wgpu::Limits { max_buffer_size: 1024, max_texture_dimension_2d: 2048, ..Default::default() };
         let mesh = |nv: usize, ni: usize| DrawCmd::Mesh {
             origin: [0.0, 0.0],
-            vertices: vec![MeshVertex { position: [0.0, 0.0], normal: [0.0, 0.0], color: [0.0; 4], stroke_px: 0.0, _pad: 0.0 }; nv],
+            vertices: vec![MeshVertex { position: [0.0, 0.0], normal: [0.0, 0.0], color: [0.0; 4], stroke_px: 0.0, reach: NO_REACH }; nv],
             indices: vec![0u32; ni],
         };
         assert!(cmd_fits(&limits, &mesh(4, 6)), "small mesh fits");
@@ -1050,8 +1051,13 @@ mod tests {
         let Some(rs) = headless_render_state() else { return };
         let r = GpuMapRenderer::new(&rs);
         // A tiny scene uploads: one triangle, one marker instance, one CPU image.
-        let v =
-            |x: f32, y: f32| MeshVertex { position: [x, y], normal: [0.0, 0.0], color: [1.0, 0.0, 0.0, 1.0], stroke_px: 0.0, _pad: 0.0 };
+        let v = |x: f32, y: f32| MeshVertex {
+            position: [x, y],
+            normal: [0.0, 0.0],
+            color: [1.0, 0.0, 0.0, 1.0],
+            stroke_px: 0.0,
+            reach: NO_REACH,
+        };
         let scene = GpuScene {
             clear: [0.0, 0.0, 0.0, 1.0],
             cmds: vec![

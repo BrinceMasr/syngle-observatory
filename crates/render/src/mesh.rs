@@ -7,13 +7,14 @@
 use lyon::path::Path;
 use lyon::tessellation::{
     BuffersBuilder, FillOptions, FillRule, FillTessellator, LineCap, LineJoin, StrokeOptions, StrokeTessellator, VertexBuffers,
+    VertexSource,
 };
 use rustgis_data::Geometry;
 use rustgis_geom::{Coord, Extent};
 use rustgis_map::{Layer, Rgba, Symbol};
 
 use crate::SELECTION;
-use crate::gpu_scene::{DrawCmd, MeshVertex, PointInstance};
+use crate::gpu_scene::{DrawCmd, MeshVertex, NO_REACH, PointInstance};
 
 /// Lyon refused to tessellate something tiny-skia would draw; the caller falls the layer (or
 /// the outline) back to the CPU path. Empty marker for `Result<_, TessError>` so clippy's
@@ -107,7 +108,7 @@ pub(crate) fn fill_polygon(
             &FillOptions::default().with_fill_rule(FillRule::EvenOdd),
             &mut BuffersBuilder::new(&mut out, |v: lyon::tessellation::FillVertex| {
                 let p = v.position();
-                MeshVertex { position: [p.x, p.y], normal: [0.0, 0.0], color, stroke_px: 0.0, _pad: 0.0 }
+                MeshVertex { position: [p.x, p.y], normal: [0.0, 0.0], color, stroke_px: 0.0, reach: NO_REACH }
             }),
         )
         .map_err(|_| TessError)?;
@@ -140,11 +141,11 @@ fn stroke(
             if pts.len() < min_points {
                 continue;
             }
+            let at: Vec<[f32; 2]> = pts.iter().map(|c| rel(*c, origin)).collect();
+            let Some((first, rest)) = at.split_first() else { continue };
             let mut b = Path::builder();
-            let p0 = rel(pts[0], origin);
-            b.begin(lyon::math::point(p0[0], p0[1]));
-            for c in &pts[1..] {
-                let p = rel(*c, origin);
+            b.begin(lyon::math::point(first[0], first[1]));
+            for p in rest {
                 b.line_to(lyon::math::point(p[0], p[1]));
             }
             b.end(closed);
@@ -154,13 +155,46 @@ fn stroke(
                 &options,
                 &mut BuffersBuilder::new(&mut out, |v: lyon::tessellation::StrokeVertex| {
                     let (p, n) = (v.position(), v.normal());
-                    MeshVertex { position: [p.x - n.x * 0.5, p.y - n.y * 0.5], normal: [n.x, n.y], color, stroke_px: width_px, _pad: 0.0 }
+                    let reach = match v.source() {
+                        VertexSource::Endpoint { id } => inner_reach(&at, id.to_usize(), closed, n.square_length()),
+                        VertexSource::Edge { .. } => NO_REACH,
+                    };
+                    MeshVertex { position: [p.x - n.x * 0.5, p.y - n.y * 0.5], normal: [n.x, n.y], color, stroke_px: width_px, reach }
                 }),
             )
             .map_err(|_| TessError)?;
         }
     }
     Ok((!out.indices.is_empty()).then_some((out.vertices, out.indices)))
+}
+
+/// The most the half width may be, in map units, where the shader pushes the vertex at `at[i]`
+/// out along its normal (whose squared length is `normal_sq`), for the vertex to stay on the stroke.
+///
+/// Lyon puts the inside corner of a turn at the one point where the two inside offset lines
+/// meet: `1 / cos(turn / 2)` half widths away (`tan(turn / 2)` of them along each segment): 11
+/// for a turn of 170 degrees, 57 for 178, and lyon stops only at 10 000. (It folds the join
+/// instead when both segments are shorter than that reach at width 1.0, a metre in Web Mercator,
+/// which a coastline's are not.) The tessellation is made at width 1.0 and the shader scales the
+/// normals to the real width, a pixel or more of kilometres at a coastline's default zoom: the
+/// meeting point then lies far past the ends of the segments, as a spike tens of half widths long.
+/// Holding the half width at half of the shorter neighbouring segment over `tan(turn / 2)` keeps
+/// the point inside both segments (half, so that the two ends of one segment never pass each
+/// other). Outer joins, caps and a plain bend have a normal of 1 and no limit; the turn is read
+/// from the normal's length, so a round join outside and this limit inside agree on the angle.
+fn inner_reach(at: &[[f32; 2]], i: usize, closed: bool, normal_sq: f32) -> f32 {
+    if normal_sq.is_nan() || normal_sq <= 1.0 + 1e-3 {
+        return NO_REACH;
+    }
+    let n = at.len();
+    let prev = i.checked_sub(1).or(closed.then_some(n.saturating_sub(1)));
+    let next = (i + 1 < n).then_some(i + 1).or(closed.then_some(0));
+    let (Some(prev), Some(next)) = (prev, next) else { return NO_REACH };
+    let (Some(a), Some(c), Some(b)) = (at.get(prev), at.get(i), at.get(next)) else { return NO_REACH };
+    let (l_in, l_out) = ((c[0] - a[0]).hypot(c[1] - a[1]), (b[0] - c[0]).hypot(b[1] - c[1]));
+    let tan_half_turn = (normal_sq - 1.0).sqrt();
+    let reach = 0.5 * l_in.min(l_out) / tan_half_turn;
+    if reach.is_finite() { reach } else { NO_REACH }
 }
 
 /// Polygon outlines: every ring stroked (the CPU strokes exterior and holes alike).
@@ -646,6 +680,154 @@ mod tests {
         assert_eq!(three[2].color, premul(Rgba::rgb(255, 0, 0)));
         let one = marker_instances(Coord::new(5.0, 5.0), [5.0, 5.0], &Symbol { stroke_width: 0.0, ..s }, 2.0, None);
         assert_eq!(one.len(), 1, "fill only");
+    }
+
+    /// The vertex shader's rule in a flat view (`mapgpu.wgsl`, `vs_mesh`): the centerline pushed out along the normal by the
+    /// half width, held to the vertex's `reach`.
+    fn displaced(v: &MeshVertex, half: f32) -> [f32; 2] {
+        let h = half.min(v.reach);
+        [v.position[0] + v.normal[0] * h, v.position[1] + v.normal[1] * h]
+    }
+
+    fn dist_to_segment(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
+        let (ab, ap) = ([b[0] - a[0], b[1] - a[1]], [p[0] - a[0], p[1] - a[1]]);
+        let len2 = ab[0] * ab[0] + ab[1] * ab[1];
+        let t = if len2 > 0.0 { ((ap[0] * ab[0] + ap[1] * ab[1]) / len2).clamp(0.0, 1.0) } else { 0.0 };
+        (p[0] - (a[0] + t * ab[0])).hypot(p[1] - (a[1] + t * ab[1]))
+    }
+
+    fn dist_to_polyline(p: [f32; 2], line: &[[f32; 2]], closed: bool) -> f32 {
+        let n = line.len();
+        let edges = if closed { n } else { n - 1 };
+        (0..edges).map(|i| dist_to_segment(p, line[i], line[(i + 1) % n])).fold(f32::INFINITY, f32::min)
+    }
+
+    /// A coastline's worth of jagged points: segments of `0.3 * scale` to `3 * scale`, turns of any angle, from a fixed seed.
+    fn jagged(n: usize, scale: f64) -> Vec<Coord> {
+        let mut state = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state >> 11) as f64 / (1u64 << 53) as f64
+        };
+        let (mut x, mut y, mut heading) = (0.0f64, 0.0f64, 0.0f64);
+        (0..n)
+            .map(|_| {
+                let c = Coord::new(x, y);
+                heading += (next() - 0.5) * 2.0 * std::f64::consts::PI * 0.97;
+                let step = scale * (0.3 + 2.7 * next());
+                x += heading.cos() * step;
+                y += heading.sin() * step;
+                c
+            })
+            .collect()
+    }
+
+    fn at(pts: &[Coord]) -> Vec<[f32; 2]> {
+        pts.iter().map(|c| [c.x as f32, c.y as f32]).collect()
+    }
+
+    /// The farthest a displaced vertex lies from the line, in half widths.
+    fn worst_overshoot(v: &[MeshVertex], line: &[[f32; 2]], closed: bool, half: f32) -> f32 {
+        v.iter().map(|x| dist_to_polyline(displaced(x, half), line, closed) / half).fold(0.0, f32::max)
+    }
+
+    // The tessellation is made at width 1.0 (half a unit), the shader draws at the real half width. A coastline is the case
+    // where they differ by orders of magnitude: segments of tens of metres (long beside the 1.0 of the tessellation, so lyon
+    // keeps the inner corner of a turn) under a stroke of a pixel, thousands of metres. The tests below put the segments at
+    // 40 units and the real half width at 10: one pixel of 20 units, a segment two pixels long.
+
+    #[test]
+    fn a_hairpin_turn_does_not_throw_a_spike_out_of_the_stroke() {
+        // Out forty units, back along almost the same line (a turn of 178 degrees). Lyon's inner corner is 57 half widths
+        // out along the line; at the real half width of 10 that is 570 units past the start of a segment of 40.
+        let pts = vec![Coord::new(0.0, 0.0), Coord::new(40.0, 0.0), Coord::new(0.0, 1.4)];
+        let (v, i) = stroke_lines(std::slice::from_ref(&pts), [0.0, 0.0], [0.0; 4], 1.0, 0.0).expect("stroke").expect("non-empty");
+        assert!(!i.is_empty());
+        let corner = v.iter().map(|x| x.normal[0].hypot(x.normal[1])).fold(0.0, f32::max);
+        assert!(corner > 50.0, "the inner corner is the long normal this test is about: {corner}");
+        let held = v.iter().filter(|x| x.reach < f32::MAX).count();
+        assert!(held >= 1, "the long normal is held back");
+        let over = worst_overshoot(&v, &at(&pts), false, 10.0);
+        assert!(over < 1.001, "every vertex stays within the half width of the line: {over} half widths out");
+    }
+
+    #[test]
+    fn a_jagged_coast_has_no_spikes_at_any_width() {
+        let pts = jagged(600, 20.0);
+        let line = at(&pts);
+        for closed in [false, true] {
+            for half in [2.0f32, 10.0, 40.0, 200.0] {
+                let parts = vec![pts.clone()];
+                let (v, _) = if closed {
+                    stroke_rings(&[parts], [0.0, 0.0], [0.0; 4], 1.0, 0.0)
+                } else {
+                    stroke_lines(&parts, [0.0, 0.0], [0.0; 4], 1.0, 0.0)
+                }
+                .expect("stroke")
+                .expect("non-empty");
+                assert!(v.iter().any(|x| x.normal[0].hypot(x.normal[1]) > 3.0), "the coast has sharp inner corners to hold back");
+                let over = worst_overshoot(&v, &line, closed, half);
+                assert!(over < 1.001, "half width {half}, closed {closed}: a vertex {over} half widths from the line");
+            }
+        }
+    }
+
+    #[test]
+    fn a_held_back_corner_leaves_the_stroke_whole() {
+        // The corner is pulled in, not cut away: the points of the true stroke (the line's neighbourhood at the real half width
+        // of 10, less a margin) are still covered by the triangles the shader would draw. What the pull-in gives up is the
+        // sliver between the two legs of the hairpin (1.4 units wide in a stroke 20 wide), which the legs' outer sides cover
+        // from the other side anyway.
+        let pts = vec![Coord::new(0.0, 0.0), Coord::new(40.0, 0.0), Coord::new(0.0, 1.4), Coord::new(30.0, 6.0)];
+        let (v, i) = stroke_lines(std::slice::from_ref(&pts), [0.0, 0.0], [0.0; 4], 1.0, 0.0).expect("stroke").expect("non-empty");
+        let line = at(&pts);
+        let flat: Vec<MeshVertex> = v.iter().map(|x| MeshVertex { position: displaced(x, 10.0), ..*x }).collect();
+        let (mut inside, mut covered) = (0, 0);
+        for gx in -40..=120 {
+            for gy in -40..=52 {
+                let p = [gx as f32 * 0.5 + 0.13, gy as f32 * 0.5 + 0.07];
+                if dist_to_polyline(p, &line, false) <= 8.0 {
+                    inside += 1;
+                    covered += point_covered(&flat, &i, p[0], p[1]) as usize;
+                }
+            }
+        }
+        assert!(inside > 2000, "the sample holds the stroke: {inside}");
+        assert!(covered as f32 >= inside as f32 * 0.85, "only {covered} of {inside} points of the stroke are covered");
+    }
+
+    #[test]
+    fn a_bend_with_long_segments_is_left_alone() {
+        // A right angle with segments of 100 at half a unit: the offset lines meet 0.7 out, nowhere near the ends.
+        let pts = vec![Coord::new(0.0, 0.0), Coord::new(100.0, 0.0), Coord::new(100.0, 100.0), Coord::new(0.0, 100.0)];
+        for (v, _) in [
+            stroke_lines(std::slice::from_ref(&pts), [0.0, 0.0], [0.0; 4], 1.0, 0.0).expect("stroke").expect("non-empty"),
+            stroke_rings(&[vec![pts.clone()]], [0.0, 0.0], [0.0; 4], 1.0, 0.0).expect("stroke").expect("non-empty"),
+        ] {
+            assert!(v.iter().any(|x| x.normal[0].hypot(x.normal[1]) > 1.3), "the corner's inner vertex is in the mesh");
+            for x in &v {
+                assert_eq!(x.normal[0].hypot(x.normal[1]) > 1.3, x.reach < f32::MAX, "only a long normal is held: {x:?}");
+                assert!(x.reach > 20.0, "held far above the half width of 0.5: {}", x.reach);
+            }
+        }
+    }
+
+    #[test]
+    fn inner_reach_is_the_half_width_the_neighbours_can_hold() {
+        let line = [[0.0, 0.0], [2.0, 0.0], [0.0, 0.07]];
+        assert_eq!(inner_reach(&line, 1, false, 1.0), NO_REACH, "a unit normal (an outer join, a cap) has no limit");
+        assert_eq!(inner_reach(&line, 0, false, 9.0), NO_REACH, "the end of an open line has no join");
+        assert_eq!(inner_reach(&line, 2, false, 9.0), NO_REACH);
+        assert_eq!(inner_reach(&line, 7, false, 9.0), NO_REACH, "an id past the points is not a join");
+        // normal 5 (squared 25): tan(turn / 2) = sqrt(24); the shorter segment is 2.0 (the other 2.0006): 0.5 * 2.0 / 4.9.
+        let r = inner_reach(&line, 1, false, 25.0);
+        assert!((r - 1.0 / 24.0f32.sqrt()).abs() < 1e-3, "{r}");
+        // A ring's first point has the last as its previous one.
+        let ring = [[0.0, 0.0], [10.0, 0.0], [10.0, 1.0]];
+        let r = inner_reach(&ring, 0, true, 2.0);
+        assert!((r - 5.0).abs() < 1e-3, "the closing segment (10, 1) to (0, 0) is 10.05 and the first is 10; tan(turn / 2) is 1: {r}");
     }
 
     #[test]

@@ -46,6 +46,7 @@ struct MeshIn {
     @location(1) normal: vec2f,
     @location(2) color: vec4f,
     @location(3) stroke_px: f32,
+    @location(4) reach: f32,
 };
 
 @group(0) @binding(0) var<uniform> u_mesh: CmdUniforms;
@@ -56,7 +57,11 @@ fn vs_mesh(in: MeshIn) -> VOut {
     // pixels, so in perspective it scales by the depth (1 in a flat view), as marker offsets do,
     // keeping its width on screen as the CPU path's bands about do.
     let depth = (u_mesh.view_proj * vec4f(in.position, 0.0, 1.0)).w;
-    let world = vec4f(in.position + in.normal * (in.stroke_px * u_mesh.params.x * 0.5 * max(depth, 0.0)), 0.0, 1.0);
+    // The half width, held to `reach` where the vertex is the inner corner of a sharp turn: the
+    // offset lines' meeting point is `normal` (up to 200) half widths out, and past the ends of
+    // the short segments either side it would be a spike (mesh.rs `inner_reach`).
+    let half = in.stroke_px * u_mesh.params.x * 0.5 * max(depth, 0.0);
+    let world = vec4f(in.position + in.normal * min(half, in.reach), 0.0, 1.0);
     var out: VOut;
     out.clip = u_mesh.view_proj * world;
     out.color = in.color;

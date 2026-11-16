@@ -102,8 +102,9 @@ pub struct ExtrudeVertex {
 
 /// Vertex for polygon fills and line strokes. Position is origin-relative map units.
 /// Fill vertices carry `normal = [0, 0]` and `stroke_px = 0`; stroke vertices carry the
-/// centerline position, the tessellator's unit normal, and the stroke width in physical
-/// pixels, so the vertex shader keeps stroke width screen-constant at every zoom.
+/// centerline position, the tessellator's normal (a unit, except at the inner corner of a turn),
+/// and the stroke width in physical pixels, so the vertex shader keeps stroke width
+/// screen-constant at every zoom.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct MeshVertex {
@@ -113,8 +114,18 @@ pub struct MeshVertex {
     pub color: [f32; 4],
     /// Stroke width in physical pixels (0 for fill vertices).
     pub stroke_px: f32,
-    pub _pad: f32,
+    /// The most the stroke's half width may be, in map units, where the shader pushes this vertex
+    /// out along `normal` ([`NO_REACH`] for most). The inner corner of a sharp turn has a normal
+    /// longer than 1 (the offset lines' meeting point, `1 / cos(turn / 2)` half widths away: 11 for
+    /// a turn of 170 degrees, 57 for 178); at the stroke's real width that point can lie past the
+    /// ends of the short segments either side, which draws a spike. `mesh::inner_reach` says where it stops being on the
+    /// stroke, and the vertex shader takes the smaller of that and the half width.
+    pub reach: f32,
 }
+
+/// A stroke vertex that nothing holds back: its normal is a unit (an outer join, a cap, a plain
+/// bend) or the segments around it are long enough for the width the shader gives it.
+pub const NO_REACH: f32 = f32::MAX;
 
 /// One marker draw: an instance of a unit-space shape template scaled to `radius_px` screen
 /// pixels by the vertex shader. A CPU marker with an outline becomes two instances (stroke
