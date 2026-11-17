@@ -182,7 +182,7 @@ fn yes() -> bool {
 
 impl Layer {
     pub fn new(id: u32, dataset: Dataset) -> Self {
-        let renderer = Renderer::Single(Symbol::default_for(dataset.geometry_type, id));
+        let renderer = Renderer::Single(Symbol::for_new_layer(dataset.geometry_type));
         Layer {
             id,
             name: dataset.name.clone(),
@@ -1589,6 +1589,18 @@ mod tests {
         m.layers[0].definition_query = Some("n = 2".into());
         assert_eq!(m.shown_extent(), Extent::new(10.0, 10.0, 10.0, 10.0));
         assert_eq!(m.full_extent(), Extent::new(0.0, 0.0, 10.0, 10.0));
+    }
+
+    #[test]
+    fn a_new_layer_starts_navy_whatever_its_id() {
+        let navy = Rgba::rgb(0x2C, 0x4B, 0x86);
+        for id in [0, 1, 2, 3, 7, 8, 9, 1000] {
+            for g in [GeometryType::Polygon, GeometryType::Polyline, GeometryType::Point] {
+                let l = Layer::new(id, Dataset::new("l", g, vec![]));
+                let Renderer::Single(sym) = l.renderer else { panic!("a new layer draws one symbol") };
+                assert_eq!((sym.fill.r(), sym.fill.g(), sym.fill.b()), (navy.r(), navy.g(), navy.b()), "id {id} {g:?}");
+            }
+        }
     }
 
     #[test]

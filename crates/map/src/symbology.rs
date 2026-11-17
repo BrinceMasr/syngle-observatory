@@ -42,9 +42,10 @@ pub struct Symbol {
     pub marker: Marker,
 }
 
-/// Default palette for new layers (cycled by layer id): Syngle's own (#71) — navy first for
-/// areas, ink for marks, then the chart roles, so a canvas opened on its own already reads as
-/// Syngle rather than as the upstream project. A theme sends the ink the other way round through the bridge.
+/// Default palette for told-apart symbols (cycled by a seed): Syngle's own (#71) — navy first for
+/// areas, ink for marks, then the chart roles. It is for the classes of a unique-value renderer and the like, which have to be
+/// told apart; a layer's own first symbol is always the first of them ([`Symbol::for_new_layer`]). A theme sends the ink the
+/// other way round through the bridge.
 const LAYER_COLORS: [[u8; 3]; 8] = [
     [0x2C, 0x4B, 0x86],
     [0x1B, 0x1A, 0x17],
@@ -57,6 +58,14 @@ const LAYER_COLORS: [[u8; 3]; 8] = [
 ];
 
 impl Symbol {
+    /// The symbol a layer starts with: Syngle's navy, whatever the layer's id. Until 18 Nov 2026 the layer's id picked it out of
+    /// [`LAYER_COLORS`], so a map whose land was never restyled (a saved map the app's look skips) came out ink-grey for one id and
+    /// a bright steel blue for another (Omar: "the land is too bright a blue, keep it navy"). Layers that must be told apart are
+    /// told apart by their classes, not by an arbitrary colour each.
+    pub fn for_new_layer(g: GeometryType) -> Symbol {
+        Symbol::default_for(g, 0)
+    }
+
     pub fn default_for(g: GeometryType, seed: u32) -> Symbol {
         let c = LAYER_COLORS.get(seed as usize % LAYER_COLORS.len()).copied().unwrap_or([0x2C, 0x4B, 0x86]);
         let base = Rgba::rgb(c[0], c[1], c[2]);

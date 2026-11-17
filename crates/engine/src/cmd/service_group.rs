@@ -280,7 +280,7 @@ fn refresh(s: &mut Session, p: &Value) -> CmdResult {
                 }
             };
             if changed_type || invalid_renderer {
-                layer.renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol::default_for(layer.geometry_type(), layer.id));
+                layer.renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol::for_new_layer(layer.geometry_type()));
             }
             if layer.dataset.field_index(&layer.labels.field).is_none() {
                 layer.labels.enabled = false;
