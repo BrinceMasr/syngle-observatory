@@ -16,6 +16,7 @@
 //! | `{"rustgis": "ready"}` | the app has started and takes messages |
 //! | `{"rustgis": "project", "text": <project JSON>}` | the project changed here (an edit, a pan) |
 //! | `{"rustgis": "result", "id", "ok": true, "value"}` or `{…, "ok": false, "error"}` | a `run`'s outcome |
+//! | `{"rustgis": "feature", "event": {layer, row, at?, features}}` | the canvas-only build's popup would have opened (or closed: `layer` empty, `row` -1): what a click found, for the host's own card (the bridge's `feature-clicked`) |
 //!
 //! Only messages from the parent window are taken, and the app answers only the origin that sent
 //! the first of them. Any page may frame the app, so `run` takes only the interface's commands
@@ -68,6 +69,11 @@ pub fn ready() -> Value {
 
 pub fn project(text: &str) -> Value {
     json!({"rustgis": "project", "text": text})
+}
+
+/// What a click found, for the embedding page's own card: the `feature-clicked` event the bridge relays (`mapview::click_event`).
+pub fn feature(event: Value) -> Value {
+    json!({"rustgis": "feature", "event": event})
 }
 
 pub fn result(id: Value, outcome: Result<Value, String>) -> Value {
@@ -167,6 +173,14 @@ mod tests {
         {
             assert_eq!(parse(&other), None, "{other}");
         }
+    }
+
+    #[test]
+    fn a_click_is_posted_as_a_feature_message_with_its_event() {
+        let event = json!({"layer": "countries", "row": 3, "at": [36.8, -1.3], "features": []});
+        assert_eq!(feature(event.clone()), json!({"rustgis": "feature", "event": event}));
+        // The page never sends one: only the app tells the page what a click found.
+        assert_eq!(parse(&feature(event)), None);
     }
 
     #[test]

@@ -36,6 +36,15 @@ Ctrl+Shift+S or Cmd+Shift+S is `{"type": "save", "as": true}`. The page decides 
 one event per press (a held chord is not repeated). Unlike the other keys it takes the key from the view: the canvas has no
 save of its own, and the browser's would save the page. What saving means is the host's call.
 
+`feature-clicked` is how the host draws the map's popup (Syngle-Ecosystem #41, Omar 18 Nov 2026: the popup of a library is unskinned,
+so SyngleCode's own card replaces it). The canvas-only view no longer draws the identify popup: when a click, `ui.identify` or the
+Explore tool opens one, the view posts `{"rustgis": "feature", "event": {...}}` (`embed.rs`), and the page relays it as
+`{"type": "feature-clicked", "layer", "row", "at", "features"}`: the first feature's layer and row, where it was clicked, and every
+feature under the click (at most 20) with the attributes the engine read. A popup that closes (a click on nothing, its feature deleted,
+another map in view) is the same event with `layer` empty, `row` -1 and no `features`, posted once. The full web app is unchanged: it draws
+its own popup and posts nothing. It is an optional emitter like the key events, so the version stays; a host that does not know it shows no
+card, which is why a host that draws one and the engine that sends this ship together.
+
 `protocolVersion` is the one number every peer has to agree on. It is carried on **every** message,
 not just the handshake, so a stale page or a stale sidecar is refused the moment it speaks.
 

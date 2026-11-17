@@ -58,6 +58,41 @@ pub struct Popup {
     /// The map it was opened on (the project's `active_map` then): layer and feature ids belong to
     /// a map, and a duplicated map has the same ones.
     pub map: usize,
+    /// Whether the canvas-only build has told its host about this popup ([`announce_popup`]); the full app draws it instead.
+    pub announced: bool,
+}
+
+/// The most features one `feature-clicked` carries: the engine caps what a click identifies (`MAX_IDENTIFIED`), and a host
+/// draws a pager, not a table, of them.
+pub const MAX_CLICKED: usize = 20;
+
+/// What a click (or `ui.identify`) found, as the bridge's `feature-clicked` event carries it: the first feature's `layer` and
+/// `row` (the schema requires them), where it was clicked (`at`, lon and lat) and every feature under the click (`features`:
+/// layer, row, feature id, whether it is a raster pixel, attributes as the engine read them). A click that found nothing
+/// is the same event with `layer` empty, `row` -1 and no features: the host closes its card.
+pub fn click_event(info: Option<(&Value, Coord)>) -> Value {
+    let Some((info, at)) = info else {
+        return json!({"layer": "", "row": -1, "features": []});
+    };
+    let found: Vec<&Value> = match info["results"].as_array() {
+        Some(results) if !results.is_empty() => results.iter().collect(),
+        _ => vec![info],
+    };
+    let features: Vec<Value> = found
+        .into_iter()
+        .take(MAX_CLICKED)
+        .map(|f| {
+            json!({
+                "layer": f["layer"].as_str().unwrap_or(""),
+                "row": f["row"].as_u64().and_then(|r| i64::try_from(r).ok()).unwrap_or(-1),
+                "fid": f["fid"],
+                "raster": f["raster"].as_bool().unwrap_or(false),
+                "attributes": f["attributes"].as_object().cloned().unwrap_or_default(),
+            })
+        })
+        .collect();
+    let (layer, row) = features.first().map_or(("", -1), |f| (f["layer"].as_str().unwrap_or(""), f["row"].as_i64().unwrap_or(-1)));
+    json!({"layer": layer, "row": row, "at": [at.x, at.y], "features": features})
 }
 
 /// A notice shown as a toast.
@@ -120,6 +155,12 @@ pub struct MapView {
     /// The magnifying lens follows the pointer.
     pub magnifier: bool,
     pub popup: Option<Popup>,
+    /// The canvas-only build (ADR 0010: SyngleCode's React card is the chrome) draws no popup: it says what the popup would show.
+    pub canvas_only: bool,
+    /// `feature-clicked` events waiting for the web shell to post them to the page ([`announce_popup`]).
+    pub feature_events: Vec<Value>,
+    /// Whether the host has been told a popup is open, so closing it is told once.
+    popup_announced: bool,
     /// The session revision the popup was last checked against the map at ([`follow_popup`]).
     popup_rev: u64,
     /// A map or layout waiting for the user to confirm its deletion.
@@ -216,6 +257,9 @@ impl Default for MapView {
             vertex_drag: None,
             magnifier: false,
             popup: None,
+            canvas_only: false,
+            feature_events: Vec::new(),
+            popup_announced: false,
             popup_rev: 0,
             deleting: None,
             pointer_lonlat: None,
@@ -1561,7 +1605,7 @@ fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect
                         if let (Some(id), Some(row)) = (v["layerId"].as_u64(), v["row"].as_u64()) {
                             let _ = app.session.run("select.rows", &json!({"layer": id, "rows": [row]}));
                         }
-                        Some(Popup { info: v, at: c, index: 0, map: app.session.project.active_map })
+                        Some(Popup { info: v, at: c, index: 0, map: app.session.project.active_map, announced: false })
                     }
                     _ => {
                         let _ = app.session.run("select.clear", &Value::Null);
@@ -2116,7 +2160,34 @@ fn follow_popup(app: &mut RustGisApp) {
     pp.info = info;
 }
 
+/// The canvas-only build's popup: not drawn, told. A popup that opened since the last frame is posted once as a `feature-clicked`
+/// (its features, with the attributes the engine read), and one that closed after being told is posted once as the empty one, so
+/// the host's card opens, changes and closes with the map's own popup state: a click on a feature, a click on nothing, the feature
+/// deleted, another map in view and `ui.identify` all come through here.
+fn announce_popup(app: &mut RustGisApp, ui: &Ui) {
+    follow_popup(app);
+    let event = match &mut app.map.popup {
+        Some(pp) if !pp.announced => {
+            pp.announced = true;
+            Some(click_event(Some((&pp.info, pp.at))))
+        }
+        Some(_) => None,
+        None if app.map.popup_announced => Some(click_event(None)),
+        None => None,
+    };
+    app.map.popup_announced = app.map.popup.is_some();
+    if let Some(event) = event {
+        app.map.feature_events.push(event);
+        // The shell posts it on its next frame.
+        ui.ctx().request_repaint();
+    }
+}
+
 fn popup(app: &mut RustGisApp, ui: &mut Ui, rect: Rect) {
+    if app.map.canvas_only {
+        announce_popup(app, ui);
+        return;
+    }
     follow_popup(app);
     let Some(pp) = &app.map.popup else { return };
     let t = Tokens::get(ui.ctx());
@@ -2669,6 +2740,60 @@ mod picture_tests {
         assert!(bomb.len() < 4 << 20, "{}", bomb.len());
         assert!(super::decode_picture(&bomb).is_err());
         assert!(super::decode_picture(b"not a picture").is_err());
+    }
+}
+
+#[cfg(test)]
+mod click_event_tests {
+    use super::*;
+
+    #[test]
+    fn a_click_carries_the_first_feature_where_it_was_and_every_feature_under_it() {
+        let info = json!({
+            "layer": "countries", "layerId": 2, "row": 7, "fid": 70, "attributes": {"name": "Kenya", "pop_est": "52573973"},
+            "results": [
+                {"layer": "countries", "layerId": 2, "row": 7, "fid": 70, "attributes": {"name": "Kenya"}},
+                {"layer": "lakes", "layerId": 3, "row": 0, "fid": 5, "attributes": {"name": "Lake Victoria"}},
+            ],
+        });
+        let event = click_event(Some((&info, Coord::new(37.9, 0.1))));
+        assert_eq!((event["layer"].as_str(), event["row"].as_i64()), (Some("countries"), Some(7)));
+        assert_eq!(event["at"], json!([37.9, 0.1]));
+        let features = event["features"].as_array().expect("features");
+        assert_eq!(features.len(), 2);
+        assert_eq!(features[1]["layer"], "lakes");
+        assert_eq!(features[1]["attributes"]["name"], "Lake Victoria");
+        assert_eq!(features[0]["raster"], false);
+    }
+
+    #[test]
+    fn one_feature_without_a_results_list_is_one_feature() {
+        let info = json!({"layer": "clinics", "layerId": 1, "row": 0, "fid": 9, "attributes": {"name": "North"}});
+        let event = click_event(Some((&info, Coord::new(1.0, 2.0))));
+        assert_eq!(event["features"].as_array().map(Vec::len), Some(1));
+        assert_eq!(event["features"][0]["fid"], 9);
+    }
+
+    #[test]
+    fn a_raster_pixel_has_no_row_and_says_so() {
+        let info = json!({"layer": "dem", "layerId": 4, "raster": true, "attributes": {"Band 1": "812", "Pixel": "10, 20"}});
+        let event = click_event(Some((&info, Coord::new(1.0, 2.0))));
+        assert_eq!(event["row"], -1);
+        assert_eq!(event["features"][0]["raster"], true);
+        assert_eq!(event["features"][0]["attributes"]["Pixel"], "10, 20");
+    }
+
+    #[test]
+    fn a_host_is_given_no_more_features_than_the_cap() {
+        let many: Vec<Value> = (0..MAX_CLICKED + 5).map(|i| json!({"layer": "l", "row": i, "fid": i, "attributes": {}})).collect();
+        let info = json!({"layer": "l", "row": 0, "fid": 0, "attributes": {}, "results": many});
+        let event = click_event(Some((&info, Coord::new(0.0, 0.0))));
+        assert_eq!(event["features"].as_array().map(Vec::len), Some(MAX_CLICKED));
+    }
+
+    #[test]
+    fn a_click_on_nothing_is_the_empty_event() {
+        assert_eq!(click_event(None), json!({"layer": "", "row": -1, "features": []}));
     }
 }
 

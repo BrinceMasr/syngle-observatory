@@ -1969,6 +1969,60 @@ fn the_popup_closes_when_its_feature_is_deleted() {
     assert!(h.state().map.popup.is_none(), "the popup stayed on another map");
 }
 
+/// The canvas-only build (SyngleCode's map, ADR 0010) draws no popup: it tells its page what the popup would have shown.
+#[test]
+fn the_canvas_only_build_tells_its_page_what_a_click_found_instead_of_drawing_a_popup() {
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
+        |ui, app: &mut RustGisApp| {
+            let ctx = ui.ctx().clone();
+            app.logic(&ctx);
+            app.ui_canvas(ui);
+        },
+        RustGisApp::with_sample(),
+    );
+    for _ in 0..4 {
+        h.step();
+    }
+    let told = |h: &mut egui_kittest::Harness<'_, RustGisApp>| std::mem::take(&mut h.state_mut().map.feature_events);
+    assert!(told(&mut h).is_empty(), "nothing was clicked");
+    h.state_mut().run("graphics.add", json!({"shape": "point", "points": [[-30.0, -40.0]]})).unwrap();
+    h.state_mut().run("ui.identify", json!({"lon": -30.0, "lat": -40.0})).unwrap();
+    h.step();
+    let opened = told(&mut h);
+    assert_eq!(opened.len(), 1, "the popup is told once: {opened:?}");
+    assert_eq!(opened[0]["layer"], "Graphics");
+    assert_eq!(opened[0]["row"], 0);
+    assert_eq!(opened[0]["at"], json!([-30.0, -40.0]));
+    assert_eq!(opened[0]["features"].as_array().map(Vec::len), Some(1));
+    h.step();
+    h.step();
+    assert!(told(&mut h).is_empty(), "a popup that stays open is not told again");
+    // Its feature deleted: the page is told the popup is closed, once.
+    h.state_mut().run("select.rows", json!({"layer": "Graphics", "rows": [0]})).unwrap();
+    h.state_mut().run("edit.delete", json!(null)).unwrap();
+    h.step();
+    h.step();
+    let closed = told(&mut h);
+    assert_eq!(closed, vec![json!({"layer": "", "row": -1, "features": []})]);
+    // A click on nothing with no popup open tells nothing.
+    h.state_mut().run("ui.identify", json!({"lon": 170.0, "lat": -80.0})).unwrap();
+    h.step();
+    assert!(told(&mut h).is_empty());
+}
+
+/// The full app is unchanged: it draws the popup itself and tells no page.
+#[test]
+fn the_full_app_keeps_its_own_popup_and_tells_no_page() {
+    let mut h = harness();
+    h.step();
+    h.state_mut().run("graphics.add", json!({"shape": "point", "points": [[-30.0, -40.0]]})).unwrap();
+    h.state_mut().run("ui.identify", json!({"lon": -30.0, "lat": -40.0})).unwrap();
+    h.step();
+    h.step();
+    assert!(h.state().map.popup.is_some());
+    assert!(h.state().map.feature_events.is_empty());
+}
+
 #[test]
 fn a_shortcut_that_cannot_run_says_why() {
     let mut h = harness();

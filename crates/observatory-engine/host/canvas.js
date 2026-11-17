@@ -353,6 +353,20 @@
       if (message.ok === false && bridge.project) toView({ rustgis: "project", text: JSON.stringify(bridge.project) });
       return;
     }
+    if (message.rustgis === "feature") {
+      // The canvas-only view draws no popup (ADR 0010): what a click found goes up as `feature-clicked`, and the host's own
+      // card is the popup. A click on nothing, or a popup the view closed, is the same event with no layer and no features.
+      var found = message.event && typeof message.event === "object" ? message.event : {};
+      var clicked = {
+        type: "feature-clicked",
+        layer: typeof found.layer === "string" ? found.layer : "",
+        row: typeof found.row === "number" ? found.row : -1,
+        features: Array.isArray(found.features) ? found.features : []
+      };
+      if (Array.isArray(found.at)) clicked.at = found.at;
+      bridgeTell("event", { payload: clicked });
+      return;
+    }
     if (message.rustgis !== "project" || typeof message.text !== "string") return;
     var next;
     try {

@@ -1794,7 +1794,8 @@ impl RustGisApp {
                 let v = self.session.run("identify", &json!({"lon": lon, "lat": lat, "tolerancePx": 5}))?;
                 if let (false, Some(lon), Some(lat)) = (v.is_null(), lon.as_f64(), lat.as_f64()) {
                     let map = self.session.project.active_map;
-                    self.map.popup = Some(mapview::Popup { info: v, at: rustgis_engine::geom::Coord::new(lon, lat), index: 0, map });
+                    self.map.popup =
+                        Some(mapview::Popup { info: v, at: rustgis_engine::geom::Coord::new(lon, lat), index: 0, map, announced: false });
                 } else {
                     self.map.popup = None;
                 }
@@ -3197,6 +3198,8 @@ impl RustGisApp {
     /// `rustgis-web` `canvas-only` feature calls this instead of [`RustGisApp::ui`].
     pub fn ui_canvas(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
+        // The map's popups are the host page's to draw (ADR 0010): this build says what they would show.
+        self.map.canvas_only = true;
         // Fonts installed by `logic` take effect on the next frame.
         if self.fonts_frames < 2 {
             self.fonts_frames += 1;

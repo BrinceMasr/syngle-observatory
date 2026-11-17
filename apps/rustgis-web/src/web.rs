@@ -402,6 +402,10 @@ impl Embed {
                 None => {}
             }
         }
+        // The canvas-only build's popups are the page's to draw: what a click found goes up as soon as the frame is done.
+        for event in std::mem::take(&mut app.map.feature_events) {
+            self.answer(&crate::embed::feature(event));
+        }
         match self.changes.due(key(&app.session), web_time::Instant::now()) {
             (true, _) => match rustgis_ui_egui::rustgis_engine::data::without_rows(|| serde_json::to_string(&app.session.project)) {
                 Ok(text) => self.answer(&crate::embed::project(&text)),

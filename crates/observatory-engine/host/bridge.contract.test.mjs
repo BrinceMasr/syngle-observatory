@@ -511,6 +511,34 @@ test("a pan the hand made comes back up as camera-changed, and a click as select
   assert.deepEqual(state.state.camera, { center: [1000, 2000], res: 800 }, "the host learns the state the view has");
 });
 
+test("the schema names what a click found, and it stays an optional emitter", () => {
+  const clicked = SCHEMA.view.events["feature-clicked"];
+  assert.deepEqual(clicked.required, ["layer", "row"]);
+  assert.equal(clicked.properties.features.type, "array");
+  assert.equal(SCHEMA.protocolVersion, 1, "a host without the card ignores the event: the version stays");
+});
+
+test("what the canvas-only view found under a click comes up as feature-clicked, and a closed popup as the empty one", () => {
+  const mounted = mount();
+  seed(mounted);
+  const kenya = { layer: "Countries", row: 7, fid: 70, raster: false, attributes: { name: "Kenya", pop_est: "52573973" } };
+  mounted.view({ rustgis: "feature", event: { layer: "Countries", row: 7, at: [37.9, 0.1], features: [kenya] } });
+  let events = mounted.drain().host.filter((m) => m.bridge === "event").map((m) => m.payload);
+  assert.deepEqual(events, [{ type: "feature-clicked", layer: "Countries", row: 7, at: [37.9, 0.1], features: [kenya] }]);
+  // Every member it sends is one the schema gives the event.
+  for (const key of Object.keys(events[0]).filter((k) => k !== "type")) {
+    assert.ok(key in SCHEMA.view.events["feature-clicked"].properties, `feature-clicked has ${key}`);
+  }
+  // Closed by the view: the same event, nothing in it.
+  mounted.view({ rustgis: "feature", event: { layer: "", row: -1, features: [] } });
+  events = mounted.drain().host.filter((m) => m.bridge === "event").map((m) => m.payload);
+  assert.deepEqual(events, [{ type: "feature-clicked", layer: "", row: -1, features: [] }]);
+  // A message with no event in it is still the empty one, never a throw.
+  mounted.view({ rustgis: "feature" });
+  events = mounted.drain().host.filter((m) => m.bridge === "event").map((m) => m.payload);
+  assert.deepEqual(events, [{ type: "feature-clicked", layer: "", row: -1, features: [] }]);
+});
+
 // The page's replies are addressed, not broadcast (Syngle-Ecosystem #67). Until a host has spoken the
 // page has no origin to aim at, so the two messages that open the conversation go to `*`; from the
 // host's first message on, everything the page posts is addressed to that origin, so a page framed
