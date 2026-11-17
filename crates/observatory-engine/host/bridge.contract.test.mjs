@@ -146,6 +146,9 @@ function mount(options = {}) {
   const view = (message) => {
     for (const fn of listeners) fn({ data: message, source: frameWindow, origin: ORIGIN });
   };
+  // The view's wasm has started and takes messages: its own `ready`, which the page waits for before it pushes anything down
+  // (a message posted before it is dropped). A test of the wait itself mounts with `viewReady: false`.
+  if (options.viewReady !== false) view({ rustgis: "ready" });
   const runTimers = () => {
     for (const fn of timers.splice(0, timers.length)) fn();
   };
@@ -153,6 +156,10 @@ function mount(options = {}) {
   const tick = () => {
     clock.now += 1_000;
     runTimers();
+  };
+  // The clock alone moves; the page notices on its next poll.
+  const advance = (ms) => {
+    clock.now += ms;
   };
   const drain = () => {
     const host = toHost.splice(0, toHost.length);
@@ -189,7 +196,7 @@ function mount(options = {}) {
     frameWindow.document = newViewDocument();
     for (const fn of frameLoads) fn();
   };
-  return { toHost, toView, fetched, host, view, frameWindow, drain, runTimers, tick, press, reloadView, canvas, timers, cleared, pageDocument, documentEvents };
+  return { toHost, toView, fetched, host, view, frameWindow, drain, runTimers, tick, advance, press, reloadView, canvas, timers, cleared, pageDocument, documentEvents };
 }
 
 /**
@@ -420,6 +427,46 @@ test("the view commands change the project the view is given, through the fork's
   assert.equal(tool.host.find((m) => m.bridge === "state").state.tool, "measure");
 });
 
+test("what the page would push before the view says ready is held, and goes down in order when it does", async () => {
+  // The view's wasm starts after this page, and a message it is sent before `ready` is dropped. The first one is also how the
+  // view learns who its parent is (web.rs, `Embed.answer`), and a view that never learns it sends no click and no card.
+  const mounted = mount({ viewReady: false });
+  mounted.drain();
+
+  const theme = await command(mounted, "theme", { theme: "dark" });
+  const layers = await command(mounted, "layers", { layers: [{ name: "Cities", visible: false }, { name: "Countries" }] });
+  assert.deepEqual([...theme.pushed, ...layers.pushed], [], "nothing is posted to a view that has not said it takes messages");
+  assert.equal(theme.host.find((m) => m.bridge === "state").state.theme, "dark", "the host's own answer does not wait for the view");
+
+  mounted.view({ rustgis: "ready" });
+  const down = mounted.drain().pushed;
+  assert.deepEqual(down.map((m) => m.command ?? m.rustgis), ["ui.theme", "ui.layers"], "held messages go down in the order they were said");
+  assert.equal(down[0].params.dark, true);
+
+  // From then on there is no wait.
+  const camera = await command(mounted, "camera", { camera: { center: [1, 2], res: 3 } });
+  assert.ok(camera.pushed.some((m) => m.rustgis === "project"), "a later command goes straight down");
+  mounted.view({ rustgis: "ready" });
+  assert.deepEqual(mounted.drain().pushed, [], "a second ready sends nothing twice");
+});
+
+test("a view that never says ready is given what was held for it after the wait", async () => {
+  const mounted = mount({ viewReady: false });
+  mounted.drain();
+  await command(mounted, "theme", { theme: "dark" });
+
+  mounted.tick();
+  assert.deepEqual(mounted.drain().pushed, [], "one second is not the wait");
+
+  mounted.advance(10_000);
+  mounted.runTimers();
+  const down = mounted.drain().pushed;
+  assert.deepEqual(down.map((m) => m.command), ["ui.theme"], "the wait is over: the held message goes down");
+
+  const again = await command(mounted, "theme", { theme: "light" });
+  assert.equal(again.pushed[0].params.dark, false, "and the view is spoken to at once from then on");
+});
+
 test("a layer list the view refuses goes down again as the whole project, one it takes goes down no more", async () => {
   const mounted = mount();
   seed(mounted);
@@ -544,7 +591,8 @@ test("what the canvas-only view found under a click comes up as feature-clicked,
 // host's first message on, everything the page posts is addressed to that origin, so a page framed
 // elsewhere cannot read the map's state.
 test("replies are addressed to the host's own origin once it has spoken", () => {
-  const mounted = mount();
+  // The view's own `ready` is relayed up too (to `*` until the host has spoken), so this test is about the page's two alone.
+  const mounted = mount({ viewReady: false });
   const opening = mounted.drain();
   assert.deepEqual(opening.targets, ["*", "*"], `the opening messages: ${JSON.stringify(opening.targets)}`);
   assert.equal(opening.host[0].observatory, "ready");

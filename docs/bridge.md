@@ -55,6 +55,11 @@ not just the handshake, so a stale page or a stale sidecar is refused the moment
   (`{"rustgis": …}`): a project document pushed whole, or one of the app's `ui.*` commands run. A change to
   which layers are shown, or their order, goes down as `ui.layers` (the layers by name, each a name or `{name, visible}`),
   not as the whole project: reopening a project drops every streamed layer's window, which `ui.layers` does not.
+  Two things are dropped by the browser without a word, so each side waits: a host posts to the page only after the page's
+  own first message (`observatory: "ready"`, sent when its script ends), and the page pushes to the view only after the view
+  says `{"rustgis": "ready"}` (what it would push before is held, in order, and goes down then; a view that never says it
+  is given them after ten seconds). The view answers only the page that has spoken to it, so a message lost on either edge
+  leaves the map without clicks, selection or camera reports.
 * **Engine half** — JSON lines on the sidecar's stdin and stdout. SyngleCode's desktop process owns
   the pipe and forwards lines for the renderer. A host that does **not** own the pipe — the agent's
   map tools in a dev or headless run, a browser talking to a gateway directly — posts the same line

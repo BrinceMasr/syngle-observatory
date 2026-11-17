@@ -34,12 +34,38 @@
     }
   }
 
-  function toView(message) {
+  // The view takes the host's messages once it has said `ready` (embed.rs: "the app has started and takes messages"). Its
+  // wasm starts a moment after this page loads, and a message posted before that is dropped without a word: the first
+  // `ui.*` run or project this page gives it, which is also the view's only way to learn who its parent is (it answers
+  // the page that has spoken to it and no other), so a view that missed it sent no click, no selection and no camera for
+  // the rest of the visit (the 0.3.29 council: "no card on country click"). What the page would push before `ready` is
+  // held, in order, and goes down when the view says it. A view that never says it is given them after
+  // `VIEW_READY_WAIT_MS`, so a view without the word is no worse off than it was.
+  var VIEW_READY_WAIT_MS = 10000;
+  var viewReady = false;
+  var viewHeld = [];
+  var viewHeldSince = 0;
+
+  function postToView(message) {
     try {
       if (view && view.contentWindow) view.contentWindow.postMessage(message, "*");
     } catch (e) {
       // The frame is between documents; the host can ask again.
     }
+  }
+
+  function toView(message) {
+    if (viewReady) return postToView(message);
+    if (viewHeld.length === 0) viewHeldSince = Date.now();
+    viewHeld.push(message);
+  }
+
+  function openView() {
+    if (viewReady) return;
+    viewReady = true;
+    var held = viewHeld;
+    viewHeld = [];
+    for (var i = 0; i < held.length; i++) postToView(held[i]);
   }
 
   var firstData = null;
@@ -474,6 +500,8 @@
       }
     }
     var now = Date.now();
+    // A view that has not said `ready` is given what was held for it all the same, after a wait.
+    if (!viewReady && viewHeld.length > 0 && now - viewHeldSince >= VIEW_READY_WAIT_MS) openView();
     if (now - lastStats >= 1000) {
       lastStats = now;
       stats(now);
@@ -586,6 +614,8 @@
     // The view's own contract, on its way to whoever framed us (only the view's messages).
     if (data.rustgis) {
       if (event.source === (view && view.contentWindow)) {
+        // The view is listening: what was held for it goes down first, before anything this message sets off.
+        if (data.rustgis === "ready") openView();
         tell({ observatory: "view", message: data });
         bridgeFromView(data);
       }

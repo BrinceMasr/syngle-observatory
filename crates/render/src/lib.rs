@@ -3496,6 +3496,49 @@ mod tests {
         assert!((0..300).any(|y| (edge - 1..=edge + 1).any(|x| framed_px(x, y))), "no frame at x = {edge}");
     }
 
+    /// The map pane changes size when the chat dock or the rail opens (the 0.3.29 council saw an outline "off the country" after the dock
+    /// opened). The ring is drawn from the geometry and the camera of the frame being rendered, so at every size it stands on the feature.
+    #[test]
+    fn a_selected_polygon_stays_ringed_where_it_is_when_the_view_is_resized() {
+        let mut m = Map::new("Map");
+        m.basemap = rustgis_map::Basemap::Blank;
+        let mut d = Dataset::new("land", GeometryType::Polygon, vec![]);
+        // About 220 km a side and off the centre, so that a new size moves it across the screen.
+        let (lo, hi) = (3.0, 5.0);
+        let ring = vec![Coord::new(lo, lo), Coord::new(hi, lo), Coord::new(hi, hi), Coord::new(lo, hi), Coord::new(lo, lo)];
+        d.push(Some(Geometry::Polygon(vec![vec![ring]])), vec![]);
+        let id = m.add_dataset(d);
+        let grey = Rgba::rgb(200, 200, 200);
+        if let Some(l) = m.layer_mut(id) {
+            l.renderer =
+                rustgis_map::Renderer::Single(Symbol { fill: grey, stroke: grey, stroke_width: 1.0, size: 6.0, marker: Marker::Circle });
+            l.selection = vec![0];
+        }
+        let camera = Camera { center: Coord::new(0.0, 0.0), res: 5000.0, bearing: 0.0, pitch: 0.0 };
+        for (w, h) in [(600.0, 400.0), (300.0, 400.0), (450.0, 250.0)] {
+            let view = View { width: w, height: h, pixels_per_point: 1.0, camera, sky: false };
+            let r = render(&mut m, &view).unwrap();
+            let across = r.pixmap.width();
+            let (mut x0, mut x1, mut y0, mut y1) = (u32::MAX, 0u32, u32::MAX, 0u32);
+            for (k, p) in r.pixmap.pixels().iter().enumerate() {
+                if p.alpha() > 200 && is_selection_colour(p.red(), p.green(), p.blue()) {
+                    let (x, y) = (k as u32 % across, k as u32 / across);
+                    (x0, x1, y0, y1) = (x0.min(x), x1.max(x), y0.min(y), y1.max(y));
+                }
+            }
+            assert!(x1 > x0 && y1 > y0, "no ring at {w} x {h}");
+            // The feature's corners on this frame's screen (the lower left has the larger y): the ring is on them, give or take its stroke.
+            let (left, bottom) = camera.to_screen(lonlat_to_merc(Coord::new(lo, lo)), w, h);
+            let (right, top) = camera.to_screen(lonlat_to_merc(Coord::new(hi, hi)), w, h);
+            for (what, got, want) in [("left", x0, left), ("right", x1, right), ("top", y0, top), ("bottom", y1, bottom)] {
+                assert!(
+                    (f64::from(got) - want).abs() <= 4.0,
+                    "the ring's {what} edge is at {got}, the feature's at {want:.1}, in a {w} x {h} view"
+                );
+            }
+        }
+    }
+
     #[test]
     fn degenerate_views_do_not_panic() {
         let mut m = Map::new("Map");
