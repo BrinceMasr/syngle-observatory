@@ -1335,13 +1335,18 @@ impl Map {
             let rows = l.drawn_rows(scale);
             let id = l.id;
             let proj = l.projected_in(&flat, &key);
-            let hits = proj
-                .iter()
-                .enumerate()
-                .rev()
-                .filter(|(row, g)| rows.get(*row) == Some(&true) && g.as_ref().is_some_and(|g| g.hit(p, tol)))
-                .map(|(row, _)| (id, row));
-            out.extend(hits.take(limit - out.len()));
+            // What is drawn in this layer under the point, the feature on top first. A polygon the point is inside comes
+            // before one it only reaches by the tolerance, so a click inside a country is that country, not the neighbour
+            // a few pixels off whose row happens to be drawn later.
+            let room = limit - out.len();
+            let drawn = proj.iter().enumerate().rev().filter(|(row, _)| rows.get(*row) == Some(&true));
+            let inside = |g: &Option<Geometry>| matches!(g, Some(Geometry::Polygon(_))) && g.as_ref().is_some_and(|g| g.hit(p, 0.0));
+            let mut hits: Vec<usize> = drawn.clone().filter(|(_, g)| inside(g)).map(|(row, _)| row).take(room).collect();
+            if hits.len() < room {
+                let near = drawn.filter(|(_, g)| !inside(g) && g.as_ref().is_some_and(|g| g.hit(p, tol))).map(|(row, _)| row);
+                hits.extend(near.take(room - hits.len()));
+            }
+            out.extend(hits.into_iter().map(|row| (id, row)));
         }
         out
     }
@@ -1544,6 +1549,31 @@ mod tests {
         // A filter that doesn't apply at this scale hides nothing.
         m.layers[0].display_filters = vec![filter(Some(1e5))];
         assert_eq!(m.hits_at(p, 1000.0, 1e6, |_| true, false, 100), vec![(id, 2), (id, 0)]);
+    }
+
+    #[test]
+    fn hits_at_puts_the_polygon_the_point_is_inside_before_one_it_only_reaches() {
+        // Two countries that share a border, the second drawn later (so on top).
+        let square = |x0: f64, x1: f64| {
+            let ring = vec![Coord::new(x0, 0.0), Coord::new(x1, 0.0), Coord::new(x1, 10.0), Coord::new(x0, 10.0), Coord::new(x0, 0.0)];
+            Some(Geometry::Polygon(vec![vec![ring]]))
+        };
+        let mut m = Map::new("Map");
+        let mut d = Dataset::new("countries", GeometryType::Polygon, vec![]);
+        d.push(square(0.0, 10.0), vec![]);
+        d.push(square(10.0, 20.0), vec![]);
+        let id = m.add_dataset(d);
+        // 100 m inside the first, with the second within the click's 1 km: the click is in the first.
+        let p = lonlat_to_merc(Coord::new(9.999, 5.0));
+        assert_eq!(m.hits_at(p, 1000.0, 1e6, |_| true, false, 100), vec![(id, 0), (id, 1)]);
+        assert_eq!(m.hits_at(p, 1000.0, 1e6, |_| true, false, 1), vec![(id, 0)]);
+        assert_eq!(m.hit(p, 1000.0, 1e6, |_| true), Some((id, 0)));
+        // 100 m inside the second: it is first because it is the one the click is in, and the first still comes after it.
+        let q = lonlat_to_merc(Coord::new(10.001, 5.0));
+        assert_eq!(m.hits_at(q, 1000.0, 1e6, |_| true, false, 100), vec![(id, 1), (id, 0)]);
+        // Far from the border nothing else is reached.
+        let far = lonlat_to_merc(Coord::new(5.0, 5.0));
+        assert_eq!(m.hits_at(far, 1000.0, 1e6, |_| true, false, 100), vec![(id, 0)]);
     }
 
     #[test]
