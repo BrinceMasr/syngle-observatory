@@ -85,7 +85,7 @@ pub fn render(layout: &Layout, maps: &mut [Map], dpi: f64, info: &PageInfo) -> O
                 let view = View { width: fw, height: fh, pixels_per_point: fppp, camera: cam, sky: false };
                 let Some(mut img) = crate::render_complete(map, &view) else { continue };
                 for l in img.unplaced.iter().chain(&img.labels) {
-                    text::draw(&mut img.pixmap, l, fppp as f32);
+                    text::draw(&mut img.pixmap, l, fppp as f32, crate::selection_colour(map.basemap));
                 }
                 crate::draw_attribution(&mut img.pixmap, &img.attribution, fppp as f32);
                 let mut frame_pm = img.pixmap;

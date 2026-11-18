@@ -13,7 +13,6 @@ use rustgis_data::Geometry;
 use rustgis_geom::{Coord, Extent};
 use rustgis_map::{Layer, Rgba, Symbol};
 
-use crate::SELECTION;
 use crate::gpu_scene::{DrawCmd, MeshVertex, NO_REACH, PointInstance};
 
 /// Lyon refused to tessellate something tiny-skia would draw; the caller falls the layer (or
@@ -427,19 +426,26 @@ pub(crate) fn collect_layer(
 }
 
 /// Selection highlight of one feature, after its layer (`Ctx::highlight`): haloed markers,
-/// a wider cyan under-stroke for lines, translucent cyan fill + outline for polygons.
-pub(crate) fn collect_highlight(cmds: &mut Vec<DrawCmd>, g: &Geometry, s: &Symbol, ppp: f32, map_per_px: f64) -> Result<(), TessError> {
+/// a wider under-stroke for lines, translucent fill + outline for polygons, all in `selection` (the basemap's own, `selection_colour`).
+pub(crate) fn collect_highlight(
+    cmds: &mut Vec<DrawCmd>,
+    g: &Geometry,
+    s: &Symbol,
+    ppp: f32,
+    map_per_px: f64,
+    selection: Rgba,
+) -> Result<(), TessError> {
     let e = g.extent();
     let origin = [e.center().x, e.center().y];
     match g {
-        Geometry::Point(c) => cmds.push(DrawCmd::Points { origin, instances: marker_instances(*c, origin, s, ppp, Some(SELECTION)) }),
+        Geometry::Point(c) => cmds.push(DrawCmd::Points { origin, instances: marker_instances(*c, origin, s, ppp, Some(selection)) }),
         Geometry::MultiPoint(cs) => {
-            let instances: Vec<PointInstance> = cs.iter().flat_map(|c| marker_instances(*c, origin, s, ppp, Some(SELECTION))).collect();
+            let instances: Vec<PointInstance> = cs.iter().flat_map(|c| marker_instances(*c, origin, s, ppp, Some(selection))).collect();
             cmds.push(DrawCmd::Points { origin, instances });
         }
         Geometry::Line(parts) => {
             let (mut v, mut i) = (Vec::new(), Vec::new());
-            extend_mesh(&mut v, &mut i, stroke_lines(parts, origin, premul(SELECTION), (s.stroke_width + 3.0) * ppp, map_per_px))?;
+            extend_mesh(&mut v, &mut i, stroke_lines(parts, origin, premul(selection), (s.stroke_width + 3.0) * ppp, map_per_px))?;
             extend_mesh(&mut v, &mut i, stroke_lines(parts, origin, premul(s.stroke), s.stroke_width * ppp, map_per_px))?;
             if !i.is_empty() {
                 cmds.push(DrawCmd::Mesh { origin, vertices: v, indices: i });
@@ -447,8 +453,8 @@ pub(crate) fn collect_highlight(cmds: &mut Vec<DrawCmd>, g: &Geometry, s: &Symbo
         }
         Geometry::Polygon(polys) => {
             let (mut v, mut i) = (Vec::new(), Vec::new());
-            extend_mesh(&mut v, &mut i, fill_polygon(polys, origin, premul(SELECTION.with_alpha(40)), map_per_px))?;
-            extend_mesh(&mut v, &mut i, stroke_rings(polys, origin, premul(SELECTION), 2.0 * ppp, map_per_px))?;
+            extend_mesh(&mut v, &mut i, fill_polygon(polys, origin, premul(selection.with_alpha(40)), map_per_px))?;
+            extend_mesh(&mut v, &mut i, stroke_rings(polys, origin, premul(selection), 2.0 * ppp, map_per_px))?;
             if !i.is_empty() {
                 cmds.push(DrawCmd::Mesh { origin, vertices: v, indices: i });
             }

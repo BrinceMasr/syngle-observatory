@@ -108,14 +108,30 @@ pub use frame_png::PngEffort;
 use rustgis_data::{Dataset, Geometry, GeometryType};
 use rustgis_geom::{Coord, Extent, extent_to_merc, lonlat_to_merc};
 use rustgis_map::globe::{V3, densify};
-use rustgis_map::{Camera, Globe, LineStroke, Map, Marker, Rgba, Symbol};
+use rustgis_map::{Basemap, Camera, Globe, LineStroke, Map, Marker, Rgba, Symbol};
 pub use tiny_skia::Pixmap;
 use tiny_skia::{
     FillRule, GradientStop, LineCap, LineJoin, Paint, PathBuilder, PixmapPaint, Point, RadialGradient, SpreadMode, Stroke, Transform,
 };
 
-/// Selection highlight: Syngle's accent (#71), legible on paper and on the graphite canvas.
-pub const SELECTION: Rgba = Rgba::rgb(0x34, 0x64, 0xB7);
+/// Selection highlight on the light basemaps: Syngle's brand navy (the app's `--sy-color-accent` in the light theme), the navy the map's
+/// own scale is built on. It was the UI's brighter blue (#3464B7, the accent for text and buttons), which read as a second blue beside the
+/// navy land (council 0.3.29 r4 UI 6). 7.8:1 on the paper basemap's land, 7.1:1 on its water.
+pub const SELECTION: Rgba = Rgba::rgb(0x2C, 0x4B, 0x86);
+
+/// Selection highlight on the Midnight basemap: the same navy lifted for the graphite canvas, which is the brand navy's own dark value
+/// (the app's `--sy-color-accent` in the dark theme). 6.0:1 on Midnight's land and 6.7:1 on its water; the dark navy above would hold
+/// 1.6:1 there. Kept at three or more against the app's dark land (a pale stop of the navy scale over graphite paper), 4.1:1.
+pub const SELECTION_ON_DARK: Rgba = Rgba::rgb(0x8A, 0xAB, 0xE7);
+
+/// The selection colour that reads on `basemap`: the lifted navy on the dark one, the navy on every other. The app sets the basemap by its
+/// appearance (paper on light, midnight on dark), so this is how the selection follows the theme.
+pub fn selection_colour(basemap: Basemap) -> Rgba {
+    match basemap {
+        Basemap::Midnight => SELECTION_ON_DARK,
+        Basemap::Paper | Basemap::Ocean | Basemap::Atlas | Basemap::Blank => SELECTION,
+    }
+}
 
 /// Largest raster rendered (pixels per side).
 pub const MAX_SIDE: u32 = 8192;
@@ -340,6 +356,8 @@ struct Ctx<'a> {
     cull: Extent,
     /// Set when drawing the globe; coordinates are then longitude/latitude, not Web Mercator.
     globe: Option<Globe>,
+    /// The selection's colour on this map's basemap ([`selection_colour`]).
+    selection: Rgba,
     /// Point marker sprites drawn so far, by symbol and quarter-pixel offset.
     sprites: std::cell::RefCell<std::collections::HashMap<SpriteKey, Option<Sprite>, std::hash::BuildHasherDefault<KeyHasher>>>,
 }
@@ -753,7 +771,8 @@ impl Ctx<'_> {
     }
 
     fn highlight(&self, pm: &mut Pixmap, g: &Geometry, s: &Symbol, strokes: &[LineStroke]) {
-        let cyan = paint(SELECTION, 1.0);
+        let selection = self.selection;
+        let ring = paint(selection, 1.0);
         match g {
             Geometry::Line(parts) if !strokes.is_empty() => {
                 // A halo around each stroke that shows, under them all.
@@ -763,18 +782,18 @@ impl Ctx<'_> {
                         let (c, w) = st.resolve(s);
                         w > 0.0 && c.a() > 0
                     })
-                    .map(|st| LineStroke { color: Some(SELECTION), width: Some(st.resolve(s).1 + 3.0), ..*st })
+                    .map(|st| LineStroke { color: Some(selection), width: Some(st.resolve(s).1 + 3.0), ..*st })
                     .collect();
                 self.stacked_line(pm, parts, s, &halo);
                 self.stacked_line(pm, parts, s, strokes);
             }
-            Geometry::Point(c) => self.marker(pm, *c, s, 1.0, Some(SELECTION)),
-            Geometry::MultiPoint(v) => v.iter().for_each(|c| self.marker(pm, *c, s, 1.0, Some(SELECTION))),
+            Geometry::Point(c) => self.marker(pm, *c, s, 1.0, Some(selection)),
+            Geometry::MultiPoint(v) => v.iter().for_each(|c| self.marker(pm, *c, s, 1.0, Some(selection))),
             Geometry::Line(parts) => {
-                self.line(pm, parts, &cyan, s.stroke_width + 3.0);
+                self.line(pm, parts, &ring, s.stroke_width + 3.0);
                 self.line(pm, parts, &paint(s.stroke, 1.0), s.stroke_width);
             }
-            Geometry::Polygon(polys) => self.polygon(pm, polys, Some(paint(SELECTION.with_alpha(40), 1.0)), Some((cyan, 2.0))),
+            Geometry::Polygon(polys) => self.polygon(pm, polys, Some(paint(selection.with_alpha(40), 1.0)), Some((ring, 2.0))),
         }
     }
 }
@@ -1538,9 +1557,10 @@ fn gpu_turned(map: &mut Map, view: &View) -> Option<gpu_scene::GpuScene> {
         clips.push(CmdClip::ALL);
     }
     let ppp = view.pixels_per_point as f32;
+    let selection = selection_colour(map.basemap);
     let instances: Vec<gpu_scene::PointInstance> = upright_markers(map, view, 0.0)
         .iter()
-        .flat_map(|m| mesh::marker_instances(m.at, origin, &m.symbol, ppp, m.selected.then_some(SELECTION)))
+        .flat_map(|m| mesh::marker_instances(m.at, origin, &m.symbol, ppp, m.selected.then_some(selection)))
         .collect();
     if !instances.is_empty() {
         cmds.push(DrawCmd::Points { origin, instances });
@@ -1978,6 +1998,7 @@ fn markers_tilted(map: &mut Map, view: &View, pm: &mut Pixmap) {
     let (_, fog) = tilt_sky(map);
     let ppp = (f64::from(pm.width()) / view.width.max(1e-9)) as f32;
     let (pw, ph) = (pm.width() as f32, pm.height() as f32);
+    let selection = selection_colour(map.basemap);
     for m in upright_markers(map, view, 0.0) {
         let Some((x, y, k, t)) = m.place(&view.camera, view.width, view.height) else { continue };
         let s = m.look(k, fog, t);
@@ -1986,7 +2007,7 @@ fn markers_tilted(map: &mut Map, view: &View, pm: &mut Pixmap) {
         if x < -reach || y < -reach || x > pw + reach || y > ph + reach {
             continue;
         }
-        draw_marker(pm, x, y, &s, 1.0, m.selected.then_some(SELECTION), ppp);
+        draw_marker(pm, x, y, &s, 1.0, m.selected.then_some(selection), ppp);
     }
 }
 
@@ -2219,6 +2240,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         wireframe: map.view.wireframe,
         cull: cull_extent(view, CULL_MARGIN),
         globe,
+        selection: selection_colour(map.basemap),
         sprites: Default::default(),
     };
     // The Gpu backend draws flat, effect-free frames; anything else stays on the CPU pixmap.
@@ -2552,7 +2574,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                 // Follow the layer's own backend: when it fell back to the CPU pixmap, the
                 // highlight must too — tessellated here, the layer's later-flushed Image would
                 // draw over it (the CPU path draws highlights over the layer).
-                if gpu_done && mesh::collect_highlight(&mut cmds, g, &layer.symbol(*row), ctx.ppp, map_per_px).is_ok() {
+                if gpu_done && mesh::collect_highlight(&mut cmds, g, &layer.symbol(*row), ctx.ppp, map_per_px, ctx.selection).is_ok() {
                     // highlight tessellated into the scene, right after its layer
                 } else {
                     ctx.highlight(&mut pm, g, &layer.symbol(*row), if layer.graphics { &[] } else { &layer.line_strokes });
@@ -3257,8 +3279,9 @@ pub fn render_png(map: &mut Map, view: &View) -> Result<Vec<u8>, String> {
 /// [`render_png`] at an `effort`: [`PngEffort::Fastest`] for a frame the engine serves again and again, which is not kept.
 pub fn render_png_at(map: &mut Map, view: &View, effort: PngEffort) -> Result<Vec<u8>, String> {
     let mut r = render_complete(map, view).ok_or("could not allocate the image")?;
+    let selection = selection_colour(map.basemap);
     for l in r.unplaced.iter().chain(&r.labels) {
-        text::draw(&mut r.pixmap, l, view.pixels_per_point as f32);
+        text::draw(&mut r.pixmap, l, view.pixels_per_point as f32, selection);
     }
     text::scale_bar(&mut r.pixmap, view, map.ground_res_at(&view.camera));
     draw_attribution(&mut r.pixmap, &r.attribution, view.pixels_per_point as f32);
@@ -3286,7 +3309,8 @@ pub(crate) fn draw_attribution(pm: &mut Pixmap, attribution: &[String], ppp: f32
         align: 0.0,
         framed: false,
     };
-    text::draw(pm, &label, ppp);
+    // Never framed, so its selection colour is not drawn.
+    text::draw(pm, &label, ppp, SELECTION);
 }
 
 #[cfg(test)]
@@ -3463,9 +3487,79 @@ mod tests {
         assert!(!world().is_empty());
     }
 
-    /// A pixel drawn in the selection colour (Syngle's accent since #71; it was cyan, which these tests once hard-coded).
+    /// A pixel within a few levels of `want`.
+    fn is_near(want: Rgba, r: u8, g: u8, b: u8) -> bool {
+        [(r, want.0[0]), (g, want.0[1]), (b, want.0[2])].iter().all(|(got, want)| got.abs_diff(*want) <= 12)
+    }
+
+    /// A pixel drawn in the selection colour of the light basemaps (Syngle's navy; it was the accent blue, and cyan before #71).
     fn is_selection_colour(r: u8, g: u8, b: u8) -> bool {
-        [(r, SELECTION.0[0]), (g, SELECTION.0[1]), (b, SELECTION.0[2])].iter().all(|(got, want)| got.abs_diff(*want) <= 12)
+        is_near(SELECTION, r, g, b)
+    }
+
+    /// WCAG relative luminance of a colour, for the selection's contrast on the basemaps.
+    fn luminance(c: Rgba) -> f64 {
+        let lin = |v: u8| {
+            let v = f64::from(v) / 255.0;
+            if v <= 0.039_28 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) }
+        };
+        0.2126 * lin(c.0[0]) + 0.7152 * lin(c.0[1]) + 0.0722 * lin(c.0[2])
+    }
+
+    fn contrast(a: Rgba, b: Rgba) -> f64 {
+        let (x, y) = (luminance(a), luminance(b));
+        (x.max(y) + 0.05) / (x.min(y) + 0.05)
+    }
+
+    /// Council 0.3.29 r4 UI 6: the selection is the brand navy, and on the graphite basemap its lifted value, so that it reads against the
+    /// water and the land of every basemap (3:1 is the bar for a graphical object). The dark navy on Midnight held 1.6:1.
+    #[test]
+    fn the_selection_colour_reads_on_every_basemap() {
+        for basemap in Basemap::ALL {
+            let (water, land, ..) = basemap.palette();
+            let selection = selection_colour(basemap);
+            assert!(contrast(selection, water) >= 3.0, "{basemap:?}: {:.2}:1 on its water", contrast(selection, water));
+            assert!(contrast(selection, land) >= 3.0, "{basemap:?}: {:.2}:1 on its land", contrast(selection, land));
+        }
+        assert_eq!(selection_colour(Basemap::Paper), SELECTION);
+        assert_eq!(selection_colour(Basemap::Midnight), SELECTION_ON_DARK);
+        // The navy the app's light chrome and map scale are built on (`--sy-color-accent`), and its dark value.
+        assert_eq!((SELECTION.0[0], SELECTION.0[1], SELECTION.0[2]), (0x2C, 0x4B, 0x86));
+        assert_eq!((SELECTION_ON_DARK.0[0], SELECTION_ON_DARK.0[1], SELECTION_ON_DARK.0[2]), (0x8A, 0xAB, 0xE7));
+    }
+
+    /// The ring of a selected polygon follows the basemap: navy on paper, the lifted navy on Midnight, and never the other one.
+    #[test]
+    fn a_selected_polygon_is_ringed_in_the_basemaps_own_selection_colour() {
+        let ringed = |basemap: Basemap, want: Rgba, other: Rgba| {
+            let mut m = Map::new("Map");
+            m.basemap = basemap;
+            let mut d = Dataset::new("land", GeometryType::Polygon, vec![]);
+            let ring = vec![Coord::new(3.0, 3.0), Coord::new(5.0, 3.0), Coord::new(5.0, 5.0), Coord::new(3.0, 5.0), Coord::new(3.0, 3.0)];
+            d.push(Some(Geometry::Polygon(vec![vec![ring]])), vec![]);
+            let id = m.add_dataset(d);
+            let grey = Rgba::rgb(128, 128, 128);
+            if let Some(l) = m.layer_mut(id) {
+                l.renderer = rustgis_map::Renderer::Single(Symbol {
+                    fill: grey,
+                    stroke: grey,
+                    stroke_width: 1.0,
+                    size: 6.0,
+                    marker: Marker::Circle,
+                });
+                l.selection = vec![0];
+            }
+            let camera = Camera { center: Coord::new(0.0, 0.0), res: 5000.0, bearing: 0.0, pitch: 0.0 };
+            let view = View { width: 600.0, height: 400.0, pixels_per_point: 1.0, camera, sky: false };
+            let r = render(&mut m, &view).unwrap();
+            let count = |colour: Rgba| {
+                r.pixmap.pixels().iter().filter(|p| p.alpha() > 200 && is_near(colour, p.red(), p.green(), p.blue())).count()
+            };
+            assert!(count(want) > 50, "{basemap:?}: the ring is not in {want:?}");
+            assert_eq!(count(other), 0, "{basemap:?}: the other basemap's selection colour is drawn");
+        };
+        ringed(Basemap::Paper, SELECTION, SELECTION_ON_DARK);
+        ringed(Basemap::Midnight, SELECTION_ON_DARK, SELECTION);
     }
 
     #[test]
@@ -3488,7 +3582,7 @@ mod tests {
         let r = render(&mut m, &view).unwrap();
         let mut pm = Pixmap::new(400, 300).unwrap();
         for l in &r.labels {
-            text::draw(&mut pm, l, 1.0);
+            text::draw(&mut pm, l, 1.0, SELECTION);
         }
         let edge = (200.0 - text::measure("Selected text", 14.0, false) / 2.0 - 3.0).round() as u32;
         let framed_px =
@@ -3942,7 +4036,15 @@ mod tests {
             camera: Camera { center: Coord::new(0.0, 0.0), res: 1.0, bearing: 0.0, pitch: 0.0 },
             sky: false,
         };
-        let ctx = Ctx { view: &view, ppp: 1.0, wireframe: false, cull: Extent::EMPTY, globe: None, sprites: Default::default() };
+        let ctx = Ctx {
+            view: &view,
+            ppp: 1.0,
+            wireframe: false,
+            cull: Extent::EMPTY,
+            globe: None,
+            selection: SELECTION,
+            sprites: Default::default(),
+        };
         for marker in Marker::ALL {
             let s = Symbol { fill: Rgba::new(200, 60, 30, 200), stroke: Rgba::rgb(20, 20, 20), stroke_width: 1.2, size: 9.0, marker };
             let (mut stamped, mut drawn) = (Pixmap::new(120, 80).unwrap(), Pixmap::new(120, 80).unwrap());
@@ -4339,7 +4441,15 @@ mod tests {
             camera: Camera { center: Coord::new(0.0, 0.0), res: 1.0, bearing: 0.0, pitch: 0.0 },
             sky: false,
         };
-        let ctx = Ctx { view: &view, ppp: 2.0, wireframe: false, cull: Extent::EMPTY, globe: None, sprites: Default::default() };
+        let ctx = Ctx {
+            view: &view,
+            ppp: 2.0,
+            wireframe: false,
+            cull: Extent::EMPTY,
+            globe: None,
+            selection: SELECTION,
+            sprites: Default::default(),
+        };
         let ring = vec![Coord::new(0.0, 0.0), Coord::new(0.25, 0.0), Coord::new(0.25, 0.25), Coord::new(0.0, 0.25), Coord::new(0.0, 0.0)];
         let g = Geometry::Polygon(vec![vec![ring]]);
         let mut pm = Pixmap::new(200, 200).unwrap();

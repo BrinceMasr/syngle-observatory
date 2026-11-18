@@ -148,14 +148,14 @@ impl TiltDrape {
         if let Some(mesh) = self.extrusions(rect, &cam, fog) {
             painter.add(Shape::mesh(mesh));
         }
-        if let Some(mesh) = self.markers(rect, &cam, fog) {
+        if let Some(mesh) = self.markers(rect, &cam, fog, render::selection_colour(map.basemap)) {
             painter.add(Shape::mesh(mesh));
         }
     }
 
     /// The point markers standing upright on the drape, as one mesh in their order: each one's
     /// selection halo, fill and outline, sized and fogged by its distance as in the settled frame.
-    fn markers(&self, rect: Rect, cam: &Camera, fog: rustgis_engine::map::Rgba) -> Option<Mesh> {
+    fn markers(&self, rect: Rect, cam: &Camera, fog: rustgis_engine::map::Rgba, selection: rustgis_engine::map::Rgba) -> Option<Mesh> {
         let d = self.drape.as_ref()?;
         let (w, h) = (rect.width() as f64, rect.height() as f64);
         let mut mesh = Mesh::default();
@@ -170,7 +170,7 @@ impl TiltDrape {
             }
             let outline = render::marker_outline(s.marker, x, y, r);
             if m.selected {
-                ring(&mut mesh, (x, y), &outline, 1.75, c32(render::SELECTION));
+                ring(&mut mesh, (x, y), &outline, 1.75, c32(selection));
             }
             fan(
                 &mut mesh,
@@ -466,7 +466,8 @@ mod tests {
         let mut d = TiltDrape::default();
         assert!(d.prepare(&ctx, &mut m, DrapeKey { rev: 0, sources: 0 }, 0, 800.0, 600.0, 1.0, 0.0));
         let rect = Rect::from_min_size(pos2(0.0, 0.0), egui::vec2(800.0, 600.0));
-        let mesh = d.markers(rect, &m.camera, fog()).expect("the marker stands up");
+        let selection = render::selection_colour(m.basemap);
+        let mesh = d.markers(rect, &m.camera, fog(), selection).expect("the marker stands up");
         assert!(mesh.is_valid());
         // At the centre, as tall as it is wide: facing the viewer, not lying on the ground.
         let (mut lo, mut hi) = (pos2(f32::MAX, f32::MAX), pos2(f32::MIN, f32::MIN));
@@ -478,7 +479,7 @@ mod tests {
         assert!(((lo.x + hi.x) / 2.0 - 400.0).abs() < 1.0 && ((lo.y + hi.y) / 2.0 - 300.0).abs() < 1.0);
         // Behind the camera, it isn't drawn.
         m.camera.center = rustgis_engine::geom::lonlat_to_merc(Coord::new(10.0, 70.0));
-        assert!(d.markers(rect, &m.camera, fog()).is_none());
+        assert!(d.markers(rect, &m.camera, fog(), selection).is_none());
     }
 
     #[test]

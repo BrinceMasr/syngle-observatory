@@ -458,6 +458,7 @@ fn split_view(app: &mut RustGisApp, ui: &mut Ui, other: usize, rect: Rect, t: &T
     let Some(m) = app.session.project.maps.get_mut(other) else { return };
     let view = View { width: w, height: h, pixels_per_point: ppp as f64, camera: m.camera, sky: true };
     let painter = ui.painter_at(rect);
+    let selection = rustgis_engine::render::selection_colour(m.basemap);
     painter.rect_filled(rect, 0.0, c32(m.palette().0));
     let key = [
         other as f64,
@@ -523,12 +524,12 @@ fn split_view(app: &mut RustGisApp, ui: &mut Ui, other: usize, rect: Rect, t: &T
             },
         ));
         for l in labels {
-            draw_label(&painter, l, pos2(rect.min.x + l.x, rect.min.y + l.y));
+            draw_label(&painter, l, pos2(rect.min.x + l.x, rect.min.y + l.y), selection);
         }
     } else if let Some((_, tex, labels)) = &app.map.split {
         painter.image(tex.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
         for l in labels {
-            draw_label(&painter, l, pos2(rect.min.x + l.x, rect.min.y + l.y));
+            draw_label(&painter, l, pos2(rect.min.x + l.x, rect.min.y + l.y), selection);
         }
     }
     painter.line_segment([rect.left_top(), rect.left_bottom()], Stroke::new(2.0, t.border_strong));
@@ -889,6 +890,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
     // Draw the (possibly shifted) map texture.
     let painter = ui.painter_at(rect);
+    let selection = rustgis_engine::render::selection_colour(app.session.map().basemap);
     // Behind the (possibly shifted or shrunk) last frame: the map's own background, so zooming
     // out never shows a band of window colour around it.
     let background = app.session.map().palette().0;
@@ -954,7 +956,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         let g = Globe::new(&cam, w, h);
         for (l, c) in app.map.labels.iter().zip(&app.map.label_lonlat) {
             if let Some((x, y)) = c.and_then(|c| g.forward(c)) {
-                draw_label(&painter, l, rect.min + vec2(x as f32, y as f32));
+                draw_label(&painter, l, rect.min + vec2(x as f32, y as f32), selection);
             }
         }
     } else if (tilt_draped || (app.map.gpu_frame.is_some() && !app.map.label_map.is_empty())) && placed != cam {
@@ -963,13 +965,13 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         let sky = cam.sky_y(h).unwrap_or(0.0);
         for (l, m) in app.map.labels.iter().zip(&app.map.label_map) {
             if let Some((x, y)) = m.and_then(|m| cam.try_to_screen(m, w, h)).filter(|s| s.1 > sky) {
-                draw_label(&painter, l, rect.min + vec2(x as f32, y as f32));
+                draw_label(&painter, l, rect.min + vec2(x as f32, y as f32), selection);
             }
         }
     } else {
         let s = if globe_view { 1.0 } else { (old.res / cam.res) as f32 };
         for l in &app.map.labels {
-            draw_label(&painter, l, tex_rect.min + vec2(l.x, l.y) * s);
+            draw_label(&painter, l, tex_rect.min + vec2(l.x, l.y) * s, selection);
         }
     }
     if app.map.hide_overlays {
@@ -1123,7 +1125,8 @@ fn tex_rect(app: &RustGisApp, cam: Camera, rect: Rect, globe_view: bool) -> Rect
     Rect::from_min_max(to_screen(0.0, 0.0), to_screen(tw, th))
 }
 
-fn draw_label(p: &egui::Painter, l: &PlacedLabel, at: Pos2) {
+/// `selection` is the map's selection colour (`render::selection_colour` of its basemap), the frame of a selected text graphic.
+fn draw_label(p: &egui::Painter, l: &PlacedLabel, at: Pos2, selection: rustgis_engine::map::Rgba) {
     let font = if l.bold { semibold(l.size * 1.33) } else { regular(l.size * 1.33) };
     // Text set beside an icon is lined up by its edge, with egui's own measure of its width.
     let align = if l.align < -0.25 {
@@ -1137,7 +1140,7 @@ fn draw_label(p: &egui::Painter, l: &PlacedLabel, at: Pos2) {
     if l.framed {
         let galley = p.layout_no_wrap(l.text.clone(), font.clone(), Color32::TRANSPARENT);
         let r = align.anchor_size(at, galley.size()).expand(3.0);
-        let cyan = c32(rustgis_engine::render::SELECTION);
+        let cyan = c32(selection);
         p.rect(r, 0.0, cyan.gamma_multiply(40.0 / 255.0), Stroke::new(2.0, cyan), egui::StrokeKind::Outside);
     }
     if let Some(h) = l.halo {
